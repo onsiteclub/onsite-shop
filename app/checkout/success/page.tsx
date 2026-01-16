@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCartStore } from '@/lib/store/cart';
 
-export default function CheckoutSuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const clearCart = useCartStore((state) => state.clearCart);
@@ -70,5 +70,17 @@ export default function CheckoutSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-grain flex items-center justify-center">
+        <p className="font-mono text-[#1B2B27]/60">Carregando...</p>
+      </div>
+    }>
+      <SuccessContent />
+    </Suspense>
   );
 }
