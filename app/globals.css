@@ -1,12 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --amber: #F6C343;
-  --onsite-dark: #1B2B27;
-  --onsite-cream: #F5F3EF;
-  --onsite-sand: #D4CFC4;
+  /* OnSite Design System */
+  --onsite-primary: #1B2B27;
+  --onsite-light: #FBFAFC;
+  --onsite-amber: #F6C343;
+  --onsite-text: #1B2B27;
+  --onsite-text-secondary: #6B7280;
+  --onsite-border: #E5E7EB;
+  
+  /* Grain Background */
+  --grain-light: #D8D4C8;
+  --grain-mid: #C9C4B5;
+  --grain-dark: #B8B3A4;
 }
 
 * {
@@ -19,28 +29,121 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-body {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Grain Texture Background */
+.bg-grain {
+  position: relative;
+  background: linear-gradient(145deg, var(--grain-light) 0%, var(--grain-mid) 40%, var(--grain-dark) 100%);
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
+.bg-grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--onsite-cream);
+.bg-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, transparent 0%, rgba(0,0,0,0.1) 100%);
+  pointer-events: none;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--onsite-dark);
-  border-radius: 4px;
+/* OnSite Button Styles */
+@layer components {
+  .btn-primary {
+    @apply bg-onsite-primary text-white font-mono py-3 px-6 rounded-xl 
+           hover:bg-opacity-90 transition-all duration-200 
+           uppercase tracking-widest text-sm font-medium;
+  }
+
+  .btn-accent {
+    @apply bg-onsite-amber text-onsite-primary font-mono py-3 px-6 rounded-xl 
+           hover:bg-opacity-90 transition-all duration-200 
+           uppercase tracking-widest text-sm font-bold;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-onsite-primary font-mono py-3 px-6 rounded-xl 
+           hover:bg-gray-100 transition-all duration-200 
+           uppercase tracking-widest text-sm border border-gray-200;
+  }
+
+  .card {
+    @apply bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 rounded-xl border border-gray-200 
+           font-mono text-sm focus:outline-none focus:ring-2 
+           focus:ring-onsite-amber focus:border-transparent;
+  }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #2a3d38;
+/* Floating product animation */
+.floating-product {
+  transition: transform 0.3s ease-out;
+}
+
+.floating-product:hover {
+  transform: scale(1.05) !important;
+  z-index: 30 !important;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal content */
+.modal-content {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scroll indicator */
+.scroll-indicator {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Selection color */
+::selection {
+  background: var(--onsite-amber);
+  color: var(--onsite-primary);
 }
