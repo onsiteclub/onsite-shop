@@ -436,6 +436,7 @@ export default function AdminPage() {
             colors: [],
             is_active: true,
             is_featured: false,
+            is_published: false,
             category_id: categories[0]?.id || '',
           })}
           className="btn-accent mb-6"
