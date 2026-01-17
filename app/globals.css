@@ -147,3 +147,123 @@ body {
   background: var(--onsite-amber);
   color: var(--onsite-primary);
 }
+
+/* ============================================================================
+   PREMIUM MOTION SYSTEM - Subtle, tactile, restrained
+   ============================================================================ */
+
+/* Custom cursor - hide default on desktop for custom cursor */
+@media (hover: hover) and (pointer: fine) {
+  .custom-cursor-active {
+    cursor: none;
+  }
+}
+
+/* Subtle entrance animation for hover previews */
+@keyframes subtleFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-subtle-fade-in {
+  animation: subtleFadeIn 150ms ease-out forwards;
+}
+
+/* Micro-compression feedback for buttons */
+@keyframes microPress {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+.micro-press:active {
+  animation: microPress 100ms ease-out;
+}
+
+/* Particle drift animation (very subtle) */
+@keyframes ambientDrift {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(2px, -2px);
+  }
+  50% {
+    transform: translate(-1px, 2px);
+  }
+  75% {
+    transform: translate(-2px, -1px);
+  }
+}
+
+.ambient-particle {
+  animation: ambientDrift 20s ease-in-out infinite;
+}
+
+/* Progress indicator pulse */
+@keyframes progressPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.progress-pulse {
+  animation: progressPulse 2s ease-in-out infinite;
+}
+
+/* ============================================================================
+   REDUCED MOTION SUPPORT - Accessibility first
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .floating-product {
+    transition: none !important;
+  }
+
+  .floating-product:hover {
+    transform: none !important;
+  }
+
+  .ambient-particle {
+    display: none;
+  }
+
+  /* Static fallback for particles */
+  .particle-system {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   MOBILE FALLBACKS - Simpler interactions for touch
+   ============================================================================ */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover-dependent effects on mobile */
+  .floating-product:hover {
+    transform: none !important;
+  }
+
+  /* Larger touch targets */
+  .floating-product {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Simplify animations for performance */
+  .ambient-particle {
+    animation: none;
+  }
+}
