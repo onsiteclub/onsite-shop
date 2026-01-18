@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
 
     let user = null;
     let order = null;
+    let orderNumber = `OS-${Date.now().toString(36).toUpperCase()}`;
 
     if (isSupabaseConfigured) {
       // Get user from Supabase if logged in
@@ -56,10 +57,9 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase.auth.getUser();
       user = data.user;
 
-      // Create order in Supabase
-      const orderNumber = `OS-${Date.now().toString(36).toUpperCase()}`;
-      const { data: orderData } = await supabase
-        .from('orders')
+      // Create order in Supabase (app_shop_orders - schema by Blue)
+      const { data: orderData, error: orderError } = await supabase
+        .from('app_shop_orders')
         .insert({
           user_id: user?.id || null,
           order_number: orderNumber,
@@ -72,7 +72,12 @@ export async function POST(request: NextRequest) {
         .select('id')
         .single();
 
-      order = orderData;
+      if (orderError) {
+        console.error('Order creation error:', orderError);
+        // Continue without order - webhook will handle
+      } else {
+        order = orderData;
+      }
     }
 
     // Create line items for Stripe
@@ -81,7 +86,7 @@ export async function POST(request: NextRequest) {
         currency: 'cad',
         product_data: {
           name: item.name,
-          description: `${item.color} - ${item.size}`,
+          description: item.color && item.size ? `${item.color} - ${item.size}` : undefined,
           images: item.image && item.image.startsWith('http') ? [item.image] : undefined,
         },
         unit_amount: Math.round(item.price * 100), // Stripe uses cents
@@ -95,8 +100,8 @@ export async function POST(request: NextRequest) {
         price_data: {
           currency: 'cad',
           product_data: {
-            name: 'Frete',
-            description: 'Entrega padrão',
+            name: 'Shipping',
+            description: 'Standard delivery to Canada',
           },
           unit_amount: Math.round(shipping * 100),
         },
@@ -106,7 +111,6 @@ export async function POST(request: NextRequest) {
 
     // Create Stripe checkout session
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'http://localhost:3003';
-    const orderNumber = order?.id ? `OS-${Date.now().toString(36).toUpperCase()}` : `OS-${Date.now().toString(36).toUpperCase()}`;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -121,6 +125,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         order_id: order?.id || '',
         order_number: orderNumber,
+        user_id: user?.id || '',
         type: 'shop_order',
         items: JSON.stringify(items.map((i: any) => ({
           product_id: i.product_id,
@@ -128,6 +133,8 @@ export async function POST(request: NextRequest) {
           name: i.name,
           quantity: i.quantity,
           price: i.price,
+          size: i.size,
+          color: i.color,
         }))),
       },
     });

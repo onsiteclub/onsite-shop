@@ -1,54 +1,21 @@
 'use client';
 
 import { useCartStore } from '@/lib/store/cart';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 export default function CartPage() {
+  const router = useRouter();
   const { items, subtotal, shipping, total, updateQuantity, removeItem, clearCart } = useCartStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
 
-  // Check if user is logged in
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }: { data: { user: any } }) => {
-      setUser(data.user);
-    });
-  }, []);
-
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (items.length === 0) return;
 
     setIsLoading(true);
-    try {
-      // Call our checkout API
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items,
-          subtotal,
-          shipping,
-          total,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Checkout failed');
-      }
-
-      // Redirect to Stripe Checkout
-      window.location.href = data.url;
-    } catch (error: any) {
-      console.error('Checkout error:', error);
-      alert(error.message || 'Erro ao iniciar checkout. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Redirect to /checkout - auth check happens there
+    router.push('/checkout');
   };
 
   if (items.length === 0) {
