@@ -69,7 +69,7 @@ export default function AdminPage() {
 
     // Check if user is admin
     const { data: admin } = await supabase
-      .from('shop_admins')
+      .from('admin_users')
       .select('*')
       .eq('email', user.email)
       .single();

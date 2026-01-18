@@ -364,7 +364,7 @@ metadata: {
 
 ### Features
 
-- Login required (checks `shop_admins` table)
+- Login required (checks `admin_users` table)
 - CRUD operations for products
 - Draft/Publish workflow (`is_published` flag)
 - Image URL management

@@ -569,8 +569,9 @@ function ProductModal({
       />
 
       {/* Modal - taller for bigger image, glass effect */}
+      {/* Mobile: fit everything without scroll, Desktop: larger with image focus */}
       <div
-        className="relative bg-[#F5F3EF] rounded-2xl w-full max-w-md md:max-w-5xl max-h-[95vh] overflow-y-auto md:overflow-hidden shadow-2xl"
+        className="relative bg-[#F5F3EF] rounded-2xl w-[95vw] md:w-full max-w-md md:max-w-5xl max-h-[90vh] md:max-h-[95vh] overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{
           // Focus ritual: micro-compression and scale animation
@@ -591,13 +592,14 @@ function ProductModal({
           <span className="text-2xl leading-none">&times;</span>
         </button>
 
-        {/* Desktop: Horizontal layout | Mobile: Vertical layout */}
-        <div className="flex flex-col md:flex-row md:min-h-[70vh]">
-          {/* Image section with carousel - larger area */}
-          <div className="md:w-3/5 p-4 md:p-6">
+        {/* Desktop: Horizontal layout | Mobile: Compact vertical layout */}
+        <div className="flex flex-col md:flex-row md:min-h-[70vh] h-full">
+          {/* Image section with carousel - Mobile: smaller, Desktop: larger */}
+          <div className="md:w-3/5 p-3 md:p-6 flex-shrink-0">
             {/* Main image with ultra-realistic crystal glass effect */}
+            {/* Mobile: square aspect, limited height */}
             <div
-              className="relative aspect-[4/5] md:aspect-auto md:h-full rounded-xl overflow-hidden"
+              className="relative aspect-square md:aspect-auto md:h-full rounded-xl overflow-hidden max-h-[40vh] md:max-h-none"
               style={{
                 background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
                 boxShadow: `
@@ -695,8 +697,8 @@ function ProductModal({
               )}
             </div>
 
-            {/* Thumbnail strip - visible on mobile only */}
-            <div className="flex gap-2 mt-2 md:hidden">
+            {/* Thumbnail strip - hidden on mobile to save space, visible on desktop */}
+            <div className="hidden md:flex gap-2 mt-2">
               {allImages.slice(0, 3).map((imgUrl, idx) => (
                 <button
                   key={idx}
@@ -724,81 +726,88 @@ function ProductModal({
             </div>
           </div>
 
-          {/* Product info section - more compact */}
-          <div className="md:w-2/5 p-4 md:p-6 md:pl-2 flex flex-col">
-            {/* Product info - reduced spacing */}
-            <h2 className="font-mono text-xl font-bold text-[#1B2B27] mb-1">
-              {product.name}
-            </h2>
-            <p className="font-mono text-lg text-[#B8860B] font-bold mb-2">
-              CA${product.price.toFixed(2)}
-            </p>
-            <p className="text-[#6B7280] mb-4 leading-snug text-xs">
+          {/* Product info section - Mobile: ultra compact, Desktop: normal */}
+          <div className="md:w-2/5 p-3 md:p-6 md:pl-2 flex flex-col flex-1">
+            {/* Mobile: horizontal layout for name/price, Desktop: vertical */}
+            <div className="flex items-start justify-between md:block mb-2 md:mb-0">
+              <h2 className="font-mono text-base md:text-xl font-bold text-[#1B2B27] md:mb-1">
+                {product.name}
+              </h2>
+              <p className="font-mono text-base md:text-lg text-[#B8860B] font-bold md:mb-2">
+                CA${product.price.toFixed(2)}
+              </p>
+            </div>
+
+            {/* Description - hidden on mobile to save space */}
+            <p className="hidden md:block text-[#6B7280] mb-4 leading-snug text-xs">
               {product.description}
             </p>
 
-            {/* Size selector - compact */}
-            {product.sizes.length > 1 && (
-              <div className="mb-3">
-                <p className="font-mono text-xs text-[#1B2B27] mb-1.5 uppercase tracking-wider">
-                  Tamanho
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {product.sizes.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`px-2.5 py-1 rounded-md font-mono text-xs transition-all ${
-                        selectedSize === size
-                          ? 'bg-[#1B2B27] text-white'
-                          : 'bg-white text-[#1B2B27] hover:bg-gray-100'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+            {/* Size and Color selectors in a row on mobile */}
+            <div className="flex gap-3 md:block mb-2 md:mb-0">
+              {/* Size selector - compact */}
+              {product.sizes.length > 1 && (
+                <div className="flex-1 md:mb-3">
+                  <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">
+                    Tamanho
+                  </p>
+                  <div className="flex flex-wrap gap-1 md:gap-1.5">
+                    {product.sizes.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`px-2 md:px-2.5 py-0.5 md:py-1 rounded-md font-mono text-[10px] md:text-xs transition-all ${
+                          selectedSize === size
+                            ? 'bg-[#1B2B27] text-white'
+                            : 'bg-white text-[#1B2B27] hover:bg-gray-100'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Color selector - compact */}
-            {product.colors.length > 1 && (
-              <div className="mb-4">
-                <p className="font-mono text-xs text-[#1B2B27] mb-1.5 uppercase tracking-wider">
-                  Cor
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {product.colors.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`px-2.5 py-1 rounded-md font-mono text-xs transition-all ${
-                        selectedColor === color
-                          ? 'bg-[#1B2B27] text-white'
-                          : 'bg-white text-[#1B2B27] hover:bg-gray-100'
-                      }`}
-                    >
-                      {color}
-                    </button>
-                  ))}
+              {/* Color selector - compact */}
+              {product.colors.length > 1 && (
+                <div className="flex-1 md:mb-4">
+                  <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">
+                    Cor
+                  </p>
+                  <div className="flex flex-wrap gap-1 md:gap-1.5">
+                    {product.colors.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => setSelectedColor(color)}
+                        className={`px-2 md:px-2.5 py-0.5 md:py-1 rounded-md font-mono text-[10px] md:text-xs transition-all ${
+                          selectedColor === color
+                            ? 'bg-[#1B2B27] text-white'
+                            : 'bg-white text-[#1B2B27] hover:bg-gray-100'
+                        }`}
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Spacer to push buttons to bottom on desktop */}
-            <div className="flex-grow" />
+            <div className="hidden md:block flex-grow" />
 
-            {/* Action buttons - compact */}
-            <div className="flex gap-2 mt-auto">
+            {/* Action buttons - always visible, fixed at bottom on mobile */}
+            <div className="flex gap-2 mt-2 md:mt-auto">
               <button
                 onClick={handleAddToCart}
-                className="flex-1 bg-[#1B2B27] text-white font-mono py-2.5 px-3 rounded-lg hover:bg-[#2a3d38] transition-colors uppercase tracking-wider text-xs"
+                className="flex-1 bg-[#1B2B27] text-white font-mono py-2 md:py-2.5 px-3 rounded-lg hover:bg-[#2a3d38] transition-colors uppercase tracking-wider text-[10px] md:text-xs"
               >
                 Add to Bag
               </button>
               <button
                 onClick={handleCheckout}
-                className="flex-1 bg-[#B8860B] text-[#1B2B27] font-mono py-2.5 px-3 rounded-lg hover:bg-[#9A7209] transition-colors uppercase tracking-wider text-xs font-bold"
+                className="flex-1 bg-[#B8860B] text-[#1B2B27] font-mono py-2 md:py-2.5 px-3 rounded-lg hover:bg-[#9A7209] transition-colors uppercase tracking-wider text-[10px] md:text-xs font-bold"
               >
                 Checkout
               </button>
@@ -826,13 +835,14 @@ function FloatingProductCard({
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isCenter = product.zone === 'center';
-  // Center images are bigger, sides are smaller
-  const size = isCenter ? 'w-48 h-48 md:w-64 md:h-64' : 'w-32 h-32 md:w-44 md:h-44';
+  // Center images are bigger, sides are smaller - SMALLER on mobile to reduce overlap
+  const size = isCenter ? 'w-36 h-36 md:w-64 md:h-64' : 'w-28 h-28 md:w-44 md:h-44';
 
   // Center column: less blur (85% solid), sides: more blur (40% solid)
+  // Mobile: less aggressive fade to keep product visible
   const maskGradient = isCenter
-    ? 'radial-gradient(ellipse 80% 80% at 50% 50%, black 60%, transparent 100%)'
-    : 'radial-gradient(ellipse 70% 70% at 50% 50%, black 40%, transparent 100%)';
+    ? 'radial-gradient(ellipse 85% 85% at 50% 50%, black 70%, transparent 100%)'
+    : 'radial-gradient(ellipse 75% 75% at 50% 50%, black 50%, transparent 100%)';
 
   // Handle hover with delay for preview
   const handleMouseEnter = () => {
@@ -1035,23 +1045,26 @@ export default function ShopPage() {
     zones.forEach((zone) => {
       const isCenter = zone === 'center';
       // Center: fewer but larger images, sides: more but smaller
-      const count = isMobile ? 4 : (isCenter ? 2 : 4);
+      // Mobile: only 3 cards to prevent overlap on smaller screen
+      const count = isMobile ? 3 : (isCenter ? 2 : 4);
       const cardSize = isCenter ? CARD_SIZES.center : CARD_SIZES.side;
 
       // Center needs more vertical space between products
-      const totalSpan = isCenter ? 140 : 130; // % of viewport height to distribute across
+      // Mobile: much more spacing (180%) to prevent overlap
+      const totalSpan = isMobile ? 180 : (isCenter ? 140 : 130);
       const ySpacing = totalSpan / count;
 
       for (let i = 0; i < count; i++) {
         const product = categoryProducts[Math.floor(Math.random() * categoryProducts.length)];
         // Start from -20% for center (more buffer), -10% for sides
-        const startY = isCenter ? -20 : -15;
+        // Mobile: start higher to distribute better
+        const startY = isMobile ? -30 : (isCenter ? -20 : -15);
         const baseY = startY + i * ySpacing + ySpacing / 2;
 
-        // Mobile: use wider center range
-        const mobileXRange = [25, 75];
+        // Mobile: use narrower center range to keep cards more centered and less overlap
+        const mobileXRange = [30, 70];
         const pos = isMobile
-          ? { x: mobileXRange[0] + Math.random() * (mobileXRange[1] - mobileXRange[0]), y: baseY + (Math.random() * 10 - 5) }
+          ? { x: mobileXRange[0] + Math.random() * (mobileXRange[1] - mobileXRange[0]), y: baseY }
           : findValidPosition(zone, floatingItems, baseY);
 
         floatingItems.push({
@@ -1060,8 +1073,8 @@ export default function ShopPage() {
           x: pos.x,
           y: pos.y,
           zone,
-          scale: isMobile ? 1.0 : (isCenter ? 1.33 : 0.9), // Center images +10% larger (1.21 * 1.1 = 1.33)
-          speed: isMobile ? 0.025 : (isCenter ? 0.02 : 0.03),
+          scale: isMobile ? 0.85 : (isCenter ? 1.33 : 0.9), // Mobile: smaller scale to reduce overlap
+          speed: isMobile ? 0.02 : (isCenter ? 0.02 : 0.03), // Mobile: slower speed
           width: cardSize.width,
           height: cardSize.height,
         });
