@@ -746,7 +746,7 @@ function ProductModal({
             {/* Size and Color selectors in a row on mobile */}
             <div className="flex gap-3 md:block mb-2 md:mb-0">
               {/* Size selector - compact */}
-              {product.sizes.length > 1 && (
+              {product.sizes?.length > 1 && (
                 <div className="flex-1 md:mb-3">
                   <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">
                     Tamanho
@@ -770,7 +770,7 @@ function ProductModal({
               )}
 
               {/* Color selector - compact */}
-              {product.colors.length > 1 && (
+              {product.colors?.length > 1 && (
                 <div className="flex-1 md:mb-4">
                   <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">
                     Cor
