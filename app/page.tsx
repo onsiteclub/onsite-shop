@@ -280,7 +280,7 @@ function DraggableScrollBar({
 
   return (
     <div
-      className="fixed right-4 md:right-8 z-40 hidden md:flex flex-col items-center"
+      className="fixed right-4 sm:right-6 lg:right-8 z-40 hidden sm:flex flex-col items-center"
       style={{ top: 'calc(50% + 100px)' }} // Below the right sidebar menu
     >
       {/* Track */}
@@ -1253,8 +1253,8 @@ export default function ShopPage() {
         </div>
       </header>
 
-      {/* Left Sidebar - Categories */}
-      <nav className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col gap-6">
+      {/* Left Sidebar - Categories (visible on screens >= 640px) */}
+      <nav className="fixed left-4 sm:left-6 lg:left-8 top-1/2 -translate-y-1/2 z-40 hidden sm:flex flex-col gap-6">
         {categories.map(({ key, label }) => (
           <button
             key={key}
@@ -1279,8 +1279,8 @@ export default function ShopPage() {
         ))}
       </nav>
 
-      {/* Right Sidebar - Secondary Menu */}
-      <nav className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col gap-6 items-end">
+      {/* Right Sidebar - Secondary Menu (visible on screens >= 640px) */}
+      <nav className="fixed right-4 sm:right-6 lg:right-8 top-1/2 -translate-y-1/2 z-40 hidden sm:flex flex-col gap-6 items-end">
         <a
           href="/cart"
           className={`group relative font-mono text-xs tracking-[0.2em] transition-all duration-300
@@ -1312,8 +1312,8 @@ export default function ShopPage() {
         </a>
       </nav>
 
-      {/* Mobile Menu - Horizontal at top */}
-      <nav className="md:hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 flex justify-center gap-4">
+      {/* Mobile Menu - Horizontal at top (visible on screens < 640px) */}
+      <nav className="sm:hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 flex justify-center gap-4">
         {categories.map(({ key, label }) => (
           <button
             key={key}
