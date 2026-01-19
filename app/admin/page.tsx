@@ -83,18 +83,18 @@ export default function AdminPage() {
   }
 
   async function loadData() {
-    // Load categories
+    // Load categories (app_shop_categories - schema by Blue)
     const { data: cats } = await supabase
-      .from('categories')
+      .from('app_shop_categories')
       .select('*')
       .order('sort_order');
 
     if (cats) setCategories(cats);
 
-    // Load products
+    // Load products (app_shop_products - schema by Blue)
     const { data: prods } = await supabase
-      .from('products')
-      .select('*, category:categories(slug)')
+      .from('app_shop_products')
+      .select('*, category:app_shop_categories(slug)')
       .order('created_at', { ascending: false });
 
     if (prods) {
@@ -109,7 +109,7 @@ export default function AdminPage() {
     setPublishing(true);
     try {
       const { error } = await supabase
-        .from('products')
+        .from('app_shop_products')
         .update({ is_published: true })
         .eq('is_published', false);
 
@@ -146,7 +146,7 @@ export default function AdminPage() {
 
       // Check if user is admin
       const { data: admin } = await supabase
-        .from('shop_admins')
+        .from('admin_users')
         .select('*')
         .eq('email', data.user.email)
         .single();
@@ -173,7 +173,7 @@ export default function AdminPage() {
       if (product.id) {
         // Update - mark as unpublished (draft)
         const { error } = await supabase
-          .from('products')
+          .from('app_shop_products')
           .update({
             name: product.name,
             slug: product.slug,
@@ -193,7 +193,7 @@ export default function AdminPage() {
       } else {
         // Insert - new products start as unpublished
         const { error } = await supabase
-          .from('products')
+          .from('app_shop_products')
           .insert({
             name: product.name,
             slug: product.slug || product.name?.toLowerCase().replace(/\s+/g, '-'),
@@ -230,7 +230,7 @@ export default function AdminPage() {
     if (!confirm('Tem certeza que deseja excluir este produto?')) return;
 
     const { error } = await supabase
-      .from('products')
+      .from('app_shop_products')
       .delete()
       .eq('id', id);
 
@@ -244,7 +244,7 @@ export default function AdminPage() {
 
   async function handleToggleActive(product: Product) {
     const { error } = await supabase
-      .from('products')
+      .from('app_shop_products')
       .update({ is_active: !product.is_active })
       .eq('id', product.id);
 
@@ -360,11 +360,52 @@ export default function AdminPage() {
   if (editingProduct) {
     return (
       <div className="min-h-screen bg-grain">
-        <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
-          <h2 className="font-mono text-xl font-bold text-[#1B2B27] mb-6">
-            {editingProduct.id ? 'Editar Produto' : 'Novo Produto'}
-          </h2>
+        {/* Toast notification */}
+        {toast && (
+          <div
+            className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg font-mono text-sm ${
+              toast.type === 'success'
+                ? 'bg-green-500 text-white'
+                : 'bg-red-500 text-white'
+            }`}
+          >
+            {toast.message}
+          </div>
+        )}
 
+        {/* Header */}
+        <div className="sticky top-0 z-40 bg-[#1B2B27] border-b border-white/10">
+          <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="font-mono text-sm text-white/60 hover:text-white flex items-center gap-1"
+              >
+                ← Voltar
+              </button>
+              <span className="font-mono text-sm text-white/40">|</span>
+              <h2 className="font-mono text-sm font-medium text-white">
+                {editingProduct.id ? 'Editar Produto' : 'Novo Produto'}
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg border border-white/20 hover:border-white/40 transition-colors"
+              >
+                Ver Loja
+              </Link>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
           <ProductForm
             product={editingProduct}
             categories={categories}
