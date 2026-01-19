@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase.auth.getUser();
       user = data.user;
 
-      // Create order in Supabase (app_shop_orders - schema by Blue)
+      // Create order in Supabase (orders - schema by Blue)
       const { data: orderData, error: orderError } = await supabase
-        .from('app_shop_orders')
+        .from('orders')
         .insert({
           user_id: user?.id || null,
           order_number: orderNumber,
