@@ -83,9 +83,9 @@ export default function AdminPage() {
   }
 
   async function loadData() {
-    // Load categories (app_shop_categories - schema by Blue)
+    // Load categories
     const { data: cats } = await supabase
-      .from('app_shop_categories')
+      .from('categories')
       .select('*')
       .order('sort_order');
 
@@ -94,7 +94,7 @@ export default function AdminPage() {
     // Load products (app_shop_products - schema by Blue)
     const { data: prods } = await supabase
       .from('app_shop_products')
-      .select('*, category:app_shop_categories(slug)')
+      .select('*, category:categories(slug)')
       .order('created_at', { ascending: false });
 
     if (prods) {
