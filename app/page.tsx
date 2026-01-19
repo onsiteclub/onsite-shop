@@ -734,7 +734,7 @@ function ProductModal({
                 {product.name}
               </h2>
               <p className="font-mono text-base md:text-lg text-[#B8860B] font-bold md:mb-2">
-                CA${product.price.toFixed(2)}
+                CA${(product.price ?? 0).toFixed(2)}
               </p>
             </div>
 
@@ -963,7 +963,7 @@ function FloatingProductCard({
             transform: isHovered ? 'scale(1.05)' : 'scale(1)',
           }}
         >
-          CA${product.price.toFixed(2)}
+          CA${(product.price ?? 0).toFixed(2)}
         </p>
       </div>
     </div>
