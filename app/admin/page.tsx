@@ -448,6 +448,12 @@ export default function AdminPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              href="/admin/orders"
+              className="bg-[#1B2B27] hover:bg-[#2a3f39] text-white font-mono text-sm py-2 px-4 rounded-xl transition-colors"
+            >
+              📦 Pedidos
+            </Link>
             {hasUnpublishedChanges && (
               <button
                 onClick={handlePublishAll}
