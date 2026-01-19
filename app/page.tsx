@@ -1254,7 +1254,7 @@ export default function ShopPage() {
       </header>
 
       {/* Left Sidebar - Categories (visible on screens >= 640px) */}
-      <nav className="fixed left-4 sm:left-6 lg:left-8 top-1/2 -translate-y-1/2 z-40 hidden sm:flex flex-col gap-6">
+      <nav className="fixed left-4 sm:left-6 lg:left-8 bottom-8 z-50 hidden sm:flex flex-col gap-6">
         {categories.map(({ key, label }) => (
           <button
             key={key}
@@ -1280,7 +1280,7 @@ export default function ShopPage() {
       </nav>
 
       {/* Right Sidebar - Secondary Menu (visible on screens >= 640px) */}
-      <nav className="fixed right-4 sm:right-6 lg:right-8 top-1/2 -translate-y-1/2 z-40 hidden sm:flex flex-col gap-6 items-end">
+      <nav className="fixed right-4 sm:right-6 lg:right-8 bottom-8 z-50 hidden sm:flex flex-col gap-6 items-end">
         <a
           href="/cart"
           className={`group relative font-mono text-xs tracking-[0.2em] transition-all duration-300
