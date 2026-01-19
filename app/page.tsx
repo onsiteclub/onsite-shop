@@ -502,8 +502,8 @@ function ProductModal({
 
   useEffect(() => {
     if (product) {
-      setSelectedSize(product.sizes[0] || '');
-      setSelectedColor(product.colors[0] || '');
+      setSelectedSize(product.sizes?.[0] || '');
+      setSelectedColor(product.colors?.[0] || '');
       setSelectedImage(0);
       // Trigger enter animation
       setIsEntering(true);
