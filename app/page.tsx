@@ -989,7 +989,7 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
     return data.map((p: any) => ({
       id: p.id,
       name: p.name,
-      price: p.base_price,
+      price: p.base_price ?? 0,
       category: p.category?.slug || 'mens',
       image: p.images?.[0] || '/products/placeholder.webp',
       images: p.images || [],
