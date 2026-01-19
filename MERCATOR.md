@@ -81,10 +81,12 @@
 onsite-shop/
 ├── app/
 │   ├── layout.tsx              # Root layout + metadata + fonts
-│   ├── page.tsx                # Main shop (floating products, 1384 lines)
+│   ├── page.tsx                # Main shop (floating products, ~1400 lines)
 │   ├── globals.css             # Design system + motion + tokens
 │   ├── admin/
-│   │   └── page.tsx            # Admin dashboard (CRUD products)
+│   │   ├── page.tsx            # Admin dashboard (CRUD products)
+│   │   └── orders/
+│   │       └── page.tsx        # Order management (view/update status)
 │   ├── api/
 │   │   ├── checkout/
 │   │   │   └── route.ts        # Stripe Checkout session
@@ -93,6 +95,9 @@ onsite-shop/
 │   ├── cart/
 │   │   └── page.tsx            # Shopping cart + checkout flow
 │   ├── checkout/
+│   │   ├── page.tsx            # Auth gate (redirects to login if needed)
+│   │   ├── login/
+│   │   │   └── page.tsx        # Login/Signup before checkout
 │   │   └── success/
 │   │       └── page.tsx        # Payment success + cart clear
 │   └── login/
@@ -124,14 +129,81 @@ onsite-shop/
 | `CustomCursor` | page.tsx:98-154 | Desktop cursor with "VIEW" label, hides on touch |
 | `BackgroundSystem` | page.tsx:157-233 | Blueprint grid + parallax + vignette mask |
 | `FloatingProductCard` | page.tsx:823-971 | Hover preview, micro-compression (0.98 scale) |
-| `DraggableScrollBar` | page.tsx:236-327 | Interactive scroll progress (desktop only) |
+| `DraggableScrollBar` | page.tsx:236-327 | Interactive scroll progress (md: only, z-30) |
 
 ### Responsive Layout
 
-| Viewport | Products | Layout | Card Size |
-|----------|----------|--------|-----------|
-| Mobile (<768px) | 3 | Center zone only, X: 30-70% | w-44 (176px) |
-| Desktop (>=768px) | 10 | Three zones (left/center/right) | w-44 to w-64 |
+#### Breakpoints (Tailwind CSS)
+
+| Breakpoint | Width | Usage |
+|------------|-------|-------|
+| xs/default | < 640px | Mobile phones |
+| sm: | >= 640px | Large phones, small tablets |
+| md: | >= 768px | Tablets |
+| lg: | >= 1024px | Laptops, desktops |
+| xl: | >= 1280px | Large desktops |
+
+#### Desktop Layout (>= 640px / sm:)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ HEADER: Logo (top-left)                                   z-40         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│ [LEFT SIDEBAR]           [FLOATING PRODUCTS]          [SCROLL BAR]     │
+│ - MENS                   (3 zones: L/C/R)              (middle-right)  │
+│ - WOMENS                                                z-30           │
+│ - MEMBERS                                                              │
+│ (bottom-left)                                                          │
+│ z-50                                                   [RIGHT SIDEBAR] │
+│                                                        - BAG           │
+│                                                        - LOGIN         │
+│                                                        - SITE          │
+│                                                        (bottom-right)  │
+│                                                        z-50            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ TAGLINE: "Wear What You Do" (bottom-center)             z-30           │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Mobile Layout (< 640px)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ HEADER: Logo (top-left)                                   z-40         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ MOBILE MENU: MENS | WOMENS | MEMBERS | BAG (horizontal)   z-40         │
+│ (backdrop-blur, semi-transparent background)                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│                      [FLOATING PRODUCTS]                                │
+│                      (center zone only, smaller cards)                  │
+│                                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│ TAGLINE: "Wear What You Do" (bottom-center)             z-30           │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Z-Index Hierarchy
+
+| Layer | z-index | Elements |
+|-------|---------|----------|
+| Custom Cursor | z-100 | Cursor with "VIEW" label |
+| Modals | z-50 | Product modal |
+| Sidebars | z-50 | Left (categories), Right (BAG/LOGIN/SITE) |
+| Header/Mobile Menu | z-40 | Logo, horizontal nav |
+| Scroll Bar | z-30 | Draggable progress bar |
+| Tagline | z-30 | "Wear What You Do" |
+| Center Products | z-20 | Floating product cards (center zone) |
+| Side Products | z-10 | Floating product cards (left/right zones) |
+| Background | z-0 | Grain, grid, particles |
+
+#### Product Grid
+
+| Viewport | Products | Zones | Card Size |
+|----------|----------|-------|-----------|
+| Mobile (<640px) | 3 | Center only, X: 30-70% | w-36 (144px) |
+| Desktop (>=640px) | 10 | Three zones (L/C/R) | w-44 to w-64 |
 
 ### Animation Loop
 
@@ -161,18 +233,19 @@ useEffect(() => {
 
 ## Database Tables (Supabase)
 
-> Schemas gerenciados por Blue em `migrations/001_schema.sql`
+> Schemas gerenciados por Blue em `migrations/`
 
 ### Shop Tables
 
-| Table | Purpose |
-|-------|---------|
-| `app_shop_categories` | Categorias de produtos |
-| `app_shop_products` | Produtos |
-| `app_shop_product_variants` | Variantes (tamanho, cor) |
-| `app_shop_orders` | Pedidos |
-| `app_shop_order_items` | Itens dos pedidos |
-| `app_shop_carts` | Carrinhos (temp) |
+| Table | Purpose | Used in Code |
+|-------|---------|--------------|
+| `categories` | Categorias de produtos | admin/page.tsx |
+| `app_shop_products` | Produtos | page.tsx, admin/page.tsx |
+| `orders` | Pedidos | checkout/route.ts, webhook/route.ts, admin/orders/page.tsx |
+| `order_items` | Itens dos pedidos | webhook/route.ts, admin/orders/page.tsx |
+| `admin_users` | Admins autorizados | admin/page.tsx, admin/orders/page.tsx |
+
+> **IMPORTANTE:** Tabelas `orders` e `order_items` NÃO usam prefixo `app_shop_` conforme diretiva de Blue (2026-01-19).
 
 ### Product Schema
 
@@ -412,6 +485,7 @@ NEXT_PUBLIC_AUTH_URL=https://auth.onsiteclub.ca
 | 2026-01-17 | v1.0 | Documento de identidade criado por Blue |
 | 2026-01-18 | v1.1 | Alinhamento estrutural com código real (MERCATOR) |
 | 2026-01-18 | v1.2 | Checkout + Stripe + Supabase integration (MERCATOR) |
+| 2026-01-19 | v1.3 | Table name fix (orders/order_items), admin orders page, responsive refactor |
 
 ---
 
@@ -431,8 +505,8 @@ NEXT_PUBLIC_AUTH_URL=https://auth.onsiteclub.ca
 |---------|------|-----------|
 | `app/checkout/page.tsx` | CRIADO | Auth gate - verifica login antes de Stripe |
 | `app/checkout/login/page.tsx` | CRIADO | Login/Signup antes do checkout |
-| `app/api/checkout/route.ts` | ATUALIZADO | Usa `app_shop_orders`, adiciona `user_id` no metadata |
-| `app/api/webhook/route.ts` | ATUALIZADO | Usa `app_shop_orders`, `app_shop_order_items` |
+| `app/api/checkout/route.ts` | ATUALIZADO | Usa `orders`, adiciona `user_id` no metadata |
+| `app/api/webhook/route.ts` | ATUALIZADO | Usa `orders`, `order_items` |
 | `app/cart/page.tsx` | ATUALIZADO | Redireciona para `/checkout` em vez de API |
 
 #### Fluxo Implementado
@@ -456,8 +530,8 @@ NEXT_PUBLIC_AUTH_URL=https://auth.onsiteclub.ca
 
 | Event | Ação |
 |-------|------|
-| `checkout.session.completed` | Update `app_shop_orders` → `status: 'paid'`, create `app_shop_order_items` |
-| `payment_intent.payment_failed` | Update `app_shop_orders` → `status: 'cancelled'` |
+| `checkout.session.completed` | Update `orders` → `status: 'paid'`, create `order_items` |
+| `payment_intent.payment_failed` | Update `orders` → `status: 'cancelled'` |
 
 #### Metadata no Stripe
 
@@ -484,8 +558,8 @@ metadata: {
 - [x] `/checkout/login` funciona (email + Google OAuth)
 - [x] Stripe session criada com metadata completo
 - [x] Webhook recebe `checkout.session.completed`
-- [x] Webhook atualiza `app_shop_orders` (status: paid)
-- [x] Webhook cria `app_shop_order_items`
+- [x] Webhook atualiza `orders` (status: paid)
+- [x] Webhook cria `order_items`
 - [x] Webhook trata `payment_intent.payment_failed`
 
 #### Env Vars Necessárias
@@ -495,6 +569,57 @@ STRIPE_SECRET_KEY=sk_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
+
+---
+
+### Report #003 - Table Names + Admin Orders + Responsive (2026-01-19)
+
+**Status:** Completo
+
+**Diretiva recebida:** Corrigir nomes de tabelas, criar página de pedidos admin, refatorar responsividade
+
+#### Arquivos Criados/Atualizados
+
+| Arquivo | Ação | Descrição |
+|---------|------|-----------|
+| `app/api/checkout/route.ts` | ATUALIZADO | Usa `orders` (sem prefixo `app_shop_`) |
+| `app/api/webhook/route.ts` | ATUALIZADO | Usa `orders`, `order_items` |
+| `app/admin/orders/page.tsx` | CRIADO | Gerenciamento de pedidos (view, update status) |
+| `app/admin/page.tsx` | ATUALIZADO | Link para /admin/orders |
+| `app/page.tsx` | ATUALIZADO | Refatoração completa do sistema responsivo |
+
+#### Mudanças de Tabelas (Diretiva Blue)
+
+```diff
+- .from('app_shop_orders')
++ .from('orders')
+
+- .from('app_shop_order_items')
++ .from('order_items')
+```
+
+#### Admin Orders Page Features
+
+- Lista todos pedidos com filtros (Todos, Pendente, Pago, Enviado, Entregue, Cancelado)
+- Modal com detalhes: itens, endereço, Stripe info
+- Atualização de status inline
+- Acesso restrito a admin_users
+
+#### Responsive Design Refactor
+
+Documentação completa no topo de `page.tsx` com:
+- Breakpoints (sm: 640px, md: 768px, lg: 1024px)
+- Diagrama ASCII de layout Desktop/Mobile
+- Hierarquia de z-index documentada
+- Comentários em cada elemento de navegação
+
+#### Checklist
+
+- [x] Tabelas corrigidas para `orders` e `order_items`
+- [x] Página `/admin/orders` criada
+- [x] Responsividade documentada com ASCII diagrams
+- [x] z-index hierarchy definida (z-100 cursor → z-0 bg)
+- [x] Mobile menu com backdrop-blur
 
 ---
 
@@ -522,9 +647,11 @@ Atualizações realizadas no documento:
 
 - [x] ~~Checkout flow com auth gate~~
 - [x] ~~Webhook gravando no Supabase~~
+- [x] ~~Admin orders page (`/admin/orders`)~~
+- [x] ~~Responsive design documentation~~
 - [ ] Integração com Auth Hub para checkout unificado (futuro)
 - [ ] Sistema de notificação de pedidos
-- [ ] Order history page (`/orders`)
+- [ ] Order history page para usuários (`/orders`)
 - [ ] Email notifications (transactional)
 - [ ] Inventory tracking
 - [ ] Discount codes (Stripe Coupons)
@@ -532,4 +659,4 @@ Atualizações realizadas no documento:
 
 ---
 
-*Última atualização: 2026-01-18*
+*Última atualização: 2026-01-19*
