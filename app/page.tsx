@@ -5,6 +5,68 @@ import { useCartStore } from '@/lib/store/cart';
 import { createClient } from '@/lib/supabase/client';
 
 // ============================================================================
+// RESPONSIVE DESIGN SYSTEM - OnSite Shop
+// ============================================================================
+//
+// BREAKPOINTS (Tailwind CSS):
+// - xs/default: < 640px  → Mobile phones
+// - sm:        >= 640px  → Large phones, small tablets
+// - md:        >= 768px  → Tablets
+// - lg:        >= 1024px → Laptops, desktops
+// - xl:        >= 1280px → Large desktops
+//
+// LAYOUT STRUCTURE:
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ DESKTOP (>= 640px / sm:)                                                │
+// │ ┌─────────────────────────────────────────────────────────────────────┐ │
+// │ │ HEADER: Logo (top-left)                                             │ │
+// │ └─────────────────────────────────────────────────────────────────────┘ │
+// │                                                                         │
+// │ [LEFT SIDEBAR]           [FLOATING PRODUCTS]          [SCROLL BAR]     │
+// │ - MENS                                                 (middle-right)  │
+// │ - WOMENS                                                               │
+// │ - MEMBERS                                                              │
+// │ (bottom-left)                                                          │
+// │                                                                         │
+// │                                                       [RIGHT SIDEBAR]   │
+// │                                                       - BAG             │
+// │                                                       - LOGIN           │
+// │                                                       - SITE            │
+// │                                                       (bottom-right)    │
+// │ ┌─────────────────────────────────────────────────────────────────────┐ │
+// │ │ TAGLINE: "Wear What You Do" (bottom-center)                         │ │
+// │ └─────────────────────────────────────────────────────────────────────┘ │
+// └─────────────────────────────────────────────────────────────────────────┘
+//
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ MOBILE (< 640px)                                                        │
+// │ ┌─────────────────────────────────────────────────────────────────────┐ │
+// │ │ HEADER: Logo (top-left)                                             │ │
+// │ └─────────────────────────────────────────────────────────────────────┘ │
+// │ ┌─────────────────────────────────────────────────────────────────────┐ │
+// │ │ MOBILE MENU: MENS | WOMENS | MEMBERS | BAG (horizontal, top)        │ │
+// │ └─────────────────────────────────────────────────────────────────────┘ │
+// │                                                                         │
+// │                      [FLOATING PRODUCTS]                                │
+// │                      (center only, smaller)                             │
+// │                                                                         │
+// │ ┌─────────────────────────────────────────────────────────────────────┐ │
+// │ │ TAGLINE: "Wear What You Do" (bottom-center)                         │ │
+// │ └─────────────────────────────────────────────────────────────────────┘ │
+// └─────────────────────────────────────────────────────────────────────────┘
+//
+// Z-INDEX LAYERS:
+// - z-100: Custom cursor
+// - z-50:  Modals, Sidebars (navigation)
+// - z-40:  Mobile menu, Header
+// - z-30:  Scroll bar, Tagline
+// - z-20:  Center floating products
+// - z-10:  Side floating products
+// - z-0:   Background
+//
+// ============================================================================
+
+// ============================================================================
 // MOTION SYSTEM - Premium, tactile, restrained
 // All effects must be extremely subtle (low amplitude, low opacity, short durations)
 // ============================================================================
@@ -278,10 +340,20 @@ function DraggableScrollBar({
     };
   }, [isDragging, updateProgressFromMouse]);
 
+  // ==========================================================================
+  // RESPONSIVE BREAKPOINTS:
+  // - Mobile: < 640px (sm)
+  // - Tablet/Desktop: >= 640px (sm:)
+  // - Large Desktop: >= 1024px (lg:)
+  //
+  // This scroll bar is DESKTOP ONLY - hidden on mobile
+  // Position: Right side, vertically centered
+  // z-index: 30 (below sidebars which are z-50)
+  // ==========================================================================
   return (
     <div
-      className="fixed right-4 sm:right-6 lg:right-8 z-40 hidden sm:flex flex-col items-center"
-      style={{ top: 'calc(50% + 100px)' }} // Below the right sidebar menu
+      className="fixed right-6 lg:right-10 z-30 hidden md:flex flex-col items-center"
+      style={{ top: '50%', transform: 'translateY(-50%)' }}
     >
       {/* Track */}
       <div
@@ -1253,8 +1325,13 @@ export default function ShopPage() {
         </div>
       </header>
 
-      {/* Left Sidebar - Categories (visible on screens >= 640px) */}
-      <nav className="fixed left-4 sm:left-6 lg:left-8 bottom-8 z-50 hidden sm:flex flex-col gap-6">
+      {/* ================================================================
+          LEFT SIDEBAR - Categories Navigation
+          DESKTOP ONLY: visible on screens >= 640px (sm:)
+          Position: Bottom-left corner
+          z-index: 50 (above floating products)
+          ================================================================ */}
+      <nav className="fixed left-6 lg:left-10 bottom-10 z-50 hidden sm:flex flex-col gap-4">
         {categories.map(({ key, label }) => (
           <button
             key={key}
@@ -1279,8 +1356,13 @@ export default function ShopPage() {
         ))}
       </nav>
 
-      {/* Right Sidebar - Secondary Menu (visible on screens >= 640px) */}
-      <nav className="fixed right-4 sm:right-6 lg:right-8 bottom-8 z-50 hidden sm:flex flex-col gap-6 items-end">
+      {/* ================================================================
+          RIGHT SIDEBAR - BAG / LOGIN / SITE
+          DESKTOP ONLY: visible on screens >= 640px (sm:)
+          Position: Bottom-right corner
+          z-index: 50 (above floating products)
+          ================================================================ */}
+      <nav className="fixed right-6 lg:right-10 bottom-10 z-50 hidden sm:flex flex-col gap-4 items-end">
         <a
           href="/cart"
           className={`group relative font-mono text-xs tracking-[0.2em] transition-all duration-300
@@ -1312,8 +1394,13 @@ export default function ShopPage() {
         </a>
       </nav>
 
-      {/* Mobile Menu - Horizontal at top (visible on screens < 640px) */}
-      <nav className="sm:hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 flex justify-center gap-4">
+      {/* ================================================================
+          MOBILE MENU - Horizontal navigation bar
+          MOBILE ONLY: visible on screens < 640px (hidden on sm:)
+          Position: Top of screen, below header
+          z-index: 40
+          ================================================================ */}
+      <nav className="sm:hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 flex justify-center gap-4 bg-[#D4CFC4]/80 backdrop-blur-sm">
         {categories.map(({ key, label }) => (
           <button
             key={key}
