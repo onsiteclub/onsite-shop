@@ -975,7 +975,7 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('products')
+      .from('app_shop_products')
       .select('*, category:categories(slug)')
       .eq('is_active', true)
       .eq('is_published', true)
