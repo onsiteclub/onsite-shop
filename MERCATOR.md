@@ -241,11 +241,11 @@ useEffect(() => {
 |-------|---------|--------------|
 | `categories` | Categorias de produtos | admin/page.tsx |
 | `app_shop_products` | Produtos | page.tsx, admin/page.tsx |
-| `orders` | Pedidos | checkout/route.ts, webhook/route.ts, admin/orders/page.tsx |
-| `order_items` | Itens dos pedidos | webhook/route.ts, admin/orders/page.tsx |
+| `app_shop_orders` | Pedidos | checkout/route.ts, webhook/route.ts, admin/orders/page.tsx |
+| `app_shop_order_items` | Itens dos pedidos | webhook/route.ts, admin/orders/page.tsx |
 | `admin_users` | Admins autorizados | admin/page.tsx, admin/orders/page.tsx |
 
-> **IMPORTANTE:** Tabelas `orders` e `order_items` NÃO usam prefixo `app_shop_` conforme diretiva de Blue (2026-01-19).
+> **IMPORTANTE:** Tabelas `app_shop_orders` e `app_shop_order_items` USAM prefixo `app_shop_` conforme diretiva de Blue (2026-01-19).
 
 ### Product Schema
 
@@ -588,15 +588,14 @@ SUPABASE_SERVICE_ROLE_KEY=...
 | `app/admin/page.tsx` | ATUALIZADO | Link para /admin/orders |
 | `app/page.tsx` | ATUALIZADO | Refatoração completa do sistema responsivo |
 
-#### Mudanças de Tabelas (Diretiva Blue)
+#### Nomes de Tabelas (Diretiva Blue 2026-01-19)
 
-```diff
-- .from('app_shop_orders')
-+ .from('orders')
-
-- .from('app_shop_order_items')
-+ .from('order_items')
 ```
+.from('app_shop_orders')
+.from('app_shop_order_items')
+```
+
+> Tabelas usam prefixo `app_shop_` para consistência com o schema do OnSite ecosystem.
 
 #### Admin Orders Page Features
 
@@ -615,11 +614,45 @@ Documentação completa no topo de `page.tsx` com:
 
 #### Checklist
 
-- [x] Tabelas corrigidas para `orders` e `order_items`
+- [x] Tabelas corrigidas para `app_shop_orders` e `app_shop_order_items`
 - [x] Página `/admin/orders` criada
 - [x] Responsividade documentada com ASCII diagrams
 - [x] z-index hierarchy definida (z-100 cursor → z-0 bg)
 - [x] Mobile menu com backdrop-blur
+
+---
+
+### Report #004 - Correção de Nomes de Tabelas (2026-01-19)
+
+**Status:** Completo
+
+**Diretiva recebida:** Blue corrigiu nomes de tabelas para usar prefixo `app_shop_`
+
+#### Mudança
+
+```diff
+- .from('orders')
++ .from('app_shop_orders')
+
+- .from('order_items')
++ .from('app_shop_order_items')
+```
+
+#### Arquivos Atualizados
+
+| Arquivo | Mudança |
+|---------|---------|
+| `app/api/checkout/route.ts` | `orders` → `app_shop_orders` |
+| `app/api/webhook/route.ts` | `orders` → `app_shop_orders`, `order_items` → `app_shop_order_items` |
+| `app/admin/orders/page.tsx` | `orders` → `app_shop_orders`, `order_items` → `app_shop_order_items` |
+| `MERCATOR.md` | Documentação atualizada |
+
+#### Checklist
+
+- [x] checkout/route.ts corrigido
+- [x] webhook/route.ts corrigido
+- [x] admin/orders/page.tsx corrigido
+- [x] MERCATOR.md atualizado
 
 ---
 

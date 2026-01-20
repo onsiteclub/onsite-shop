@@ -81,10 +81,10 @@ export default function AdminOrdersPage() {
 
   async function loadOrders() {
     const { data, error } = await supabase
-      .from('orders')
+      .from('app_shop_orders')
       .select(`
         *,
-        order_items (*)
+        app_shop_order_items (*)
       `)
       .order('created_at', { ascending: false });
 
@@ -107,7 +107,7 @@ export default function AdminOrdersPage() {
     }
 
     const { error } = await supabase
-      .from('orders')
+      .from('app_shop_orders')
       .update(updateData)
       .eq('id', orderId);
 

@@ -10,8 +10,8 @@ import { createClient } from '@supabase/supabase-js';
  * - payment_intent.payment_failed → Update order to 'cancelled'
  *
  * Tables used (schema by Blue):
- * - orders
- * - order_items
+ * - app_shop_orders
+ * - app_shop_order_items
  */
 
 export async function POST(request: NextRequest) {
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         if (orderId) {
           // Update existing order
           const { error: updateError } = await supabase
-            .from('orders')
+            .from('app_shop_orders')
             .update({
               status: 'paid',
               paid_at: new Date().toISOString(),
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
           const shipping = session.amount_total ? (session.amount_total / 100) - subtotal : 0;
 
           const { data: newOrder, error: createError } = await supabase
-            .from('orders')
+            .from('app_shop_orders')
             .insert({
               user_id: userId || null,
               order_number: orderNumber,
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
               }));
 
               const { error: itemsError } = await supabase
-                .from('order_items')
+                .from('app_shop_order_items')
                 .insert(orderItems);
 
               if (itemsError) {
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
           }));
 
           const { error: itemsError } = await supabase
-            .from('order_items')
+            .from('app_shop_order_items')
             .insert(orderItems);
 
           if (itemsError) {
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
     if (metadata?.type === 'shop_order' && metadata.order_id) {
       try {
         const { error } = await supabase
-          .from('orders')
+          .from('app_shop_orders')
           .update({
             status: 'cancelled',
             cancelled_at: new Date().toISOString(),
