@@ -241,24 +241,25 @@ interface FloatingProduct extends Product {
 }
 
 // 12 fixed grid positions for desktop layout
-// 4 columns x 3 rows, with slight organic offsets
-// Columns 1,4 = side (smaller), Columns 2,3 = center (larger)
+// 4 center (larger, scale 1.1) + 8 sides (smaller, scale 0.7)
+// Center: 2x2 grid in the middle area
+// Sides: 4 left + 4 right, stacked vertically
 const GRID_POSITIONS: Array<{ x: number; y: number; scale: number; zone: 'left' | 'center' | 'right' }> = [
-  // Row 1
-  { x: 15, y: 18, scale: 0.85, zone: 'left' },
-  { x: 37, y: 14, scale: 1.2,  zone: 'center' },
-  { x: 59, y: 11, scale: 1.2,  zone: 'center' },
-  { x: 80, y: 17, scale: 0.85, zone: 'right' },
-  // Row 2
-  { x: 18, y: 44, scale: 0.85, zone: 'left' },
-  { x: 40, y: 40, scale: 1.2,  zone: 'center' },
-  { x: 62, y: 43, scale: 1.2,  zone: 'center' },
-  { x: 83, y: 39, scale: 0.85, zone: 'right' },
-  // Row 3
-  { x: 14, y: 70, scale: 0.85, zone: 'left' },
-  { x: 38, y: 66, scale: 1.2,  zone: 'center' },
-  { x: 57, y: 71, scale: 1.2,  zone: 'center' },
-  { x: 78, y: 67, scale: 0.85, zone: 'right' },
+  // LEFT COLUMN (4 small products)
+  { x: 12, y: 14, scale: 0.7, zone: 'left' },
+  { x: 15, y: 36, scale: 0.7, zone: 'left' },
+  { x: 11, y: 58, scale: 0.7, zone: 'left' },
+  { x: 14, y: 80, scale: 0.7, zone: 'left' },
+  // CENTER (4 large products - 2x2 grid, closer to center)
+  { x: 38, y: 28, scale: 1.0, zone: 'center' },
+  { x: 62, y: 24, scale: 1.0, zone: 'center' },
+  { x: 39, y: 68, scale: 1.0, zone: 'center' },
+  { x: 63, y: 64, scale: 1.0, zone: 'center' },
+  // RIGHT COLUMN (4 small products)
+  { x: 87, y: 12, scale: 0.7, zone: 'right' },
+  { x: 89, y: 34, scale: 0.7, zone: 'right' },
+  { x: 86, y: 56, scale: 0.7, zone: 'right' },
+  { x: 88, y: 78, scale: 0.7, zone: 'right' },
 ];
 
 // Mock products
@@ -331,7 +332,7 @@ const MOCK_PRODUCTS: Product[] = [
   },
 ];
 
-// Product Modal Component with focus ritual transitions
+// Product Modal Component with focus ritual transitions + draggable image
 function ProductModal({
   product,
   onClose
@@ -346,6 +347,11 @@ function ProductModal({
   const [isExiting, setIsExiting] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
 
+  // Image drag/pan state
+  const [imgPos, setImgPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, imgX: 0, imgY: 0 });
+
   // Get all images for carousel
   const allImages = product ? (product.images && product.images.length > 0 ? product.images : [product.image]) : [];
 
@@ -354,6 +360,7 @@ function ProductModal({
       setSelectedSize(product.sizes?.[0] || '');
       setSelectedColor(product.colors?.[0] || '');
       setSelectedImage(0);
+      setImgPos({ x: 0, y: 0 }); // Reset pan position
       // Trigger enter animation
       setIsEntering(true);
       requestAnimationFrame(() => {
@@ -362,7 +369,73 @@ function ProductModal({
     }
   }, [product]);
 
+  // Reset pan when switching images
+  useEffect(() => {
+    setImgPos({ x: 0, y: 0 });
+  }, [selectedImage]);
+
+  // Global mouse move/up for drag (so drag continues outside the container)
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      setImgPos({
+        x: dragStartRef.current.imgX + dx,
+        y: dragStartRef.current.imgY + dy,
+      });
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  // Touch drag support for mobile
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - dragStartRef.current.x;
+      const dy = touch.clientY - dragStartRef.current.y;
+      setImgPos({
+        x: dragStartRef.current.imgX + dx,
+        y: dragStartRef.current.imgY + dy,
+      });
+    };
+
+    const handleTouchEnd = () => setIsDragging(false);
+
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd);
+    return () => {
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging]);
+
   if (!product) return null;
+
+  const handleImgMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY, imgX: imgPos.x, imgY: imgPos.y };
+  };
+
+  const handleImgTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    setIsDragging(true);
+    dragStartRef.current = { x: touch.clientX, y: touch.clientY, imgX: imgPos.x, imgY: imgPos.y };
+  };
 
   const handleAddToCart = () => {
     addItem({
@@ -380,7 +453,7 @@ function ProductModal({
 
   const handleClose = () => {
     setIsExiting(true);
-    setTimeout(onClose, 200); // Match exit animation duration
+    setTimeout(onClose, 200);
   };
 
   const handleCheckout = () => {
@@ -401,7 +474,6 @@ function ProductModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={handleClose}
       style={{
-        // Focus ritual: backdrop fade
         opacity: isEntering ? 0 : isExiting ? 0 : 1,
         transition: 'opacity 200ms ease-out',
       }}
@@ -417,13 +489,14 @@ function ProductModal({
         }}
       />
 
-      {/* Modal - taller for bigger image, glass effect */}
-      {/* Mobile: fit everything without scroll, Desktop: larger with image focus */}
+      {/* Modal - FIXED SIZE: never changes based on image */}
       <div
-        className="relative bg-[#F5F3EF] rounded-2xl w-[95vw] md:w-full max-w-md md:max-w-5xl max-h-[90vh] md:max-h-[95vh] overflow-hidden shadow-2xl"
+        className="relative bg-[#F5F3EF] rounded-2xl overflow-hidden shadow-2xl
+          w-[95vw] h-[85vh]
+          md:w-[900px] md:h-[600px]
+          lg:w-[1000px] lg:h-[650px]"
         onClick={(e) => e.stopPropagation()}
         style={{
-          // Focus ritual: micro-compression and scale animation
           transform: isEntering
             ? 'scale(0.96) translateY(10px)'
             : isExiting
@@ -442,15 +515,15 @@ function ProductModal({
         </button>
 
         {/* Desktop: Horizontal layout | Mobile: Compact vertical layout */}
-        <div className="flex flex-col md:flex-row md:min-h-[70vh] h-full">
-          {/* Image section with carousel - Mobile: smaller, Desktop: larger */}
-          <div className="md:w-3/5 p-3 md:p-6 flex-shrink-0">
-            {/* Main image with ultra-realistic crystal glass effect */}
-            {/* Mobile: square aspect, limited height */}
+        <div className="flex flex-col md:flex-row h-full">
+          {/* Image section - FIXED container, image is pannable */}
+          <div className="md:w-3/5 p-3 md:p-6 flex-shrink-0 h-[50%] md:h-full">
+            {/* Main image container - fixed size, overflow hidden, draggable */}
             <div
-              className="relative aspect-square md:aspect-auto md:h-full rounded-xl overflow-hidden max-h-[40vh] md:max-h-none"
+              className="relative w-full h-full rounded-xl overflow-hidden select-none"
               style={{
                 background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
+                cursor: isDragging ? 'grabbing' : 'grab',
                 boxShadow: `
                   inset 0 2px 4px rgba(255,255,255,1),
                   inset 0 -1px 2px rgba(0,0,0,0.04),
@@ -459,8 +532,10 @@ function ProductModal({
                   0 2px 8px rgba(0,0,0,0.08)
                 `,
               }}
+              onMouseDown={handleImgMouseDown}
+              onTouchStart={handleImgTouchStart}
             >
-              {/* Top-left glass reflection highlight - premium specular */}
+              {/* Top-left glass reflection highlight */}
               <div
                 className="absolute inset-0 pointer-events-none z-20"
                 style={{
@@ -489,18 +564,20 @@ function ProductModal({
                 }}
               />
 
-              {/* Image with maximum sharpness and clarity */}
+              {/* Image - pannable via drag, covers container */}
               {allImages[selectedImage] ? (
                 <img
                   src={allImages[selectedImage]}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="absolute w-full h-full object-cover pointer-events-none"
+                  draggable={false}
                   style={{
                     filter: 'contrast(1.08) brightness(1.02) saturate(1.05)',
                     imageRendering: '-webkit-optimize-contrast',
                     WebkitBackfaceVisibility: 'hidden',
                     backfaceVisibility: 'hidden',
-                    transform: 'translateZ(0)',
+                    transform: `translate(${imgPos.x}px, ${imgPos.y}px)`,
+                    transition: isDragging ? 'none' : 'transform 200ms ease-out',
                   }}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
@@ -512,18 +589,29 @@ function ProductModal({
                 </div>
               )}
 
+              {/* Drag hint - small icon bottom-right */}
+              {allImages[selectedImage] && (
+                <div className="absolute bottom-2 right-2 z-20 pointer-events-none opacity-40">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/>
+                  </svg>
+                </div>
+              )}
+
               {/* Carousel navigation arrows */}
               {allImages.length > 1 && (
                 <>
                   <button
                     onClick={(e) => { e.stopPropagation(); handlePrevImage(); }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/80 hover:bg-white transition-colors shadow-md"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full bg-white/80 hover:bg-white transition-colors shadow-md cursor-pointer"
                   >
                     <span className="text-xl">&#8249;</span>
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleNextImage(); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/80 hover:bg-white transition-colors shadow-md"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full bg-white/80 hover:bg-white transition-colors shadow-md cursor-pointer"
                   >
                     <span className="text-xl">&#8250;</span>
                   </button>
@@ -532,12 +620,13 @@ function ProductModal({
 
               {/* Image indicators */}
               {allImages.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex gap-2">
                   {allImages.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={(e) => { e.stopPropagation(); setSelectedImage(idx); }}
-                      className={`w-2 h-2 rounded-full transition-colors ${
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className={`w-2 h-2 rounded-full transition-colors cursor-pointer ${
                         selectedImage === idx ? 'bg-[#B8860B]' : 'bg-white/60'
                       }`}
                     />
@@ -545,38 +634,10 @@ function ProductModal({
                 </div>
               )}
             </div>
-
-            {/* Thumbnail strip - hidden on mobile to save space, visible on desktop */}
-            <div className="hidden md:flex gap-2 mt-2">
-              {allImages.slice(0, 3).map((imgUrl, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedImage(idx)}
-                  className={`flex-1 aspect-square rounded-lg overflow-hidden border-2 transition-colors ${
-                    selectedImage === idx ? 'border-[#B8860B]' : 'border-transparent'
-                  }`}
-                >
-                  {imgUrl ? (
-                    <img
-                      src={imgUrl}
-                      alt={`${product.name} ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-300">
-                      <span className="text-2xl">📦</span>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Product info section - Mobile: ultra compact, Desktop: normal */}
-          <div className="md:w-2/5 p-3 md:p-6 md:pl-2 flex flex-col flex-1">
+          <div className="md:w-2/5 p-3 md:p-6 md:pl-2 flex flex-col h-[50%] md:h-full overflow-y-auto">
             {/* Mobile: horizontal layout for name/price, Desktop: vertical */}
             <div className="flex items-start justify-between md:block mb-2 md:mb-0">
               <h2 className="font-mono text-base md:text-xl font-bold text-[#1B2B27] md:mb-1">
@@ -646,7 +707,7 @@ function ProductModal({
             {/* Spacer to push buttons to bottom on desktop */}
             <div className="hidden md:block flex-grow" />
 
-            {/* Action buttons - always visible, fixed at bottom on mobile */}
+            {/* Action buttons - always visible */}
             <div className="flex gap-2 mt-2 md:mt-auto">
               <button
                 onClick={handleAddToCart}
@@ -908,10 +969,19 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
       .eq('is_published', true)
       .order('sort_order');
 
+    console.log('[SHOP] Supabase products query:', { count: data?.length, error });
+
     if (error || !data) {
-      console.error('Error loading products:', error);
+      console.error('[SHOP] Error loading products:', error);
       return MOCK_PRODUCTS;
     }
+
+    if (data.length === 0) {
+      console.warn('[SHOP] No published products found, using mocks');
+      return MOCK_PRODUCTS;
+    }
+
+    console.log('[SHOP] Loaded products:', data.map((p: any) => ({ name: p.name, images: p.images?.length })));
 
     return data.map((p: any) => ({
       id: p.id,
