@@ -1,133 +1,60 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCartStore } from '@/lib/store/cart';
 import { createClient } from '@/lib/supabase/client';
 
 // ============================================================================
-// RESPONSIVE DESIGN SYSTEM - OnSite Shop
+// LAYOUT SYSTEM - OnSite Shop (Static Grid)
 // ============================================================================
 //
-// BREAKPOINTS (Tailwind CSS):
-// - xs/default: < 640px  → Mobile phones
-// - sm:        >= 640px  → Large phones, small tablets
-// - md:        >= 768px  → Tablets
-// - lg:        >= 1024px → Laptops, desktops
-// - xl:        >= 1280px → Large desktops
+// DESKTOP (>= 768px): 12 fixed product positions in 4x3 grid
+// ┌──────────────────────────────────────────────────────┐
+// │ HEADER (logo top-left)                          z-40 │
+// │                                                      │
+// │  [1]small    [2]LARGE    [3]LARGE    [4]small        │
+// │  [5]small    [6]LARGE    [7]LARGE    [8]small        │
+// │  [9]small   [10]LARGE   [11]LARGE   [12]small        │
+// │                                                      │
+// │ CATS(left)                         BAG/LOGIN(right)  │
+// │ TAGLINE (bottom-center)                              │
+// └──────────────────────────────────────────────────────┘
 //
-// LAYOUT STRUCTURE:
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │ DESKTOP (>= 640px / sm:)                                                │
-// │ ┌─────────────────────────────────────────────────────────────────────┐ │
-// │ │ HEADER: Logo (top-left)                                             │ │
-// │ └─────────────────────────────────────────────────────────────────────┘ │
-// │                                                                         │
-// │ [LEFT SIDEBAR]           [FLOATING PRODUCTS]          [SCROLL BAR]     │
-// │ - MENS                                                 (middle-right)  │
-// │ - WOMENS                                                               │
-// │ - MEMBERS                                                              │
-// │ (bottom-left)                                                          │
-// │                                                                         │
-// │                                                       [RIGHT SIDEBAR]   │
-// │                                                       - BAG             │
-// │                                                       - LOGIN           │
-// │                                                       - SITE            │
-// │                                                       (bottom-right)    │
-// │ ┌─────────────────────────────────────────────────────────────────────┐ │
-// │ │ TAGLINE: "Wear What You Do" (bottom-center)                         │ │
-// │ └─────────────────────────────────────────────────────────────────────┘ │
-// └─────────────────────────────────────────────────────────────────────────┘
+// MOBILE (< 768px): Scrollable column, centered cards
+// ┌──────────────────────────────────────────────────────┐
+// │ HEADER + MOBILE MENU (horizontal)                    │
+// │ [product] [product] [product] ... (vertical scroll)  │
+// │ TAGLINE                                              │
+// └──────────────────────────────────────────────────────┘
 //
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │ MOBILE (< 640px)                                                        │
-// │ ┌─────────────────────────────────────────────────────────────────────┐ │
-// │ │ HEADER: Logo (top-left)                                             │ │
-// │ └─────────────────────────────────────────────────────────────────────┘ │
-// │ ┌─────────────────────────────────────────────────────────────────────┐ │
-// │ │ MOBILE MENU: MENS | WOMENS | MEMBERS | BAG (horizontal, top)        │ │
-// │ └─────────────────────────────────────────────────────────────────────┘ │
-// │                                                                         │
-// │                      [FLOATING PRODUCTS]                                │
-// │                      (center only, smaller)                             │
-// │                                                                         │
-// │ ┌─────────────────────────────────────────────────────────────────────┐ │
-// │ │ TAGLINE: "Wear What You Do" (bottom-center)                         │ │
-// │ └─────────────────────────────────────────────────────────────────────┘ │
-// └─────────────────────────────────────────────────────────────────────────┘
-//
-// Z-INDEX LAYERS:
-// - z-100: Custom cursor
-// - z-50:  Modals, Sidebars (navigation)
-// - z-40:  Mobile menu, Header
-// - z-30:  Scroll bar, Tagline
-// - z-20:  Center floating products
-// - z-10:  Side floating products
-// - z-0:   Background
-//
+// Z-INDEX: z-100 cursor > z-50 modals/sidebars > z-40 header > z-20/10 products > z-0 bg
+// NO ANIMATION LOOPS - all positions are static, zero requestAnimationFrame
 // ============================================================================
 
 // ============================================================================
-// MOTION SYSTEM - Premium, tactile, restrained
-// All effects must be extremely subtle (low amplitude, low opacity, short durations)
+// VISUAL SYSTEM - Static, no animation loops
+// Hover effects only (scale, shadow) - no RAF, no scroll-driven movement
 // ============================================================================
 
-// Ambient Particle System - tiny floating dust motes
+// Static Particle positions - no animation, just visual texture
 interface Particle {
   id: number;
   x: number;
   y: number;
-  vx: number;
-  vy: number;
   size: number;
   opacity: number;
-  life: number;
 }
 
-function useAmbientParticles(count: number = 30) {
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const animationRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    // Check for reduced motion preference
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) return;
-
-    // Initialize particles
-    const initialParticles: Particle[] = Array.from({ length: count }, (_, i) => ({
+function useStaticParticles(count: number = 25): Particle[] {
+  const [particles] = useState<Particle[]>(() =>
+    Array.from({ length: count }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      vx: (Math.random() - 0.5) * 0.015, // Very slow horizontal drift
-      vy: (Math.random() - 0.5) * 0.01,  // Even slower vertical drift
-      size: Math.random() * 2 + 1,       // 1-3px
-      opacity: Math.random() * 0.15 + 0.05, // 5-20% opacity - extremely subtle
-      life: Math.random() * 100,
-    }));
-    setParticles(initialParticles);
-
-    const animate = () => {
-      setParticles(prev => prev.map(p => {
-        let newX = p.x + p.vx;
-        let newY = p.y + p.vy;
-
-        // Wrap around edges
-        if (newX < -2) newX = 102;
-        if (newX > 102) newX = -2;
-        if (newY < -2) newY = 102;
-        if (newY > 102) newY = -2;
-
-        return { ...p, x: newX, y: newY };
-      }));
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [count]);
-
+      size: Math.random() * 2 + 1,
+      opacity: Math.random() * 0.15 + 0.05,
+    }))
+  );
   return particles;
 }
 
@@ -215,26 +142,25 @@ function CustomCursor({ isHovering, label }: { isHovering: boolean; label: strin
   );
 }
 
-// Background System Component
-function BackgroundSystem({ scrollProgress }: { scrollProgress: number }) {
-  const particles = useAmbientParticles(25);
-  const parallaxOffset = useInertialValue(scrollProgress * 5, 0.05); // 5% parallax, very subtle
+// Background System Component - static, no parallax
+function BackgroundSystem() {
+  const particles = useStaticParticles(25);
 
   return (
     <>
-      {/* User's Blueprint Background Image - seamless tiling with parallax */}
+      {/* Blueprint Background Image */}
       <div
         className="absolute inset-0"
         style={{
           backgroundImage: `url('/assets/background-parallax.png')`,
-          backgroundSize: 'auto 100vh', // Keep aspect ratio, height = viewport
-          backgroundPosition: `center ${parallaxOffset * 10}px`, // Parallax moves the pattern
-          backgroundRepeat: 'repeat', // Infinite seamless tiling
+          backgroundSize: 'auto 100vh',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'repeat',
           opacity: 0.25,
           filter: 'blur(0.5px)',
         }}
       />
-      {/* Blueprint Backplate - subtle technical grid (BEFORE vignette so it's visible) */}
+      {/* Blueprint grid */}
       <div
         className="absolute inset-0 opacity-[0.15]"
         style={{
@@ -242,12 +168,11 @@ function BackgroundSystem({ scrollProgress }: { scrollProgress: number }) {
             linear-gradient(90deg, #1B2B27 1px, transparent 1px),
             linear-gradient(#1B2B27 1px, transparent 1px)
           `,
-          backgroundSize: '360px 360px', // Tripled spacing (120 * 3)
-          transform: `translateY(${parallaxOffset}%)`,
+          backgroundSize: '360px 360px',
         }}
       />
 
-      {/* Vignette mask to fade edges and keep center calm */}
+      {/* Vignette mask */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -255,17 +180,16 @@ function BackgroundSystem({ scrollProgress }: { scrollProgress: number }) {
         }}
       />
 
-      {/* Dot Grid Overlay - construction measurement feel */}
+      {/* Dot Grid Overlay */}
       <div
         className="absolute inset-0 opacity-[0.08]"
         style={{
           backgroundImage: `radial-gradient(circle, #1B2B27 1px, transparent 1px)`,
           backgroundSize: '20px 20px',
-          transform: `translateY(${parallaxOffset * 0.5}%)`,
         }}
       />
 
-      {/* Ambient Particles */}
+      {/* Static Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {particles.map(p => (
           <div
@@ -277,7 +201,6 @@ function BackgroundSystem({ scrollProgress }: { scrollProgress: number }) {
               width: p.size,
               height: p.size,
               opacity: p.opacity,
-              transform: `translateY(${parallaxOffset * 0.3}%)`,
             }}
           />
         ))}
@@ -291,110 +214,6 @@ function BackgroundSystem({ scrollProgress }: { scrollProgress: number }) {
         }}
       />
     </>
-  );
-}
-
-// Draggable Scroll Progress Bar
-function DraggableScrollBar({
-  progress,
-  onProgressChange
-}: {
-  progress: number;
-  onProgressChange: (newProgress: number) => void;
-}) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    updateProgressFromMouse(e.clientY);
-  };
-
-  const updateProgressFromMouse = useCallback((clientY: number) => {
-    if (!trackRef.current) return;
-    const rect = trackRef.current.getBoundingClientRect();
-    const relativeY = clientY - rect.top;
-    const percentage = Math.max(0, Math.min(100, (relativeY / rect.height) * 100));
-    onProgressChange(percentage);
-  }, [onProgressChange]);
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      updateProgressFromMouse(e.clientY);
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, updateProgressFromMouse]);
-
-  // ==========================================================================
-  // RESPONSIVE BREAKPOINTS:
-  // - Mobile: < 640px (sm)
-  // - Tablet/Desktop: >= 640px (sm:)
-  // - Large Desktop: >= 1024px (lg:)
-  //
-  // This scroll bar is DESKTOP ONLY - hidden on mobile
-  // Position: Right side, vertically centered
-  // z-index: 30 (below sidebars which are z-50)
-  // ==========================================================================
-  return (
-    <div
-      className="fixed right-6 lg:right-10 z-30 hidden md:flex flex-col items-center"
-      style={{ top: '50%', transform: 'translateY(-50%)' }}
-    >
-      {/* Track */}
-      <div
-        ref={trackRef}
-        className={`relative w-[3px] h-32 rounded-full cursor-pointer transition-all duration-200
-          ${isDragging || isHovered ? 'bg-[#1B2B27]/20 w-[4px]' : 'bg-[#1B2B27]/10'}`}
-        onMouseDown={handleMouseDown}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* Progress fill */}
-        <div
-          className={`absolute top-0 left-0 right-0 rounded-full transition-colors duration-200
-            ${isDragging ? 'bg-[#B8860B]' : 'bg-[#B8860B]/60'}`}
-          style={{ height: `${progress}%` }}
-        />
-
-        {/* Draggable thumb */}
-        <div
-          className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all duration-200 cursor-grab
-            ${isDragging
-              ? 'w-4 h-4 bg-[#B8860B] shadow-lg cursor-grabbing'
-              : isHovered
-                ? 'w-3 h-3 bg-[#B8860B]/80'
-                : 'w-2 h-2 bg-[#B8860B]/60'
-            }`}
-          style={{
-            top: `${progress}%`,
-            transform: 'translate(-50%, -50%)',
-          }}
-        />
-      </div>
-
-      {/* Loop indicator label */}
-      <span
-        className={`font-mono text-[10px] tracking-wider mt-2 transition-all duration-200
-          ${isDragging ? 'text-[#1B2B27]/80' : 'text-[#1B2B27]/40'}`}
-      >
-        {Math.round(progress)}%
-      </span>
-    </div>
   );
 }
 
@@ -417,72 +236,30 @@ interface FloatingProduct extends Product {
   y: number;
   zone: 'left' | 'center' | 'right';
   scale: number;
-  speed: number;
   id: string;
   uniqueKey: string;
-  width: number;
-  height: number;
 }
 
-// Card dimensions for collision detection (in viewport %)
-// Must match visual sizes to prevent overlap
-const CARD_SIZES = {
-  center: { width: 24, height: 42 }, // larger cards for center (w-64 ~ 16rem ~ 20-25vh)
-  side: { width: 14, height: 22 },   // smaller cards for sides
-};
-
-// Check if two products overlap
-function checkOverlap(a: FloatingProduct, b: FloatingProduct): boolean {
-  const buffer = 5; // % buffer between cards (increased from 2%)
-  return !(
-    a.x + a.width / 2 + buffer < b.x - b.width / 2 ||
-    a.x - a.width / 2 - buffer > b.x + b.width / 2 ||
-    a.y + a.height / 2 + buffer < b.y - b.height / 2 ||
-    a.y - a.height / 2 - buffer > b.y + b.height / 2
-  );
-}
-
-// Find valid position without overlap - checks ALL products, not just same zone
-function findValidPosition(
-  zone: 'left' | 'center' | 'right',
-  existingProducts: FloatingProduct[],
-  yStart: number
-): { x: number; y: number } {
-  // Separated zones - leave space for side menus (left: 0-12%, right: 88-100%)
-  const xRange = zone === 'left' ? [14, 28] : zone === 'center' ? [38, 62] : [72, 86];
-  const isCenter = zone === 'center';
-  const cardSize = isCenter ? CARD_SIZES.center : CARD_SIZES.side;
-
-  let attempts = 0;
-  const maxAttempts = 50;
-
-  while (attempts < maxAttempts) {
-    const x = xRange[0] + Math.random() * (xRange[1] - xRange[0]);
-    const y = yStart + (Math.random() * 15 - 7.5); // vary Y slightly (reduced from 20)
-
-    const testProduct = {
-      x,
-      y,
-      width: cardSize.width,
-      height: cardSize.height,
-    } as FloatingProduct;
-
-    // Check overlap with ALL products, not just same-zone
-    const hasOverlap = existingProducts.some(p => checkOverlap(testProduct, p));
-
-    if (!hasOverlap) {
-      return { x, y };
-    }
-
-    attempts++;
-  }
-
-  // Fallback: place at bottom with offset
-  return {
-    x: xRange[0] + Math.random() * (xRange[1] - xRange[0]),
-    y: yStart + 30,
-  };
-}
+// 12 fixed grid positions for desktop layout
+// 4 columns x 3 rows, with slight organic offsets
+// Columns 1,4 = side (smaller), Columns 2,3 = center (larger)
+const GRID_POSITIONS: Array<{ x: number; y: number; scale: number; zone: 'left' | 'center' | 'right' }> = [
+  // Row 1
+  { x: 15, y: 18, scale: 0.85, zone: 'left' },
+  { x: 37, y: 14, scale: 1.2,  zone: 'center' },
+  { x: 59, y: 11, scale: 1.2,  zone: 'center' },
+  { x: 80, y: 17, scale: 0.85, zone: 'right' },
+  // Row 2
+  { x: 18, y: 44, scale: 0.85, zone: 'left' },
+  { x: 40, y: 40, scale: 1.2,  zone: 'center' },
+  { x: 62, y: 43, scale: 1.2,  zone: 'center' },
+  { x: 83, y: 39, scale: 0.85, zone: 'right' },
+  // Row 3
+  { x: 14, y: 70, scale: 0.85, zone: 'left' },
+  { x: 38, y: 66, scale: 1.2,  zone: 'center' },
+  { x: 57, y: 71, scale: 1.2,  zone: 'center' },
+  { x: 78, y: 67, scale: 0.85, zone: 'right' },
+];
 
 // Mock products
 const MOCK_PRODUCTS: Product[] = [
@@ -1042,6 +819,84 @@ function FloatingProductCard({
   );
 }
 
+// Mobile Product Card - column layout, same visual style
+function MobileProductCard({
+  product,
+  onClick,
+  onHoverChange,
+}: {
+  product: Product;
+  onClick: () => void;
+  onHoverChange?: (isHovering: boolean) => void;
+}) {
+  const [isPressed, setIsPressed] = useState(false);
+
+  const handlePress = () => {
+    setIsPressed(true);
+    setTimeout(() => {
+      setIsPressed(false);
+      onClick();
+    }, 80);
+  };
+
+  const maskGradient = 'radial-gradient(ellipse 85% 85% at 50% 50%, black 70%, transparent 100%)';
+
+  return (
+    <div
+      className="relative cursor-pointer w-44 h-44 flex-shrink-0"
+      style={{
+        transform: `scale(${isPressed ? 0.96 : 1})`,
+        transition: 'transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+      }}
+      onTouchStart={() => onHoverChange?.(true)}
+      onTouchEnd={() => onHoverChange?.(false)}
+      onClick={handlePress}
+    >
+      {/* Floating shadow */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          transform: 'translateY(20px) scale(0.85)',
+          background: 'radial-gradient(ellipse 100% 60% at 50% 50%, rgba(0,0,0,0.1) 0%, transparent 70%)',
+          filter: 'blur(12px)',
+          opacity: 0.5,
+        }}
+      />
+
+      {/* Image */}
+      <div className="relative w-44 h-44 flex items-center justify-center">
+        <div
+          className="absolute inset-0 flex items-center justify-center overflow-hidden"
+          style={{ maskImage: maskGradient, WebkitMaskImage: maskGradient }}
+        >
+          {product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <span className={`${product.image ? 'hidden' : ''} text-6xl`}>📦</span>
+        </div>
+      </div>
+
+      {/* Text */}
+      <div className="text-center mt-2">
+        <p className="font-mono text-xs drop-shadow-sm" style={{ color: 'rgba(27, 43, 39, 0.8)' }}>
+          {product.name}
+        </p>
+        <p className="font-mono text-sm font-bold drop-shadow-sm" style={{ color: '#B8860B' }}>
+          CA${(product.price ?? 0).toFixed(2)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // Load products from Supabase (only published and active)
 async function loadProductsFromSupabase(): Promise<Product[]> {
   try {
@@ -1081,15 +936,10 @@ export default function ShopPage() {
   const [floatingProducts, setFloatingProducts] = useState<FloatingProduct[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const animationRef = useRef<number | null>(null);
-  const scrollDeltaRef = useRef(0); // Accumulated scroll delta to add to animation
   const cartItems = useCartStore((state) => state.items);
 
-  // New motion system state
   const [isHoveringProduct, setIsHoveringProduct] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
   const [isModalOpening, setIsModalOpening] = useState(false);
-  const accumulatedScrollRef = useRef(0); // Track total scroll for progress
 
   // Load products from Supabase
   useEffect(() => {
@@ -1104,156 +954,34 @@ export default function ShopPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Initialize floating products with no overlap
+  // Initialize products in fixed grid positions (no animation)
   const initializeProducts = useCallback(() => {
     const categoryProducts = products.filter(p => p.category === activeCategory);
-    const floatingItems: FloatingProduct[] = [];
+    if (categoryProducts.length === 0) return;
 
-    // Mobile: only center zone, Desktop: all 3 zones
-    const zones: Array<'left' | 'center' | 'right'> = isMobile
-      ? ['center']
-      : ['left', 'center', 'right'];
+    const positions = GRID_POSITIONS;
+    const floatingItems: FloatingProduct[] = positions.map((pos, i) => {
+      const product = categoryProducts[i % categoryProducts.length];
+      // Add small random jitter (+/- 2%) for organic feel
+      const jitterX = (Math.random() - 0.5) * 4;
+      const jitterY = (Math.random() - 0.5) * 4;
 
-    zones.forEach((zone) => {
-      const isCenter = zone === 'center';
-      // Center: fewer but larger images, sides: more but smaller
-      // Mobile: only 3 cards to prevent overlap on smaller screen
-      const count = isMobile ? 3 : (isCenter ? 2 : 4);
-      const cardSize = isCenter ? CARD_SIZES.center : CARD_SIZES.side;
-
-      // Center needs more vertical space between products
-      // Mobile: much more spacing (180%) to prevent overlap
-      const totalSpan = isMobile ? 180 : (isCenter ? 140 : 130);
-      const ySpacing = totalSpan / count;
-
-      for (let i = 0; i < count; i++) {
-        const product = categoryProducts[Math.floor(Math.random() * categoryProducts.length)];
-        // Start from -20% for center (more buffer), -10% for sides
-        // Mobile: start higher to distribute better
-        const startY = isMobile ? -30 : (isCenter ? -20 : -15);
-        const baseY = startY + i * ySpacing + ySpacing / 2;
-
-        // Mobile: use narrower center range to keep cards more centered and less overlap
-        const mobileXRange = [30, 70];
-        const pos = isMobile
-          ? { x: mobileXRange[0] + Math.random() * (mobileXRange[1] - mobileXRange[0]), y: baseY }
-          : findValidPosition(zone, floatingItems, baseY);
-
-        floatingItems.push({
-          ...product,
-          uniqueKey: `${zone}-${i}-${Date.now()}-${Math.random()}`,
-          x: pos.x,
-          y: pos.y,
-          zone,
-          scale: isMobile ? 0.85 : (isCenter ? 1.33 : 0.9), // Mobile: smaller scale to reduce overlap
-          speed: isMobile ? 0.02 : (isCenter ? 0.02 : 0.03), // Mobile: slower speed
-          width: cardSize.width,
-          height: cardSize.height,
-        });
-      }
+      return {
+        ...product,
+        uniqueKey: `grid-${i}-${activeCategory}-${Date.now()}`,
+        x: pos.x + jitterX,
+        y: pos.y + jitterY,
+        zone: pos.zone,
+        scale: pos.scale,
+      };
     });
 
     setFloatingProducts(floatingItems);
-  }, [activeCategory, isMobile, products]);
+  }, [activeCategory, products]);
 
   useEffect(() => {
     initializeProducts();
   }, [initializeProducts]);
-
-  // Animation loop - ALWAYS runs, never stops
-  useEffect(() => {
-    const animate = () => {
-      // Get scroll delta and reset it
-      const scrollDelta = scrollDeltaRef.current;
-      scrollDeltaRef.current = 0;
-
-      setFloatingProducts(prev => {
-        const updated = [...prev];
-
-        for (let i = 0; i < updated.length; i++) {
-          const product = updated[i];
-          // Combine auto-scroll speed with user scroll delta
-          let newY = product.y - product.speed + scrollDelta;
-
-          // Loop: when product goes off top, reset to bottom with valid position
-          if (newY < -25) {
-            const pos = findValidPosition(product.zone, updated.filter((_, idx) => idx !== i), 110);
-            updated[i] = {
-              ...product,
-              y: pos.y,
-              x: pos.x,
-            };
-          } else if (newY > 120) {
-            // If scrolling down and product goes off bottom, reset to top
-            const pos = findValidPosition(product.zone, updated.filter((_, idx) => idx !== i), -15);
-            updated[i] = {
-              ...product,
-              y: pos.y,
-              x: pos.x,
-            };
-          } else {
-            updated[i] = { ...product, y: newY };
-          }
-        }
-
-        return updated;
-      });
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
-
-  // Handle scroll/touch - add delta to animation with inertial smoothing
-  useEffect(() => {
-    let lastTouchY = 0;
-
-    const handleWheel = (e: WheelEvent) => {
-      // Accumulate scroll delta (will be applied in animation loop)
-      scrollDeltaRef.current += e.deltaY * 0.03;
-
-      // Track accumulated scroll for progress indicator
-      accumulatedScrollRef.current += Math.abs(e.deltaY);
-      // Reset progress every 10000 pixels of scroll
-      const normalizedProgress = (accumulatedScrollRef.current % 10000) / 100;
-      setScrollProgress(normalizedProgress);
-    };
-
-    const handleTouchStart = (e: TouchEvent) => {
-      lastTouchY = e.touches[0].clientY;
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const touchY = e.touches[0].clientY;
-      const deltaY = lastTouchY - touchY;
-      lastTouchY = touchY;
-
-      // Accumulate touch delta (will be applied in animation loop)
-      scrollDeltaRef.current -= deltaY * 0.1;
-
-      // Track accumulated scroll for progress
-      accumulatedScrollRef.current += Math.abs(deltaY);
-      const normalizedProgress = (accumulatedScrollRef.current % 10000) / 100;
-      setScrollProgress(normalizedProgress);
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: true });
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-
-    return () => {
-      window.removeEventListener('wheel', handleWheel);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-    };
-  }, []);
 
   const categories: Array<{ key: 'mens' | 'womens' | 'members'; label: string }> = [
     { key: 'mens', label: 'MENS' },
@@ -1271,29 +999,14 @@ export default function ShopPage() {
     }, 80);
   };
 
-  // Count products for progress indicator
-  const categoryProductCount = products.filter(p => p.category === activeCategory).length;
-
   return (
-    <div className="relative w-full h-screen overflow-hidden">
+    <div className={`relative w-full ${isMobile ? 'min-h-screen overflow-y-auto' : 'h-screen overflow-hidden'}`}>
       {/* Custom Cursor - desktop only */}
       <CustomCursor isHovering={isHoveringProduct} label={isHoveringProduct ? 'VIEW' : ''} />
 
-      {/* Draggable Scroll Progress Bar */}
-      <DraggableScrollBar
-        progress={scrollProgress}
-        onProgressChange={(newProgress) => {
-          // When user drags the bar, update scroll position
-          const delta = (newProgress - scrollProgress) * 0.5; // Smooth movement multiplier
-          scrollDeltaRef.current += delta;
-          setScrollProgress(newProgress);
-          accumulatedScrollRef.current = newProgress * 100; // Sync accumulated scroll
-        }}
-      />
-
       {/* Grainy 3D Background */}
       <div
-        className="absolute inset-0"
+        className={`${isMobile ? 'fixed' : 'absolute'} inset-0`}
         style={{
           background: 'linear-gradient(135deg, #D4CFC4 0%, #C9C4B8 50%, #BEB9AD 100%)',
         }}
@@ -1307,8 +1020,8 @@ export default function ShopPage() {
           <rect width="100%" height="100%" filter="url(#noise)"/>
         </svg>
 
-        {/* Enhanced Background System with blueprint grid, dots, and particles */}
-        <BackgroundSystem scrollProgress={scrollProgress} />
+        {/* Background System - static grid, dots, particles */}
+        <BackgroundSystem />
       </div>
 
       {/* Top Header - Logo left */}
@@ -1426,24 +1139,47 @@ export default function ShopPage() {
         </a>
       </nav>
 
-      {/* Floating Products */}
-      <div
-        className="absolute inset-0 transition-all duration-200"
-        style={{
-          // Subtle dimming when modal is opening (focus ritual)
-          opacity: isModalOpening ? 0.95 : 1,
-          transform: isModalOpening ? 'scale(0.995)' : 'scale(1)',
-        }}
-      >
-        {floatingProducts.map((product) => (
-          <FloatingProductCard
-            key={product.uniqueKey}
-            product={product}
-            onClick={() => handleProductClick(product)}
-            onHoverChange={setIsHoveringProduct}
-          />
-        ))}
-      </div>
+      {/* Products - Desktop: Fixed positions / Mobile: Scrollable column */}
+      {isMobile ? (
+        /* MOBILE: Scrollable column layout */
+        <div
+          className="relative z-10 flex flex-col items-center gap-6 pt-28 pb-20 px-4"
+          style={{
+            opacity: isModalOpening ? 0.95 : 1,
+            transform: isModalOpening ? 'scale(0.995)' : 'scale(1)',
+            transition: 'all 200ms',
+          }}
+        >
+          {products
+            .filter(p => p.category === activeCategory)
+            .map((product, i) => (
+              <MobileProductCard
+                key={`mobile-${product.id}-${i}`}
+                product={product}
+                onClick={() => handleProductClick(product)}
+                onHoverChange={setIsHoveringProduct}
+              />
+            ))}
+        </div>
+      ) : (
+        /* DESKTOP: 12 Fixed grid positions */
+        <div
+          className="absolute inset-0 transition-all duration-200"
+          style={{
+            opacity: isModalOpening ? 0.95 : 1,
+            transform: isModalOpening ? 'scale(0.995)' : 'scale(1)',
+          }}
+        >
+          {floatingProducts.map((product) => (
+            <FloatingProductCard
+              key={product.uniqueKey}
+              product={product}
+              onClick={() => handleProductClick(product)}
+              onHoverChange={setIsHoveringProduct}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Product Modal */}
       {selectedProduct && (
@@ -1454,7 +1190,7 @@ export default function ShopPage() {
       )}
 
       {/* Bottom tagline */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2">
+      <div className={`${isMobile ? 'relative mt-4 mb-6' : 'absolute bottom-6'} left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2`}>
         <p className="font-mono text-xs text-[#1B2B27]/50 tracking-[0.3em] uppercase">
           Wear What You Do
         </p>
