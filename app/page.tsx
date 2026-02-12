@@ -1098,7 +1098,7 @@ export default function ShopPage() {
       <header className="absolute top-0 left-0 right-0 z-40 px-4 md:px-6 py-4 md:py-5">
         <div className="flex items-center justify-start">
           {/* Logo - left aligned */}
-          <a href="https://onsiteclub.ca">
+          <a href="https://website2-tau-green.vercel.app/#home">
             <img
               src="/assets/logo-onsite-club.png"
               alt="OnSite Club"
@@ -1169,7 +1169,7 @@ export default function ShopPage() {
           <span className="absolute -bottom-1 right-0 h-[2px] w-0 bg-[#B8860B] group-hover:w-full rotate-[8deg] transition-all duration-300 origin-right" />
         </a>
         <a
-          href="https://onsiteclub.ca"
+          href="https://website2-tau-green.vercel.app/#home"
           className="group relative font-mono text-xs tracking-[0.2em] text-[#1B2B27]/50 hover:text-[#1B2B27] hover:scale-110 hover:-translate-x-2 transition-all duration-300"
         >
           SITE
