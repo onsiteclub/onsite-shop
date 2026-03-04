@@ -137,17 +137,17 @@ export default function AdminOrdersPage() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'pending': return 'Pendente';
-      case 'paid': return 'Pago';
-      case 'shipped': return 'Enviado';
-      case 'delivered': return 'Entregue';
-      case 'cancelled': return 'Cancelado';
+      case 'pending': return 'Pending';
+      case 'paid': return 'Paid';
+      case 'shipped': return 'Shipped';
+      case 'delivered': return 'Delivered';
+      case 'cancelled': return 'Cancelled';
       default: return status;
     }
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
+    return new Date(date).toLocaleDateString('en-CA', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -159,7 +159,7 @@ export default function AdminOrdersPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-grain flex items-center justify-center">
-        <p className="font-mono text-[#1B2B27]/60">Carregando...</p>
+        <p className="font-mono text-[#1B2B27]/60">Loading...</p>
       </div>
     );
   }
@@ -169,13 +169,13 @@ export default function AdminOrdersPage() {
       <div className="min-h-screen bg-grain flex items-center justify-center px-4">
         <div className="text-center">
           <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-4">
-            Acesso Restrito
+            Access Restricted
           </h1>
           <p className="font-mono text-[#1B2B27]/70 mb-6">
-            Faça login como administrador.
+            Please login as an administrator.
           </p>
           <Link href="/admin" className="btn-accent">
-            Ir para Admin
+            Go to Admin
           </Link>
         </div>
       </div>
@@ -196,7 +196,7 @@ export default function AdminOrdersPage() {
             </Link>
             <span className="font-mono text-sm text-white/40">|</span>
             <h1 className="font-mono text-sm font-medium text-white">
-              Pedidos ({orders.length})
+              Orders ({orders.length})
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -204,7 +204,7 @@ export default function AdminOrdersPage() {
               onClick={loadOrders}
               className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg border border-white/20 hover:border-white/40 transition-colors"
             >
-              ↻ Atualizar
+              ↻ Refresh
             </button>
           </div>
         </div>
@@ -223,7 +223,7 @@ export default function AdminOrdersPage() {
                   : 'bg-white/80 text-[#1B2B27]/70 hover:bg-white'
               }`}
             >
-              {status === 'all' ? 'Todos' : getStatusLabel(status)}
+              {status === 'all' ? 'All' : getStatusLabel(status)}
               {status !== 'all' && (
                 <span className="ml-1 opacity-60">
                   ({orders.filter(o => o.status === status).length})
@@ -235,7 +235,7 @@ export default function AdminOrdersPage() {
 
         {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
-            <p className="font-mono text-[#1B2B27]/60">Nenhum pedido encontrado.</p>
+            <p className="font-mono text-[#1B2B27]/60">No orders found.</p>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -256,10 +256,10 @@ export default function AdminOrdersPage() {
                       </span>
                     </div>
                     <div className="font-mono text-xs text-[#1B2B27]/60 space-y-1">
-                      <p>Criado: {formatDate(order.created_at)}</p>
-                      {order.paid_at && <p>Pago: {formatDate(order.paid_at)}</p>}
+                      <p>Created: {formatDate(order.created_at)}</p>
+                      {order.paid_at && <p>Paid: {formatDate(order.paid_at)}</p>}
                       {order.shipping_address?.name && (
-                        <p>Cliente: {order.shipping_address.name}</p>
+                        <p>Customer: {order.shipping_address.name}</p>
                       )}
                     </div>
                   </div>
@@ -310,7 +310,7 @@ export default function AdminOrdersPage() {
             <div className="p-4 space-y-6">
               {/* Status Actions */}
               <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Atualizar Status:</p>
+                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Update Status:</p>
                 <div className="flex flex-wrap gap-2">
                   {['pending', 'paid', 'shipped', 'delivered', 'cancelled'].map((status) => (
                     <button
@@ -331,19 +331,19 @@ export default function AdminOrdersPage() {
 
               {/* Order Items */}
               <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Itens do Pedido:</p>
+                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Order Items:</p>
                 <div className="bg-gray-50 rounded-xl p-3 space-y-3">
                   {selectedOrder.order_items?.map((item) => (
                     <div key={item.id} className="flex justify-between items-start">
                       <div>
                         <p className="font-mono text-sm text-[#1B2B27]">{item.product_name}</p>
                         <p className="font-mono text-xs text-[#1B2B27]/60">
-                          {item.size && `Tamanho: ${item.size}`}
+                          {item.size && `Size: ${item.size}`}
                           {item.size && item.color && ' | '}
-                          {item.color && `Cor: ${item.color}`}
+                          {item.color && `Color: ${item.color}`}
                         </p>
                         <p className="font-mono text-xs text-[#1B2B27]/60">
-                          Qtd: {item.quantity} × CA${item.unit_price.toFixed(2)}
+                          Qty: {item.quantity} × CA${item.unit_price.toFixed(2)}
                         </p>
                       </div>
                       <p className="font-mono text-sm font-medium text-[#1B2B27]">
@@ -356,19 +356,19 @@ export default function AdminOrdersPage() {
 
               {/* Order Summary */}
               <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Resumo:</p>
+                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Summary:</p>
                 <div className="bg-gray-50 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between font-mono text-sm">
                     <span className="text-[#1B2B27]/70">Subtotal</span>
                     <span>CA${selectedOrder.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-mono text-sm">
-                    <span className="text-[#1B2B27]/70">Frete</span>
+                    <span className="text-[#1B2B27]/70">Shipping</span>
                     <span>CA${selectedOrder.shipping.toFixed(2)}</span>
                   </div>
                   {selectedOrder.tax > 0 && (
                     <div className="flex justify-between font-mono text-sm">
-                      <span className="text-[#1B2B27]/70">Impostos</span>
+                      <span className="text-[#1B2B27]/70">Tax</span>
                       <span>CA${selectedOrder.tax.toFixed(2)}</span>
                     </div>
                   )}
@@ -382,7 +382,7 @@ export default function AdminOrdersPage() {
               {/* Shipping Address */}
               {selectedOrder.shipping_address && (
                 <div>
-                  <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Endereço de Entrega:</p>
+                  <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Shipping Address:</p>
                   <div className="bg-gray-50 rounded-xl p-3 font-mono text-sm text-[#1B2B27]">
                     <p className="font-medium">{selectedOrder.shipping_address.name}</p>
                     <p>{selectedOrder.shipping_address.street}</p>
@@ -401,7 +401,7 @@ export default function AdminOrdersPage() {
 
               {/* Stripe Info */}
               <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Informações Stripe:</p>
+                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Stripe Info:</p>
                 <div className="bg-gray-50 rounded-xl p-3 font-mono text-xs text-[#1B2B27]/70 space-y-1">
                   {selectedOrder.stripe_session_id && (
                     <p className="break-all">
@@ -418,11 +418,11 @@ export default function AdminOrdersPage() {
 
               {/* Dates */}
               <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Datas:</p>
+                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Dates:</p>
                 <div className="bg-gray-50 rounded-xl p-3 font-mono text-xs text-[#1B2B27]/70 space-y-1">
-                  <p>Criado: {formatDate(selectedOrder.created_at)}</p>
-                  {selectedOrder.paid_at && <p>Pago: {formatDate(selectedOrder.paid_at)}</p>}
-                  {selectedOrder.cancelled_at && <p>Cancelado: {formatDate(selectedOrder.cancelled_at)}</p>}
+                  <p>Created: {formatDate(selectedOrder.created_at)}</p>
+                  {selectedOrder.paid_at && <p>Paid: {formatDate(selectedOrder.paid_at)}</p>}
+                  {selectedOrder.cancelled_at && <p>Cancelled: {formatDate(selectedOrder.cancelled_at)}</p>}
                 </div>
               </div>
             </div>

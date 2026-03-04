@@ -3,37 +3,31 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCartStore } from '@/lib/store/cart';
 import { createClient } from '@/lib/supabase/client';
+import { STRIPE_PRODUCTS } from '@/lib/stripe-config';
 
 // ============================================================================
-// LAYOUT SYSTEM - OnSite Shop (Static Grid)
+// LAYOUT SYSTEM - OnSite Shop (Uniform Grid)
 // ============================================================================
 //
-// DESKTOP (>= 768px): 12 fixed product positions in 4x3 grid
-// ┌──────────────────────────────────────────────────────┐
-// │ HEADER (logo top-left)                          z-40 │
-// │                                                      │
-// │  [1]small    [2]LARGE    [3]LARGE    [4]small        │
-// │  [5]small    [6]LARGE    [7]LARGE    [8]small        │
-// │  [9]small   [10]LARGE   [11]LARGE   [12]small        │
-// │                                                      │
-// │ CATS(left)                         BAG/LOGIN(right)  │
-// │ TAGLINE (bottom-center)                              │
-// └──────────────────────────────────────────────────────┘
+// ┌─────────────────────────────────────────────────────────────┐
+// │ BANNER: Logo | WEAR WHAT YOU DO | SHOP MEMBERS BAG(n)      │
+// ├─────────────────────────────────────────────────────────────┤
+// │                                                             │
+// │  ┌────┐ ┌────┐ ┌────┐ ┌────┐   (lg: 4 cols)              │
+// │  │    │ │    │ │    │ │    │                               │
+// │  └────┘ └────┘ └────┘ └────┘                               │
+// │  ┌────┐ ┌────┐ ┌────┐ ┌────┐                               │
+// │  │    │ │    │ │    │ │    │                               │
+// │  └────┘ └────┘ └────┘ └────┘                               │
+// │  ┌────┐ ┌────┐ ┌────┐ ┌────┐                               │
+// │  │    │ │    │ │    │ │    │                               │
+// │  └────┘ └────┘ └────┘ └────┘                               │
+// │                                                             │
+// └─────────────────────────────────────────────────────────────┘
 //
-// MOBILE (< 768px): Scrollable column, centered cards
-// ┌──────────────────────────────────────────────────────┐
-// │ HEADER + MOBILE MENU (horizontal)                    │
-// │ [product] [product] [product] ... (vertical scroll)  │
-// │ TAGLINE                                              │
-// └──────────────────────────────────────────────────────┘
-//
-// Z-INDEX: z-100 cursor > z-50 modals/sidebars > z-40 header > z-20/10 products > z-0 bg
-// NO ANIMATION LOOPS - all positions are static, zero requestAnimationFrame
-// ============================================================================
-
-// ============================================================================
-// VISUAL SYSTEM - Static, no animation loops
-// Hover effects only (scale, shadow) - no RAF, no scroll-driven movement
+// MOBILE: 1 col | TABLET: 2-3 cols | DESKTOP: 4 cols
+// Cards: uniform size, floating effect (shadow + hover + press)
+// Z-INDEX: z-[100] cursor > z-50 modals/banner > z-10 products > z-0 bg
 // ============================================================================
 
 // Static Particle positions - no animation, just visual texture
@@ -217,120 +211,174 @@ function BackgroundSystem() {
   );
 }
 
+// Scroll Dust Effect - subtle sawdust particles on the sides triggered by scroll
+function ScrollDust() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Array<{
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    opacity: number;
+    life: number;
+    maxLife: number;
+    side: 'left' | 'right';
+  }>>([]);
+  const scrollVelocityRef = useRef(0);
+  const lastScrollRef = useRef(0);
+  const rafRef = useRef<number>(0);
+  const isActiveRef = useRef(false);
+
+  const spawnParticles = useCallback((scrollDelta: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const count = Math.min(Math.floor(Math.abs(scrollDelta) * 0.3), 6);
+    const direction = scrollDelta > 0 ? 1 : -1;
+
+    for (let i = 0; i < count; i++) {
+      const side = Math.random() > 0.5 ? 'left' : 'right';
+      const x = side === 'left'
+        ? Math.random() * 80
+        : canvas.width - Math.random() * 80;
+
+      particlesRef.current.push({
+        x,
+        y: Math.random() * canvas.height,
+        vx: side === 'left' ? Math.random() * 1.5 + 0.3 : -(Math.random() * 1.5 + 0.3),
+        vy: direction * (Math.random() * 2 + 1),
+        size: Math.random() * 2.5 + 0.5,
+        opacity: Math.random() * 0.25 + 0.08,
+        life: 0,
+        maxLife: Math.random() * 60 + 40,
+        side,
+      });
+    }
+
+    // Cap particles
+    if (particlesRef.current.length > 80) {
+      particlesRef.current = particlesRef.current.slice(-80);
+    }
+  }, []);
+
+  const animate = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const particles = particlesRef.current;
+    const alive: typeof particles = [];
+
+    for (const p of particles) {
+      p.life++;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy *= 0.98; // friction
+      p.vx *= 0.97;
+
+      const lifeRatio = p.life / p.maxLife;
+      const alpha = lifeRatio < 0.2
+        ? (lifeRatio / 0.2) * p.opacity // fade in
+        : p.opacity * (1 - (lifeRatio - 0.2) / 0.8); // fade out
+
+      if (p.life < p.maxLife && alpha > 0.005) {
+        // Sawdust color: warm brown tones
+        const r = 139 + Math.floor(Math.random() * 20);
+        const g = 119 + Math.floor(Math.random() * 15);
+        const b = 90 + Math.floor(Math.random() * 10);
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+        ctx.fill();
+        alive.push(p);
+      }
+    }
+
+    particlesRef.current = alive;
+
+    if (alive.length > 0 || isActiveRef.current) {
+      rafRef.current = requestAnimationFrame(animate);
+    }
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    let decayTimer: ReturnType<typeof setTimeout>;
+
+    const handleScroll = () => {
+      const now = performance.now();
+      const dt = now - lastScrollRef.current;
+      lastScrollRef.current = now;
+
+      // Get scroll delta from wheel event or estimate from time
+      scrollVelocityRef.current = Math.min(dt > 0 ? 1000 / dt : 0, 50);
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      const delta = e.deltaY;
+      spawnParticles(delta);
+
+      if (!isActiveRef.current) {
+        isActiveRef.current = true;
+        rafRef.current = requestAnimationFrame(animate);
+      }
+
+      clearTimeout(decayTimer);
+      decayTimer = setTimeout(() => {
+        isActiveRef.current = false;
+      }, 300);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('wheel', handleWheel, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(rafRef.current);
+      clearTimeout(decayTimer);
+    };
+  }, [spawnParticles, animate]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none z-40"
+      style={{ opacity: 0.7 }}
+    />
+  );
+}
+
 // Types
 interface Product {
-  id: string;
+  product_key: string;   // key from STRIPE_PRODUCTS (e.g. 'cotton-tee')
   name: string;
-  price: number;
-  category: 'mens' | 'womens' | 'members';
+  price: number;         // dollars (for display)
+  price_id: string;      // Stripe Price ID
+  category: string;
   image: string;
   images: string[];
   description: string;
   sizes: string[];
   colors: string[];
+  color_images: Record<string, string[]>;
+  sku: string;
   isVideo?: boolean;
 }
-
-interface FloatingProduct extends Product {
-  x: number;
-  y: number;
-  zone: 'left' | 'center' | 'right';
-  scale: number;
-  id: string;
-  uniqueKey: string;
-}
-
-// 12 fixed grid positions for desktop layout
-// 4 center (larger, scale 1.1) + 8 sides (smaller, scale 0.7)
-// Center: 2x2 grid in the middle area
-// Sides: 4 left + 4 right, stacked vertically
-const GRID_POSITIONS: Array<{ x: number; y: number; scale: number; zone: 'left' | 'center' | 'right' }> = [
-  // LEFT COLUMN (4 small products)
-  { x: 12, y: 14, scale: 0.7, zone: 'left' },
-  { x: 15, y: 36, scale: 0.7, zone: 'left' },
-  { x: 11, y: 58, scale: 0.7, zone: 'left' },
-  { x: 14, y: 80, scale: 0.7, zone: 'left' },
-  // CENTER (4 large products - 2x2 grid, closer to center)
-  { x: 38, y: 28, scale: 1.0, zone: 'center' },
-  { x: 62, y: 24, scale: 1.0, zone: 'center' },
-  { x: 39, y: 68, scale: 1.0, zone: 'center' },
-  { x: 63, y: 64, scale: 1.0, zone: 'center' },
-  // RIGHT COLUMN (4 small products)
-  { x: 87, y: 12, scale: 0.7, zone: 'right' },
-  { x: 89, y: 34, scale: 0.7, zone: 'right' },
-  { x: 86, y: 56, scale: 0.7, zone: 'right' },
-  { x: 88, y: 78, scale: 0.7, zone: 'right' },
-];
-
-// Mock products
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: 'prod-001',
-    name: 'Camiseta OnSite Amber',
-    price: 29.99,
-    category: 'mens',
-    image: '/products/camiseta-amber.webp',
-    images: ['/products/camiseta-amber-1.webp', '/products/camiseta-amber-2.webp', '/products/camiseta-amber-3.webp'],
-    description: 'Camiseta 100% algodão ringspun, pré-encolhida. Estampa em silk de alta durabilidade. Feita pra aguentar o trabalho pesado.',
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: ['Amber', 'Black', 'White'],
-  },
-  {
-    id: 'prod-002',
-    name: 'Boné OnSite Classic',
-    price: 24.99,
-    category: 'mens',
-    image: '/products/bone-classic.webp',
-    images: ['/products/bone-1.webp', '/products/bone-2.webp', '/products/bone-3.webp'],
-    description: 'Boné estruturado com aba curva. Ajuste snapback. Logo bordado em alta definição.',
-    sizes: ['Único'],
-    colors: ['Black', 'Navy', 'Amber'],
-  },
-  {
-    id: 'prod-003',
-    name: 'Moletom OnSite Heavy',
-    price: 59.99,
-    category: 'mens',
-    image: '/products/moletom-heavy.webp',
-    images: ['/products/moletom-1.webp', '/products/moletom-2.webp', '/products/moletom-3.webp'],
-    description: 'Moletom pesado 400g/m². Capuz forrado. Bolso canguru. Punhos e barra em ribana.',
-    sizes: ['M', 'L', 'XL', 'XXL'],
-    colors: ['Black', 'Gray', 'Navy'],
-  },
-  {
-    id: 'prod-004',
-    name: 'Kit Adesivos OnSite',
-    price: 12.99,
-    category: 'members',
-    image: '/products/adesivos-kit.webp',
-    images: ['/products/adesivos-1.webp', '/products/adesivos-2.webp', '/products/adesivos-3.webp'],
-    description: 'Kit com 5 adesivos vinil premium. Resistente a água e sol. Perfeito pro capacete ou caixa de ferramentas.',
-    sizes: ['Único'],
-    colors: ['Mix'],
-  },
-  {
-    id: 'prod-005',
-    name: 'Camiseta OnSite Black',
-    price: 29.99,
-    category: 'womens',
-    image: '/products/camiseta-black.webp',
-    images: ['/products/camiseta-black-1.webp', '/products/camiseta-black-2.webp', '/products/camiseta-black-3.webp'],
-    description: 'Camiseta 100% algodão ringspun. Corte feminino. Estampa em silk de alta durabilidade.',
-    sizes: ['PP', 'P', 'M', 'G', 'GG'],
-    colors: ['Black', 'White', 'Amber'],
-  },
-  {
-    id: 'prod-006',
-    name: 'Caneca OnSite Builder',
-    price: 19.99,
-    category: 'members',
-    image: '/products/caneca.webp',
-    images: ['/products/caneca-1.webp', '/products/caneca-2.webp', '/products/caneca-3.webp'],
-    description: 'Caneca cerâmica 350ml. Impressão de alta qualidade. Vai bem no microondas e lava-louças.',
-    sizes: ['Único'],
-    colors: ['White', 'Black'],
-  },
-];
 
 // Product Modal Component with focus ritual transitions + draggable image
 function ProductModal({
@@ -345,6 +393,8 @@ function ProductModal({
   const [selectedImage, setSelectedImage] = useState(0);
   const [isEntering, setIsEntering] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
+  const [addedFeedback, setAddedFeedback] = useState(false);
+  const [validationError, setValidationError] = useState('');
   const addItem = useCartStore((state) => state.addItem);
 
   // Image drag/pan state
@@ -352,16 +402,23 @@ function ProductModal({
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, imgX: 0, imgY: 0 });
 
-  // Get all images for carousel
-  const allImages = product ? (product.images && product.images.length > 0 ? product.images : [product.image]) : [];
+  // Get images for carousel — switches based on selected color
+  const allImages = (() => {
+    if (!product) return [];
+    // If a color is selected and has color-specific images, use those
+    if (selectedColor && product.color_images?.[selectedColor]?.length) {
+      return product.color_images[selectedColor];
+    }
+    // Fallback to general images
+    return product.images?.length ? product.images : [product.image];
+  })();
 
   useEffect(() => {
     if (product) {
       setSelectedSize(product.sizes?.[0] || '');
       setSelectedColor(product.colors?.[0] || '');
       setSelectedImage(0);
-      setImgPos({ x: 0, y: 0 }); // Reset pan position
-      // Trigger enter animation
+      setImgPos({ x: 0, y: 0 });
       setIsEntering(true);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setIsEntering(false));
@@ -369,12 +426,17 @@ function ProductModal({
     }
   }, [product]);
 
-  // Reset pan when switching images
+  // Reset carousel when color changes
+  useEffect(() => {
+    setSelectedImage(0);
+    setImgPos({ x: 0, y: 0 });
+  }, [selectedColor]);
+
   useEffect(() => {
     setImgPos({ x: 0, y: 0 });
   }, [selectedImage]);
 
-  // Global mouse move/up for drag (so drag continues outside the container)
+  // Global mouse move/up for drag
   useEffect(() => {
     if (!isDragging) return;
 
@@ -437,28 +499,13 @@ function ProductModal({
     dragStartRef.current = { x: touch.clientX, y: touch.clientY, imgX: imgPos.x, imgY: imgPos.y };
   };
 
-  const handleAddToCart = () => {
-    addItem({
-      product_id: product.id,
-      variant_id: `${product.id}-${selectedSize}-${selectedColor}`,
-      name: product.name,
-      color: selectedColor,
-      size: selectedSize,
-      price: product.price,
-      quantity: 1,
-      image: product.image,
-    });
-    handleClose();
-  };
-
   const handleClose = () => {
     setIsExiting(true);
     setTimeout(onClose, 200);
   };
 
-  const handleCheckout = () => {
-    handleAddToCart();
-    window.location.href = '/cart';
+  const handleJoinWaitlist = () => {
+    window.location.href = '/login';
   };
 
   const handlePrevImage = () => {
@@ -489,7 +536,7 @@ function ProductModal({
         }}
       />
 
-      {/* Modal - FIXED SIZE: never changes based on image */}
+      {/* Modal - FIXED SIZE */}
       <div
         className="relative bg-[#F5F3EF] rounded-2xl overflow-hidden shadow-2xl
           w-[95vw] h-[85vh]
@@ -516,9 +563,8 @@ function ProductModal({
 
         {/* Desktop: Horizontal layout | Mobile: Compact vertical layout */}
         <div className="flex flex-col md:flex-row h-full">
-          {/* Image section - FIXED container, image is pannable */}
+          {/* Image section */}
           <div className="md:w-3/5 p-3 md:p-6 flex-shrink-0 h-[50%] md:h-full">
-            {/* Main image container - fixed size, overflow hidden, draggable */}
             <div
               className="relative w-full h-full rounded-xl overflow-hidden select-none"
               style={{
@@ -564,7 +610,7 @@ function ProductModal({
                 }}
               />
 
-              {/* Image - pannable via drag, covers container */}
+              {/* Image - pannable via drag */}
               {allImages[selectedImage] ? (
                 <img
                   src={allImages[selectedImage]}
@@ -589,7 +635,7 @@ function ProductModal({
                 </div>
               )}
 
-              {/* Drag hint - small icon bottom-right */}
+              {/* Drag hint */}
               {allImages[selectedImage] && (
                 <div className="absolute bottom-2 right-2 z-20 pointer-events-none opacity-40">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -636,15 +682,14 @@ function ProductModal({
             </div>
           </div>
 
-          {/* Product info section - Mobile: ultra compact, Desktop: normal */}
+          {/* Product info section */}
           <div className="md:w-2/5 p-3 md:p-6 md:pl-2 flex flex-col h-[50%] md:h-full overflow-y-auto">
-            {/* Mobile: horizontal layout for name/price, Desktop: vertical */}
             <div className="flex items-start justify-between md:block mb-2 md:mb-0">
               <h2 className="font-mono text-base md:text-xl font-bold text-[#1B2B27] md:mb-1">
                 {product.name}
               </h2>
-              <p className="font-mono text-base md:text-lg text-[#B8860B] font-bold md:mb-2">
-                CA${(product.price ?? 0).toFixed(2)}
+              <p className="font-mono text-xs md:text-sm text-[#B8860B] font-bold tracking-wider uppercase md:mb-2">
+                {product.category === 'members' ? 'COMING SOON' : `CA$${product.price.toFixed(2)}`}
               </p>
             </div>
 
@@ -655,11 +700,10 @@ function ProductModal({
 
             {/* Size and Color selectors in a row on mobile */}
             <div className="flex gap-3 md:block mb-2 md:mb-0">
-              {/* Size selector - compact */}
               {product.sizes?.length > 1 && (
                 <div className="flex-1 md:mb-3">
                   <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">
-                    Tamanho
+                    Size
                   </p>
                   <div className="flex flex-wrap gap-1 md:gap-1.5">
                     {product.sizes.map((size) => (
@@ -679,11 +723,10 @@ function ProductModal({
                 </div>
               )}
 
-              {/* Color selector - compact */}
               {product.colors?.length > 1 && (
                 <div className="flex-1 md:mb-4">
                   <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">
-                    Cor
+                    Color
                   </p>
                   <div className="flex flex-wrap gap-1 md:gap-1.5">
                     {product.colors.map((color) => (
@@ -704,23 +747,94 @@ function ProductModal({
               )}
             </div>
 
-            {/* Spacer to push buttons to bottom on desktop */}
+            {/* Spacer to push button to bottom on desktop */}
             <div className="hidden md:block flex-grow" />
 
-            {/* Action buttons - always visible */}
-            <div className="flex gap-2 mt-2 md:mt-auto">
-              <button
-                onClick={handleAddToCart}
-                className="flex-1 bg-[#1B2B27] text-white font-mono py-2 md:py-2.5 px-3 rounded-lg hover:bg-[#2a3d38] transition-colors uppercase tracking-wider text-[10px] md:text-xs"
-              >
-                Add to Bag
-              </button>
-              <button
-                onClick={handleCheckout}
-                className="flex-1 bg-[#B8860B] text-[#1B2B27] font-mono py-2 md:py-2.5 px-3 rounded-lg hover:bg-[#9A7209] transition-colors uppercase tracking-wider text-[10px] md:text-xs font-bold"
-              >
-                Checkout
-              </button>
+            {/* Action button */}
+            <div className="mt-2 md:mt-auto">
+              {validationError && (
+                <p className="font-mono text-[10px] text-red-500 mb-1.5 text-center">{validationError}</p>
+              )}
+              {product.category === 'members' ? (
+                <button
+                  onClick={handleJoinWaitlist}
+                  className="w-full bg-[#B8860B] text-white font-mono py-2.5 md:py-3 px-3 rounded-lg hover:bg-[#9A7209] transition-colors uppercase tracking-wider text-xs md:text-sm font-bold"
+                >
+                  Join Waitlist
+                </button>
+              ) : !product.price_id ? (
+                <button
+                  disabled
+                  className="w-full font-mono py-2.5 md:py-3 px-3 rounded-lg bg-stone-300 text-stone-500 uppercase tracking-wider text-xs md:text-sm font-bold cursor-not-allowed"
+                >
+                  Coming Soon
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      // Validate selections
+                      if (product.sizes?.length > 1 && !selectedSize) {
+                        setValidationError('Please select a size');
+                        return;
+                      }
+                      if (product.colors?.length > 1 && !selectedColor) {
+                        setValidationError('Please select a color');
+                        return;
+                      }
+                      setValidationError('');
+                      addItem({
+                        product_key: product.product_key,
+                        price_id: product.price_id,
+                        name: product.name,
+                        design: '',
+                        color: selectedColor || product.colors?.[0] || '',
+                        size: selectedSize || product.sizes?.[0] || '',
+                        price: Math.round(product.price * 100),
+                        image: allImages[0] || product.image,
+                      });
+                      setAddedFeedback(true);
+                      setTimeout(() => setAddedFeedback(false), 2000);
+                    }}
+                    className={`flex-1 font-mono py-2.5 md:py-3 px-3 rounded-lg transition-colors uppercase tracking-wider text-xs md:text-sm font-bold ${
+                      addedFeedback
+                        ? 'bg-green-600 text-white'
+                        : 'bg-[#1B2B27] text-white hover:bg-[#2a3f39]'
+                    }`}
+                  >
+                    {addedFeedback ? 'Added!' : 'Add to Bag'}
+                  </button>
+                  <a
+                    href="/checkout"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (product.sizes?.length > 1 && !selectedSize) {
+                        setValidationError('Please select a size');
+                        return;
+                      }
+                      if (product.colors?.length > 1 && !selectedColor) {
+                        setValidationError('Please select a color');
+                        return;
+                      }
+                      setValidationError('');
+                      addItem({
+                        product_key: product.product_key,
+                        price_id: product.price_id,
+                        name: product.name,
+                        design: '',
+                        color: selectedColor || product.colors?.[0] || '',
+                        size: selectedSize || product.sizes?.[0] || '',
+                        price: Math.round(product.price * 100),
+                        image: allImages[0] || product.image,
+                      });
+                      window.location.href = '/checkout';
+                    }}
+                    className="flex-1 font-mono py-2.5 md:py-3 px-3 rounded-lg bg-[#B8860B] text-white hover:bg-[#9A7209] transition-colors uppercase tracking-wider text-xs md:text-sm font-bold text-center"
+                  >
+                    Checkout
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -729,13 +843,13 @@ function ProductModal({
   );
 }
 
-// Floating Product Card - Enhanced with hover preview and micro-interactions
-function FloatingProductCard({
+// Uniform Product Card - same size for all, with floating effect
+function UniformProductCard({
   product,
   onClick,
   onHoverChange,
 }: {
-  product: FloatingProduct;
+  product: Product;
   onClick: () => void;
   onHoverChange?: (isHovering: boolean) => void;
 }) {
@@ -744,21 +858,11 @@ function FloatingProductCard({
   const [showPreview, setShowPreview] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isCenter = product.zone === 'center';
-  // Center images are bigger, sides are smaller - SMALLER on mobile to reduce overlap
-  const size = isCenter ? 'w-36 h-36 md:w-64 md:h-64' : 'w-28 h-28 md:w-44 md:h-44';
+  const maskGradient = 'radial-gradient(ellipse 85% 85% at 50% 50%, black 70%, transparent 100%)';
 
-  // Center column: less blur (85% solid), sides: more blur (40% solid)
-  // Mobile: less aggressive fade to keep product visible
-  const maskGradient = isCenter
-    ? 'radial-gradient(ellipse 85% 85% at 50% 50%, black 70%, transparent 100%)'
-    : 'radial-gradient(ellipse 75% 75% at 50% 50%, black 50%, transparent 100%)';
-
-  // Handle hover with delay for preview
   const handleMouseEnter = () => {
     setIsHovered(true);
     onHoverChange?.(true);
-    // Show preview after 200ms hover - subtle delay
     hoverTimeoutRef.current = setTimeout(() => setShowPreview(true), 200);
   };
 
@@ -771,41 +875,32 @@ function FloatingProductCard({
     }
   };
 
-  // Micro-compression on click (scale 0.98 for 80-120ms)
   const handleMouseDown = () => setIsPressed(true);
   const handleMouseUp = () => {
     setIsPressed(false);
     onClick();
   };
 
-  // Calculate transform with hover and press states
-  const baseScale = product.scale;
-  const hoverScale = isHovered ? 1.05 : 1; // Subtle 5% scale on hover
-  const pressScale = isPressed ? 0.98 : 1; // Micro-compression
-  const finalScale = baseScale * hoverScale * pressScale;
-
-  // Floating shadow - larger offset and blur = appears far from background
-  const floatingShadow = isCenter
-    ? '0 40px 60px -20px rgba(0,0,0,0.15), 0 25px 35px -15px rgba(0,0,0,0.1)'
-    : '0 30px 45px -15px rgba(0,0,0,0.12), 0 20px 25px -10px rgba(0,0,0,0.08)';
+  const hoverScale = isHovered ? 1.05 : 1;
+  const pressScale = isPressed ? 0.98 : 1;
+  const finalScale = hoverScale * pressScale;
 
   return (
     <div
-      className="absolute cursor-pointer"
+      className="relative cursor-pointer"
       style={{
-        left: `${product.x}%`,
-        top: `${product.y}%`,
-        transform: `translate(-50%, -50%) scale(${finalScale})`,
-        zIndex: isHovered ? 50 : (isCenter ? 20 : 10),
-        transition: 'transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 200ms ease-out',
-        filter: `drop-shadow(${isHovered ? '0 50px 70px rgba(0,0,0,0.2)' : floatingShadow.split(',')[0].replace('box-shadow:', '').trim()})`,
+        transform: `scale(${finalScale})`,
+        zIndex: isHovered ? 30 : 10,
+        transition: 'transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
+      onTouchStart={() => onHoverChange?.(true)}
+      onTouchEnd={() => { onHoverChange?.(false); onClick(); }}
     >
-      {/* Floating shadow layer - distant soft shadow */}
+      {/* Floating shadow layer */}
       <div
         className="absolute inset-0 rounded-full"
         style={{
@@ -818,8 +913,7 @@ function FloatingProductCard({
       />
 
       {/* Image with gradient fade border */}
-      <div className={`relative ${size} flex items-center justify-center`}>
-        {/* Gradient mask for soft edges - less blur on center */}
+      <div className="relative aspect-square w-full flex items-center justify-center">
         <div
           className="absolute inset-0 flex items-center justify-center overflow-hidden"
           style={{
@@ -841,24 +935,24 @@ function FloatingProductCard({
               }}
             />
           ) : null}
-          <span className={`${product.image ? 'hidden' : ''} ${isCenter ? 'text-7xl md:text-8xl' : 'text-5xl md:text-6xl'}`}>📦</span>
+          <span className={`${product.image ? 'hidden' : ''} text-6xl md:text-7xl`}>📦</span>
         </div>
 
-        {/* Hover Preview Overlay - shows additional product info */}
+        {/* Hover Preview Overlay */}
         {showPreview && (
           <div
-            className="absolute inset-x-0 -bottom-2 bg-white/95 backdrop-blur-sm rounded-lg p-2 shadow-lg opacity-0 animate-fadeIn"
+            className="absolute inset-x-0 -bottom-2 bg-white/95 backdrop-blur-sm rounded-lg p-2 shadow-lg"
             style={{
               animation: 'fadeIn 150ms ease-out forwards',
+              opacity: 0,
             }}
           >
-            <p className="font-mono text-[10px] text-[#1B2B27]/60 truncate">{product.category}</p>
-            <p className="font-mono text-xs text-[#1B2B27]/80 truncate">{product.sizes?.join(' / ')}</p>
+            <p className="font-mono text-[10px] text-[#1B2B27]/60 truncate">{product.sizes?.join(' / ')}</p>
           </div>
         )}
       </div>
 
-      {/* Floating text - with hover enhancement */}
+      {/* Floating text */}
       <div className="text-center mt-2">
         <p
           className="font-mono text-xs drop-shadow-sm transition-colors duration-200"
@@ -867,98 +961,20 @@ function FloatingProductCard({
           {product.name}
         </p>
         <p
-          className="font-mono text-sm font-bold drop-shadow-sm transition-all duration-200"
+          className="font-mono text-xs font-bold drop-shadow-sm tracking-wider uppercase transition-all duration-200"
           style={{
             color: isHovered ? '#9A7209' : '#B8860B',
             transform: isHovered ? 'scale(1.05)' : 'scale(1)',
           }}
         >
-          CA${(product.price ?? 0).toFixed(2)}
+          {product.category === 'members' ? 'COMING SOON' : `CA$${product.price.toFixed(2)}`}
         </p>
       </div>
     </div>
   );
 }
 
-// Mobile Product Card - column layout, same visual style
-function MobileProductCard({
-  product,
-  onClick,
-  onHoverChange,
-}: {
-  product: Product;
-  onClick: () => void;
-  onHoverChange?: (isHovering: boolean) => void;
-}) {
-  const [isPressed, setIsPressed] = useState(false);
-
-  const handlePress = () => {
-    setIsPressed(true);
-    setTimeout(() => {
-      setIsPressed(false);
-      onClick();
-    }, 80);
-  };
-
-  const maskGradient = 'radial-gradient(ellipse 85% 85% at 50% 50%, black 70%, transparent 100%)';
-
-  return (
-    <div
-      className="relative cursor-pointer w-44 h-44 flex-shrink-0"
-      style={{
-        transform: `scale(${isPressed ? 0.96 : 1})`,
-        transition: 'transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-      }}
-      onTouchStart={() => onHoverChange?.(true)}
-      onTouchEnd={() => onHoverChange?.(false)}
-      onClick={handlePress}
-    >
-      {/* Floating shadow */}
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          transform: 'translateY(20px) scale(0.85)',
-          background: 'radial-gradient(ellipse 100% 60% at 50% 50%, rgba(0,0,0,0.1) 0%, transparent 70%)',
-          filter: 'blur(12px)',
-          opacity: 0.5,
-        }}
-      />
-
-      {/* Image */}
-      <div className="relative w-44 h-44 flex items-center justify-center">
-        <div
-          className="absolute inset-0 flex items-center justify-center overflow-hidden"
-          style={{ maskImage: maskGradient, WebkitMaskImage: maskGradient }}
-        >
-          {product.image ? (
-            <img
-              src={product.image}
-              alt={product.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-              }}
-            />
-          ) : null}
-          <span className={`${product.image ? 'hidden' : ''} text-6xl`}>📦</span>
-        </div>
-      </div>
-
-      {/* Text */}
-      <div className="text-center mt-2">
-        <p className="font-mono text-xs drop-shadow-sm" style={{ color: 'rgba(27, 43, 39, 0.8)' }}>
-          {product.name}
-        </p>
-        <p className="font-mono text-sm font-bold drop-shadow-sm" style={{ color: '#B8860B' }}>
-          CA${(product.price ?? 0).toFixed(2)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Load products from Supabase (only published and active)
+// Load products from Supabase (images/display) + match prices from STRIPE_PRODUCTS
 async function loadProductsFromSupabase(): Promise<Product[]> {
   try {
     const supabase = createClient();
@@ -966,48 +982,45 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
       .from('app_shop_products')
       .select('*, category:categories(slug)')
       .eq('is_active', true)
-      .eq('is_published', true)
       .order('sort_order');
 
-    console.log('[SHOP] Supabase products query:', { count: data?.length, error });
-
-    if (error || !data) {
-      console.error('[SHOP] Error loading products:', error);
-      return MOCK_PRODUCTS;
+    if (error || !data || data.length === 0) {
+      console.error('[SHOP] Error or no products:', error);
+      return [];
     }
 
-    if (data.length === 0) {
-      console.warn('[SHOP] No published products found, using mocks');
-      return MOCK_PRODUCTS;
-    }
+    // Match each Supabase product to STRIPE_PRODUCTS by SKU
+    return data.map((p: any) => {
+      const stripeMatch = Object.entries(STRIPE_PRODUCTS).find(
+        ([, sp]) => sp.sku === p.sku
+      );
 
-    console.log('[SHOP] Loaded products:', data.map((p: any) => ({ name: p.name, images: p.images?.length })));
-
-    return data.map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      price: p.base_price ?? 0,
-      category: p.category?.slug || 'mens',
-      image: p.images?.[0] || '/products/placeholder.webp',
-      images: p.images || [],
-      description: p.description || '',
-      sizes: p.sizes || [],
-      colors: p.colors || [],
-    }));
+      return {
+        product_key: stripeMatch?.[0] || p.sku || p.id,
+        name: p.name,
+        price: stripeMatch ? stripeMatch[1].price / 100 : p.base_price ?? 0,
+        price_id: stripeMatch?.[1].priceId || '',
+        category: p.category?.slug || 'mens',
+        image: p.primary_image || p.images?.[0] || '/products/placeholder.webp',
+        images: p.images || [],
+        description: p.description || '',
+        sizes: p.sizes || [],
+        colors: p.colors || [],
+        color_images: p.color_images || {},
+        sku: p.sku || '',
+      };
+    });
   } catch {
-    return MOCK_PRODUCTS;
+    return [];
   }
 }
 
 // Main Page Component
 export default function ShopPage() {
-  const [activeCategory, setActiveCategory] = useState<'mens' | 'womens' | 'members'>('mens');
+  const [activeView, setActiveView] = useState<'all' | 'members'>('all');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [floatingProducts, setFloatingProducts] = useState<FloatingProduct[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const cartItems = useCartStore((state) => state.items);
-
   const [isHoveringProduct, setIsHoveringProduct] = useState(false);
   const [isModalOpening, setIsModalOpening] = useState(false);
 
@@ -1016,53 +1029,21 @@ export default function ShopPage() {
     loadProductsFromSupabase().then(setProducts);
   }, []);
 
-  // Detect mobile
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  // Get display products: filter by view, then repeat to fill 12 slots
+  const filteredProducts = activeView === 'members'
+    ? products.filter(p => p.category === 'members')
+    : products;
 
-  // Initialize products in fixed grid positions (no animation)
-  const initializeProducts = useCallback(() => {
-    const categoryProducts = products.filter(p => p.category === activeCategory);
-    if (categoryProducts.length === 0) return;
-
-    const positions = GRID_POSITIONS;
-    const floatingItems: FloatingProduct[] = positions.map((pos, i) => {
-      const product = categoryProducts[i % categoryProducts.length];
-      // Add small random jitter (+/- 2%) for organic feel
-      const jitterX = (Math.random() - 0.5) * 4;
-      const jitterY = (Math.random() - 0.5) * 4;
-
-      return {
-        ...product,
-        uniqueKey: `grid-${i}-${activeCategory}-${Date.now()}`,
-        x: pos.x + jitterX,
-        y: pos.y + jitterY,
-        zone: pos.zone,
-        scale: pos.scale,
-      };
-    });
-
-    setFloatingProducts(floatingItems);
-  }, [activeCategory, products]);
-
-  useEffect(() => {
-    initializeProducts();
-  }, [initializeProducts]);
-
-  const categories: Array<{ key: 'mens' | 'womens' | 'members'; label: string }> = [
-    { key: 'mens', label: 'MENS' },
-    { key: 'womens', label: 'WOMENS' },
-    { key: 'members', label: 'MEMBERS' },
-  ];
+  const displayProducts: Product[] = [];
+  if (filteredProducts.length > 0) {
+    for (let i = 0; i < 12; i++) {
+      displayProducts.push(filteredProducts[i % filteredProducts.length]);
+    }
+  }
 
   // Modal opening handler with focus ritual
   const handleProductClick = (product: Product) => {
     setIsModalOpening(true);
-    // Micro-delay for focus ritual effect
     setTimeout(() => {
       setSelectedProduct(product);
       setIsModalOpening(false);
@@ -1070,13 +1051,13 @@ export default function ShopPage() {
   };
 
   return (
-    <div className={`relative w-full ${isMobile ? 'min-h-screen overflow-y-auto' : 'h-screen overflow-hidden'}`}>
+    <div className="relative w-full min-h-screen overflow-y-auto">
       {/* Custom Cursor - desktop only */}
       <CustomCursor isHovering={isHoveringProduct} label={isHoveringProduct ? 'VIEW' : ''} />
 
       {/* Grainy 3D Background */}
       <div
-        className={`${isMobile ? 'fixed' : 'absolute'} inset-0`}
+        className="fixed inset-0"
         style={{
           background: 'linear-gradient(135deg, #D4CFC4 0%, #C9C4B8 50%, #BEB9AD 100%)',
         }}
@@ -1094,162 +1075,97 @@ export default function ShopPage() {
         <BackgroundSystem />
       </div>
 
-      {/* Top Header - Logo left */}
-      <header className="absolute top-0 left-0 right-0 z-40 px-4 md:px-6 py-4 md:py-5">
-        <div className="flex items-center justify-start">
-          {/* Logo - left aligned */}
-          <a href="https://website2-tau-green.vercel.app/#home">
+      {/* Scroll Dust - sawdust particles on edges when scrolling */}
+      <ScrollDust />
+
+      {/* ================================================================
+          TOP BANNER - Full width, semi-transparent
+          Logo | WEAR WHAT YOU DO | SHOP MEMBERS BAG
+          ================================================================ */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#D4CFC4]/70 backdrop-blur-md border-b border-[#1B2B27]/10">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+          {/* Logo - left */}
+          <a href="https://website2-tau-green.vercel.app/#home" className="flex-shrink-0">
             <img
               src="/assets/logo-onsite-club.png"
               alt="OnSite Club"
-              className="h-8 md:h-10 w-auto"
+              className="h-7 md:h-9 w-auto"
             />
           </a>
+
+          {/* Tagline - center (hidden on mobile) */}
+          <p className="hidden md:block font-mono text-[11px] text-[#1B2B27]/50 tracking-[0.3em] uppercase absolute left-1/2 -translate-x-1/2">
+            Built For Those Who Build
+          </p>
+
+          {/* Navigation - right */}
+          <nav className="flex items-center gap-4 md:gap-6">
+            <button
+              onClick={() => setActiveView('all')}
+              className={`group relative font-mono text-[10px] md:text-xs tracking-[0.2em] uppercase transition-all duration-300
+                ${activeView === 'all'
+                  ? 'text-[#1B2B27] font-bold'
+                  : 'text-[#1B2B27]/50 hover:text-[#1B2B27]'
+                }`}
+            >
+              SHOP
+              <span
+                className={`absolute -bottom-1 left-0 h-[2px] bg-[#B8860B] transition-all duration-300 origin-left rotate-[-4deg]
+                  ${activeView === 'all' ? 'w-full' : 'w-0 group-hover:w-full'}`}
+              />
+            </button>
+            <button
+              onClick={() => setActiveView('members')}
+              className={`group relative font-mono text-[10px] md:text-xs tracking-[0.2em] uppercase transition-all duration-300
+                ${activeView === 'members'
+                  ? 'text-[#1B2B27] font-bold'
+                  : 'text-[#1B2B27]/50 hover:text-[#1B2B27]'
+                }`}
+            >
+              MEMBERS
+              <span
+                className={`absolute -bottom-1 left-0 h-[2px] bg-[#B8860B] transition-all duration-300 origin-left rotate-[-4deg]
+                  ${activeView === 'members' ? 'w-full' : 'w-0 group-hover:w-full'}`}
+              />
+            </button>
+            <a
+              href="/cart"
+              className={`group relative font-mono text-[10px] md:text-xs tracking-[0.2em] uppercase transition-all duration-300
+                ${cartItems.length > 0
+                  ? 'text-[#1B2B27] font-bold'
+                  : 'text-[#1B2B27]/50 hover:text-[#1B2B27]'
+                }`}
+            >
+              BAG{cartItems.length > 0 && <span className="text-[#B8860B] ml-1">({cartItems.length})</span>}
+              <span
+                className={`absolute -bottom-1 left-0 h-[2px] bg-[#B8860B] transition-all duration-300 origin-left rotate-[-4deg]
+                  ${cartItems.length > 0 ? 'w-full' : 'w-0 group-hover:w-full'}`}
+              />
+            </a>
+          </nav>
         </div>
       </header>
 
-      {/* ================================================================
-          LEFT SIDEBAR - Categories Navigation
-          DESKTOP ONLY: visible on screens >= 640px (sm:)
-          Position: Bottom-left corner
-          z-index: 50 (above floating products)
-          ================================================================ */}
-      <nav className="fixed left-6 lg:left-10 bottom-10 z-50 hidden sm:flex flex-col gap-4">
-        {categories.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setActiveCategory(key)}
-            className={`group relative font-mono text-xs tracking-[0.2em] transition-all duration-300 text-left
-              ${activeCategory === key
-                ? 'text-[#1B2B27] font-bold scale-110 translate-x-2'
-                : 'text-[#1B2B27]/50 hover:text-[#1B2B27] hover:scale-110 hover:translate-x-2'
-              }`}
-          >
-            {label}
-            {/* Diagonal underline on hover/active */}
-            <span
-              className={`absolute -bottom-1 left-0 h-[2px] bg-[#B8860B] transition-all duration-300 origin-left
-                ${activeCategory === key
-                  ? 'w-full rotate-[-8deg]'
-                  : 'w-0 group-hover:w-full rotate-[-8deg]'
-                }`}
-              style={{ transformOrigin: 'left center' }}
-            />
-          </button>
-        ))}
-      </nav>
-
-      {/* ================================================================
-          RIGHT SIDEBAR - BAG / LOGIN / SITE
-          DESKTOP ONLY: visible on screens >= 640px (sm:)
-          Position: Bottom-right corner
-          z-index: 50 (above floating products)
-          ================================================================ */}
-      <nav className="fixed right-6 lg:right-10 bottom-10 z-50 hidden sm:flex flex-col gap-4 items-end">
-        <a
-          href="/cart"
-          className={`group relative font-mono text-xs tracking-[0.2em] transition-all duration-300
-            ${cartItems.length > 0
-              ? 'text-[#1B2B27] font-bold scale-110 -translate-x-2'
-              : 'text-[#1B2B27]/50 hover:text-[#1B2B27] hover:scale-110 hover:-translate-x-2'
-            }`}
-        >
-          BAG{cartItems.length > 0 && <span className="text-[#B8860B] ml-1">({cartItems.length})</span>}
-          {/* Always show underline when cart has items, hover for empty */}
-          <span
-            className={`absolute -bottom-1 right-0 h-[2px] bg-[#B8860B] rotate-[8deg] transition-all duration-300 origin-right
-              ${cartItems.length > 0 ? 'w-full' : 'w-0 group-hover:w-full'}`}
-          />
-        </a>
-        <a
-          href="/login"
-          className="group relative font-mono text-xs tracking-[0.2em] text-[#1B2B27]/50 hover:text-[#1B2B27] hover:scale-110 hover:-translate-x-2 transition-all duration-300"
-        >
-          LOGIN
-          <span className="absolute -bottom-1 right-0 h-[2px] w-0 bg-[#B8860B] group-hover:w-full rotate-[8deg] transition-all duration-300 origin-right" />
-        </a>
-        <a
-          href="https://website2-tau-green.vercel.app/#home"
-          className="group relative font-mono text-xs tracking-[0.2em] text-[#1B2B27]/50 hover:text-[#1B2B27] hover:scale-110 hover:-translate-x-2 transition-all duration-300"
-        >
-          SITE
-          <span className="absolute -bottom-1 right-0 h-[2px] w-0 bg-[#B8860B] group-hover:w-full rotate-[8deg] transition-all duration-300 origin-right" />
-        </a>
-      </nav>
-
-      {/* ================================================================
-          MOBILE MENU - Horizontal navigation bar
-          MOBILE ONLY: visible on screens < 640px (hidden on sm:)
-          Position: Top of screen, below header
-          z-index: 40
-          ================================================================ */}
-      <nav className="sm:hidden fixed top-16 left-0 right-0 z-40 px-4 py-2 flex justify-center gap-4 bg-[#D4CFC4]/80 backdrop-blur-sm">
-        {categories.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setActiveCategory(key)}
-            className={`font-mono text-[10px] tracking-wider transition-all ${
-              activeCategory === key
-                ? 'text-[#1B2B27] font-bold'
-                : 'text-[#1B2B27]/50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-        <a
-          href="/cart"
-          className={`font-mono text-[10px] tracking-wider transition-all ${
-            cartItems.length > 0
-              ? 'text-[#1B2B27] font-bold'
-              : 'text-[#1B2B27]/50'
-          }`}
-        >
-          BAG{cartItems.length > 0 && <span className="text-[#B8860B]">({cartItems.length})</span>}
-        </a>
-      </nav>
-
-      {/* Products - Desktop: Fixed positions / Mobile: Scrollable column */}
-      {isMobile ? (
-        /* MOBILE: Scrollable column layout */
-        <div
-          className="relative z-10 flex flex-col items-center gap-6 pt-28 pb-20 px-4"
-          style={{
-            opacity: isModalOpening ? 0.95 : 1,
-            transform: isModalOpening ? 'scale(0.995)' : 'scale(1)',
-            transition: 'all 200ms',
-          }}
-        >
-          {products
-            .filter(p => p.category === activeCategory)
-            .map((product, i) => (
-              <MobileProductCard
-                key={`mobile-${product.id}-${i}`}
-                product={product}
-                onClick={() => handleProductClick(product)}
-                onHoverChange={setIsHoveringProduct}
-              />
-            ))}
-        </div>
-      ) : (
-        /* DESKTOP: 12 Fixed grid positions */
-        <div
-          className="absolute inset-0 transition-all duration-200"
-          style={{
-            opacity: isModalOpening ? 0.95 : 1,
-            transform: isModalOpening ? 'scale(0.995)' : 'scale(1)',
-          }}
-        >
-          {floatingProducts.map((product) => (
-            <FloatingProductCard
-              key={product.uniqueKey}
+      {/* Product Grid - Uniform cards */}
+      <div
+        className="relative z-10 max-w-6xl mx-auto pt-24 md:pt-28 px-6 pb-12"
+        style={{
+          opacity: isModalOpening ? 0.95 : 1,
+          transform: isModalOpening ? 'scale(0.995)' : 'scale(1)',
+          transition: 'all 200ms',
+        }}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-6">
+          {displayProducts.map((product, i) => (
+            <UniformProductCard
+              key={`product-${product.product_key}-${i}`}
               product={product}
               onClick={() => handleProductClick(product)}
               onHoverChange={setIsHoveringProduct}
             />
           ))}
         </div>
-      )}
+      </div>
 
       {/* Product Modal */}
       {selectedProduct && (
@@ -1259,14 +1175,11 @@ export default function ShopPage() {
         />
       )}
 
-      {/* Bottom tagline */}
-      <div className={`${isMobile ? 'relative mt-4 mb-6' : 'absolute bottom-6'} left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2`}>
-        <p className="font-mono text-xs text-[#1B2B27]/50 tracking-[0.3em] uppercase">
-          Wear What You Do
-        </p>
+      {/* Admin link - discrete */}
+      <div className="relative z-10 text-center pb-6">
         <a
           href="/admin"
-          className="font-mono text-[10px] text-[#1B2B27]/30 hover:text-[#1B2B27]/60 transition-colors"
+          className="font-mono text-[10px] text-[#1B2B27]/20 hover:text-[#1B2B27]/50 transition-colors"
         >
           Admin
         </a>

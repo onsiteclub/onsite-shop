@@ -36,7 +36,7 @@ export default function LoginPage() {
 
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
-            setError('Email ou senha incorretos');
+            setError('Invalid email or password');
           } else {
             setError(error.message);
           }
@@ -62,7 +62,7 @@ export default function LoginPage() {
 
         if (error) {
           if (error.message.includes('already registered')) {
-            setError('Este email já está cadastrado. Faça login.');
+            setError('This email is already registered. Please sign in.');
           } else {
             setError(error.message);
           }
@@ -70,12 +70,12 @@ export default function LoginPage() {
         }
 
         if (data.user) {
-          setSuccess('Conta criada! Verifique seu email para confirmar.');
+          setSuccess('Account created! Check your email to confirm.');
           setIsLogin(true);
         }
       }
     } catch (err) {
-      setError('Erro ao processar. Tente novamente.');
+      setError('Error processing. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -106,10 +106,10 @@ export default function LoginPage() {
             />
           </Link>
           <h1 className="font-mono text-2xl font-bold text-[#1B2B27]">
-            {isLogin ? 'Entrar' : 'Criar Conta'}
+            {isLogin ? 'Sign In' : 'Create Account'}
           </h1>
           <p className="font-mono text-sm text-[#1B2B27]/60 mt-2">
-            {isLogin ? 'Acesse sua conta OnSite' : 'Junte-se à comunidade OnSite'}
+            {isLogin ? 'Access your OnSite account' : 'Join the OnSite community'}
           </p>
         </div>
 
@@ -138,7 +138,7 @@ export default function LoginPage() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Continuar com Google
+            Continue with Google
           </button>
 
           <div className="relative mb-6">
@@ -146,7 +146,7 @@ export default function LoginPage() {
               <div className="w-full border-t border-gray-200"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white font-mono text-gray-400">ou</span>
+              <span className="px-4 bg-white font-mono text-gray-400">or</span>
             </div>
           </div>
 
@@ -155,14 +155,14 @@ export default function LoginPage() {
             {!isLogin && (
               <div>
                 <label className="block font-mono text-sm text-[#1B2B27] mb-2">
-                  Nome completo
+                  Full name
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="input"
-                  placeholder="Seu nome"
+                  placeholder="Your name"
                   required={!isLogin}
                 />
               </div>
@@ -177,14 +177,14 @@ export default function LoginPage() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="input"
-                placeholder="seu@email.com"
+                placeholder="your@email.com"
                 required
               />
             </div>
 
             <div>
               <label className="block font-mono text-sm text-[#1B2B27] mb-2">
-                Senha
+                Password
               </label>
               <input
                 type="password"
@@ -203,7 +203,7 @@ export default function LoginPage() {
                   href="/forgot-password"
                   className="font-mono text-xs text-[#F6C343] hover:underline"
                 >
-                  Esqueceu a senha?
+                  Forgot password?
                 </Link>
               </div>
             )}
@@ -213,13 +213,13 @@ export default function LoginPage() {
               disabled={isLoading}
               className="btn-accent w-full disabled:opacity-50"
             >
-              {isLoading ? 'Carregando...' : (isLogin ? 'Entrar' : 'Criar conta')}
+              {isLoading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
           </form>
 
           {/* Toggle Login/Register */}
           <p className="text-center font-mono text-sm text-[#1B2B27]/60 mt-6">
-            {isLogin ? 'Não tem conta?' : 'Já tem conta?'}{' '}
+            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button
               onClick={() => {
                 setIsLogin(!isLogin);
@@ -228,7 +228,7 @@ export default function LoginPage() {
               }}
               className="text-[#F6C343] font-bold hover:underline"
             >
-              {isLogin ? 'Criar conta' : 'Fazer login'}
+              {isLogin ? 'Create account' : 'Sign in'}
             </button>
           </p>
         </div>
@@ -239,7 +239,7 @@ export default function LoginPage() {
             href="/"
             className="font-mono text-sm text-[#1B2B27]/60 hover:text-[#1B2B27]"
           >
-            ← Voltar para a loja
+            ← Back to shop
           </Link>
         </div>
       </div>

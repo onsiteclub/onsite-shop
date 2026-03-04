@@ -3,15 +3,15 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'OnSite Shop - Wear What You Do',
-  description: 'Roupas e acessórios para quem constrói o Canadá. Camisetas, bonés, moletons e mais.',
-  keywords: ['construction', 'workwear', 'canada', 'onsite', 'camisetas', 'construção'],
+  description: 'Clothing and accessories for those who build Canada. Tees, caps, hoodies and more.',
+  keywords: ['construction', 'workwear', 'canada', 'onsite', 'tees', 'hoodies'],
   authors: [{ name: 'OnSite Club' }],
   openGraph: {
     title: 'OnSite Shop - Wear What You Do',
-    description: 'Roupas e acessórios para quem constrói o Canadá.',
+    description: 'Clothing and accessories for those who build Canada.',
     url: 'https://shop.onsiteclub.ca',
     siteName: 'OnSite Shop',
-    locale: 'pt_BR',
+    locale: 'en_CA',
     type: 'website',
   },
 }
@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

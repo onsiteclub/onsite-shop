@@ -4,26 +4,102 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
+// ============================================
+// CONSTANTS
+// ============================================
+
+const AVAILABLE_COLORS = [
+  { name: 'White', hex: '#FFFFFF' },
+  { name: 'Black', hex: '#1B1B1B' },
+  { name: 'Amber', hex: '#B8860B' },
+  { name: 'Charcoal', hex: '#36454F' },
+  { name: 'Light Grey', hex: '#D3D3D3' },
+  { name: 'Construction Green', hex: '#2D5A27' },
+  { name: 'Green', hex: '#228B22' },
+];
+
+const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
+// ============================================
+// PRODUCT TEMPLATES
+// ============================================
+
+const PRODUCT_TEMPLATES: Record<string, {
+  name: string;
+  description: string;
+  sku: string;
+  stripe_price_id: string;
+  base_price: number;
+  sizes: string[];
+  colors: string[];
+}> = {
+  'cotton-tee': {
+    name: 'OnSite Cotton Tee',
+    description: '100% ringspun cotton tee, pre-shrunk. High-durability screen print. Built to handle the tough work.',
+    sku: 'OS-CTN-TEE',
+    stripe_price_id: 'price_1T6yaQGntiIt3xkawNdIb3ek',
+    base_price: 29.99,
+    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    colors: ['Black', 'White', 'Amber', 'Charcoal'],
+  },
+  'sport-tee': {
+    name: 'OnSite Sport Tee',
+    description: 'Moisture-wicking performance fabric. Lightweight and breathable. Built for long days on the job site.',
+    sku: 'OS-SPT-TEE',
+    stripe_price_id: 'price_1T6ybPGntiIt3xkaA7NoCQ4e',
+    base_price: 34.99,
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    colors: ['Black', 'Charcoal', 'Construction Green'],
+  },
+  'hoodie': {
+    name: 'OnSite Heavy Hoodie',
+    description: 'Heavyweight 400g/m² hoodie. Lined hood. Kangaroo pocket. Ribbed cuffs and hem. Made for Canadian winters.',
+    sku: 'OS-HOODIE',
+    stripe_price_id: 'price_1T6ydIGntiIt3xkaOI5uKbgH',
+    base_price: 49.99,
+    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    colors: ['Black', 'Charcoal', 'Construction Green'],
+  },
+  'cap': {
+    name: 'OnSite Classic Cap',
+    description: 'Structured cap with curved brim. Snapback fit. High-definition embroidered logo.',
+    sku: 'OS-CP',
+    stripe_price_id: 'price_1T6ylSGntiIt3xka7i5gMdhM',
+    base_price: 39.99,
+    sizes: ['One Size'],
+    colors: ['Black', 'Amber', 'Construction Green'],
+  },
+  'sticker-kit': {
+    name: 'OnSite Sticker Kit',
+    description: '5-pack premium vinyl stickers. Water and sun resistant. Perfect for your hard hat or toolbox.',
+    sku: 'OS-STICKER',
+    stripe_price_id: 'price_1T6yfRGntiIt3xkaNuMeFJSF',
+    base_price: 9.99,
+    sizes: ['One Size'],
+    colors: [],
+  },
+};
+
+// ============================================
+// TYPES
+// ============================================
+
 interface Product {
   id: string;
   name: string;
   slug: string;
   description: string;
   base_price: number;
+  sku: string;
+  stripe_price_id: string;
   images: string[];
   sizes: string[];
   colors: string[];
+  color_images: Record<string, string[]>;
+  primary_image: string;
   is_active: boolean;
   is_featured: boolean;
   is_published: boolean;
-  category_id: string;
-  category?: { slug: string };
-}
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
 }
 
 export default function AdminPage() {
@@ -31,7 +107,6 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -83,23 +158,13 @@ export default function AdminPage() {
   }
 
   async function loadData() {
-    // Load categories
-    const { data: cats } = await supabase
-      .from('categories')
-      .select('*')
-      .order('sort_order');
-
-    if (cats) setCategories(cats);
-
-    // Load products (app_shop_products - schema by Blue)
     const { data: prods } = await supabase
       .from('app_shop_products')
-      .select('*, category:categories(slug)')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (prods) {
       setProducts(prods);
-      // Check if there are unpublished products
       const unpublished = prods.some((p: Product) => !p.is_published);
       setHasUnpublishedChanges(unpublished);
     }
@@ -116,14 +181,13 @@ export default function AdminPage() {
       if (error) throw error;
 
       await loadData();
-      showToast('Alterações publicadas no Shop!', 'success');
+      showToast('Changes published to Shop!', 'success');
     } catch (error: any) {
-      showToast('Erro ao publicar: ' + error.message, 'error');
+      showToast('Error publishing: ' + error.message, 'error');
     } finally {
       setPublishing(false);
     }
   }
-
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -144,7 +208,6 @@ export default function AdminPage() {
     if (data.user) {
       setUser(data.user);
 
-      // Check if user is admin
       const { data: admin } = await supabase
         .from('admin_users')
         .select('*')
@@ -170,52 +233,43 @@ export default function AdminPage() {
     setSaving(true);
 
     try {
+      const productData = {
+        name: product.name,
+        slug: product.slug || product.name?.toLowerCase().replace(/\s+/g, '-'),
+        description: product.description,
+        base_price: product.base_price,
+        sku: product.sku || '',
+        stripe_price_id: product.stripe_price_id || '',
+        images: product.images || [],
+        sizes: product.sizes || [],
+        colors: product.colors || [],
+        color_images: product.color_images || {},
+        primary_image: product.primary_image || '',
+        is_active: product.is_active ?? true,
+        is_featured: product.is_featured ?? false,
+        is_published: false,
+      };
+
       if (product.id) {
-        // Update - mark as unpublished (draft)
         const { error } = await supabase
           .from('app_shop_products')
-          .update({
-            name: product.name,
-            slug: product.slug,
-            description: product.description,
-            base_price: product.base_price,
-            images: product.images,
-            sizes: product.sizes,
-            colors: product.colors,
-            is_active: product.is_active,
-            is_featured: product.is_featured,
-            is_published: false, // Mark as draft until published
-            category_id: product.category_id,
-          })
+          .update(productData)
           .eq('id', product.id);
 
         if (error) throw error;
       } else {
-        // Insert - new products start as unpublished
         const { error } = await supabase
           .from('app_shop_products')
-          .insert({
-            name: product.name,
-            slug: product.slug || product.name?.toLowerCase().replace(/\s+/g, '-'),
-            description: product.description,
-            base_price: product.base_price,
-            images: product.images || [],
-            sizes: product.sizes || [],
-            colors: product.colors || [],
-            is_active: product.is_active ?? true,
-            is_featured: product.is_featured ?? false,
-            is_published: false, // New products are drafts
-            category_id: product.category_id,
-          });
+          .insert(productData);
 
         if (error) throw error;
       }
 
       await loadData();
       setEditingProduct(null);
-      showToast('Produto salvo com sucesso!', 'success');
+      showToast('Product saved successfully!', 'success');
     } catch (error: any) {
-      showToast('Erro ao salvar: ' + error.message, 'error');
+      showToast('Error saving: ' + error.message, 'error');
     } finally {
       setSaving(false);
     }
@@ -227,7 +281,7 @@ export default function AdminPage() {
   }
 
   async function handleDeleteProduct(id: string) {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    if (!confirm('Are you sure you want to delete this product?')) return;
 
     const { error } = await supabase
       .from('app_shop_products')
@@ -235,10 +289,10 @@ export default function AdminPage() {
       .eq('id', id);
 
     if (error) {
-      showToast('Erro ao excluir: ' + error.message, 'error');
+      showToast('Error deleting: ' + error.message, 'error');
     } else {
       await loadData();
-      showToast('Produto excluído!', 'success');
+      showToast('Product deleted!', 'success');
     }
   }
 
@@ -263,7 +317,7 @@ export default function AdminPage() {
       .upload(filePath, file);
 
     if (error) {
-      alert('Erro no upload: ' + error.message);
+      alert('Upload error: ' + error.message);
       return null;
     }
 
@@ -278,7 +332,7 @@ export default function AdminPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-grain flex items-center justify-center">
-        <p className="font-mono text-[#1B2B27]">Carregando...</p>
+        <p className="font-mono text-[#1B2B27]">Loading...</p>
       </div>
     );
   }
@@ -303,13 +357,13 @@ export default function AdminPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input"
-                placeholder="admin@exemplo.com"
+                placeholder="admin@example.com"
                 required
               />
             </div>
 
             <div>
-              <label className="block font-mono text-sm text-[#1B2B27] mb-2">Senha</label>
+              <label className="block font-mono text-sm text-[#1B2B27] mb-2">Password</label>
               <input
                 type="password"
                 value={password}
@@ -325,13 +379,13 @@ export default function AdminPage() {
               disabled={loginLoading}
               className="btn-primary w-full disabled:opacity-50"
             >
-              {loginLoading ? 'Entrando...' : 'Entrar'}
+              {loginLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
           <div className="text-center mt-4">
             <Link href="/" className="font-mono text-sm text-[#1B2B27]/60 hover:text-[#1B2B27]">
-              ← Voltar para loja
+              ← Back to shop
             </Link>
           </div>
         </div>
@@ -344,12 +398,12 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-grain flex items-center justify-center px-4">
         <div className="relative z-10 w-full max-w-sm text-center">
-          <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-2">Acesso Negado</h1>
+          <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-2">Access Denied</h1>
           <p className="font-mono text-sm text-[#1B2B27]/60 mb-4">
-            {user.email} não tem permissão de admin.
+            {user.email} does not have admin permissions.
           </p>
           <button onClick={handleLogout} className="btn-secondary">
-            Sair
+            Sign Out
           </button>
         </div>
       </div>
@@ -381,11 +435,11 @@ export default function AdminPage() {
                 onClick={() => setEditingProduct(null)}
                 className="font-mono text-sm text-white/60 hover:text-white flex items-center gap-1"
               >
-                ← Voltar
+                ← Back
               </button>
               <span className="font-mono text-sm text-white/40">|</span>
               <h2 className="font-mono text-sm font-medium text-white">
-                {editingProduct.id ? 'Editar Produto' : 'Novo Produto'}
+                {editingProduct.id ? 'Edit Product' : 'New Product'}
               </h2>
             </div>
             <div className="flex items-center gap-3">
@@ -393,13 +447,13 @@ export default function AdminPage() {
                 href="/"
                 className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg border border-white/20 hover:border-white/40 transition-colors"
               >
-                Ver Loja
+                View Shop
               </Link>
               <button
                 onClick={() => setEditingProduct(null)}
                 className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5"
               >
-                Cancelar
+                Cancel
               </button>
             </div>
           </div>
@@ -408,7 +462,6 @@ export default function AdminPage() {
         <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
           <ProductForm
             product={editingProduct}
-            categories={categories}
             onSave={handleSaveProduct}
             onCancel={() => setEditingProduct(null)}
             onUpload={handleImageUpload}
@@ -441,9 +494,9 @@ export default function AdminPage() {
           <div>
             <h1 className="font-mono text-2xl font-bold text-[#1B2B27]">Admin Dashboard</h1>
             <p className="font-mono text-sm text-[#1B2B27]/60">
-              {user.email} • {products.length} produtos
+              {user.email} • {products.length} products
               {hasUnpublishedChanges && (
-                <span className="ml-2 text-amber-600">• Alterações não publicadas</span>
+                <span className="ml-2 text-amber-600">• Unpublished changes</span>
               )}
             </p>
           </div>
@@ -452,7 +505,7 @@ export default function AdminPage() {
               href="/admin/orders"
               className="bg-[#1B2B27] hover:bg-[#2a3f39] text-white font-mono text-sm py-2 px-4 rounded-xl transition-colors"
             >
-              📦 Pedidos
+              Orders
             </Link>
             {hasUnpublishedChanges && (
               <button
@@ -460,12 +513,12 @@ export default function AdminPage() {
                 disabled={publishing}
                 className="bg-green-500 hover:bg-green-600 text-white font-mono text-sm py-2 px-4 rounded-xl disabled:opacity-50 transition-colors"
               >
-                {publishing ? 'Publicando...' : 'Publicar no Shop'}
+                {publishing ? 'Publishing...' : 'Publish to Shop'}
               </button>
             )}
-            <Link href="/" className="btn-secondary">Ver Loja</Link>
+            <Link href="/" className="btn-secondary">View Shop</Link>
             <button onClick={handleLogout} className="font-mono text-sm text-red-500">
-              Sair
+              Sign Out
             </button>
           </div>
         </div>
@@ -478,17 +531,20 @@ export default function AdminPage() {
             slug: '',
             description: '',
             base_price: 0,
+            sku: '',
+            stripe_price_id: '',
             images: [],
-            sizes: ['P', 'M', 'G', 'GG'],
+            sizes: ['S', 'M', 'L', 'XL'],
             colors: [],
+            color_images: {},
+            primary_image: '',
             is_active: true,
             is_featured: false,
             is_published: false,
-            category_id: categories[0]?.id || '',
           })}
           className="btn-accent mb-6"
         >
-          + Adicionar Produto
+          + Add Product
         </button>
 
         {/* Products grid */}
@@ -503,25 +559,40 @@ export default function AdminPage() {
               <div className="flex items-start gap-4">
                 {product.images?.[0] ? (
                   <img
-                    src={product.images[0]}
+                    src={product.primary_image || product.images[0]}
                     alt={product.name}
                     className="w-20 h-20 object-cover rounded-xl"
                   />
                 ) : (
-                  <div className="w-20 h-20 bg-stone-100 rounded-xl flex items-center justify-center text-4xl">
-                    📦
+                  <div className="w-20 h-20 bg-stone-100 rounded-xl flex items-center justify-center text-2xl font-mono text-stone-300">
+                    ?
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-mono font-medium text-[#1B2B27] truncate">
                     {product.name}
                   </h3>
-                  <p className="font-mono text-sm text-[#1B2B27]/60">
-                    {product.category?.slug || 'sem categoria'}
+                  <p className="font-mono text-xs text-[#1B2B27]/40">
+                    {product.sku || 'no SKU'}
                   </p>
                   <p className="font-mono text-lg font-bold text-[#F6C343]">
-                    CA${product.base_price.toFixed(2)}
+                    CA${product.base_price?.toFixed(2)}
                   </p>
+                  {product.colors?.length > 0 && (
+                    <div className="flex gap-1 mt-1">
+                      {product.colors.map((color) => {
+                        const def = AVAILABLE_COLORS.find(c => c.name === color);
+                        return (
+                          <span
+                            key={color}
+                            className="w-4 h-4 rounded-full border border-stone-200"
+                            style={{ backgroundColor: def?.hex || '#ccc' }}
+                            title={color}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -530,7 +601,7 @@ export default function AdminPage() {
                   onClick={() => setEditingProduct(product)}
                   className="flex-1 font-mono text-xs py-2 bg-stone-100 rounded-lg hover:bg-stone-200"
                 >
-                  Editar
+                  Edit
                 </button>
                 <button
                   onClick={() => handleToggleActive(product)}
@@ -540,13 +611,13 @@ export default function AdminPage() {
                       : 'bg-red-100 text-red-700'
                   }`}
                 >
-                  {product.is_active ? 'Ativo' : 'Inativo'}
+                  {product.is_active ? 'Active' : 'Inactive'}
                 </button>
                 <button
                   onClick={() => handleDeleteProduct(product.id)}
                   className="font-mono text-xs py-2 px-3 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
                 >
-                  🗑️
+                  X
                 </button>
               </div>
             </div>
@@ -557,65 +628,232 @@ export default function AdminPage() {
   );
 }
 
-// Product Form Component
+// ============================================
+// PRODUCT FORM COMPONENT
+// ============================================
+
 function ProductForm({
   product,
-  categories,
   onSave,
   onCancel,
   onUpload,
   saving,
 }: {
   product: Partial<Product>;
-  categories: Category[];
   onSave: (product: Partial<Product>) => void;
   onCancel: () => void;
   onUpload: (file: File) => Promise<string | null>;
   saving: boolean;
 }) {
-  const [form, setForm] = useState(product);
+  const [form, setForm] = useState({
+    ...product,
+    sku: product.sku || '',
+    stripe_price_id: product.stripe_price_id || '',
+    color_images: product.color_images || {} as Record<string, string[]>,
+    primary_image: product.primary_image || product.images?.[0] || '',
+  });
   const [uploading, setUploading] = useState(false);
+  const [activeColorTab, setActiveColorTab] = useState<string>(
+    (product.colors || [])[0] || ''
+  );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(form);
+  // Toggle size selection
+  const toggleSize = (size: string) => {
+    const current = form.sizes || [];
+    const updated = current.includes(size)
+      ? current.filter((s: string) => s !== size)
+      : [...current, size];
+    setForm({ ...form, sizes: updated });
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    const url = await onUpload(file);
-    setUploading(false);
-
-    if (url) {
-      setForm({ ...form, images: [...(form.images || []), url] });
+  // Toggle color availability
+  const toggleColor = (colorName: string) => {
+    const current = form.colors || [];
+    if (current.includes(colorName)) {
+      const updated = current.filter((c: string) => c !== colorName);
+      const updatedCI = { ...(form.color_images || {}) };
+      delete updatedCI[colorName];
+      setForm({ ...form, colors: updated, color_images: updatedCI });
+      if (activeColorTab === colorName) {
+        setActiveColorTab(updated[0] || '');
+      }
+    } else {
+      const updated = [...current, colorName];
+      setForm({ ...form, colors: updated });
+      if (!activeColorTab) setActiveColorTab(colorName);
     }
   };
 
-  const removeImage = (index: number) => {
-    const newImages = [...(form.images || [])];
-    newImages.splice(index, 1);
-    setForm({ ...form, images: newImages });
+  // Upload image
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    const url = await onUpload(files[0]);
+    setUploading(false);
+
+    if (url) {
+      const selectedColors = form.colors || [];
+
+      if (selectedColors.length > 0 && activeColorTab) {
+        const updatedCI = { ...(form.color_images || {}) };
+        updatedCI[activeColorTab] = [...(updatedCI[activeColorTab] || []), url];
+        setForm({
+          ...form,
+          color_images: updatedCI,
+          primary_image: form.primary_image || url,
+        });
+      } else {
+        setForm({
+          ...form,
+          images: [...(form.images || []), url],
+          primary_image: form.primary_image || url,
+        });
+      }
+    }
+    e.target.value = '';
   };
 
+  // Remove image
+  const removeImage = (url: string, color?: string) => {
+    let newPrimary = form.primary_image;
+    if (form.primary_image === url) newPrimary = '';
+
+    if (color) {
+      const updatedCI = { ...(form.color_images || {}) };
+      updatedCI[color] = (updatedCI[color] || []).filter((u: string) => u !== url);
+      if (updatedCI[color].length === 0) delete updatedCI[color];
+
+      if (!newPrimary) {
+        const allCI = Object.values(updatedCI).flat();
+        newPrimary = allCI[0] || (form.images || []).filter((u: string) => u !== url)[0] || '';
+      }
+
+      setForm({ ...form, color_images: updatedCI, primary_image: newPrimary });
+    } else {
+      const updatedImages = (form.images || []).filter((u: string) => u !== url);
+      if (!newPrimary) newPrimary = updatedImages[0] || '';
+      setForm({ ...form, images: updatedImages, primary_image: newPrimary });
+    }
+  };
+
+  // Build final images array and save
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const allImages: string[] = [];
+    const seen = new Set<string>();
+
+    // Primary first
+    if (form.primary_image) {
+      allImages.push(form.primary_image);
+      seen.add(form.primary_image);
+    }
+
+    // Color images
+    Object.values(form.color_images || {}).flat().forEach((url: string) => {
+      if (!seen.has(url)) { allImages.push(url); seen.add(url); }
+    });
+
+    // Flat images (for products without color assignment)
+    (form.images || []).forEach((url: string) => {
+      if (!seen.has(url)) { allImages.push(url); seen.add(url); }
+    });
+
+    onSave({ ...form, images: allImages });
+  };
+
+  // Determine which images to show
+  const selectedColors = form.colors || [];
+  const hasColors = selectedColors.length > 0;
+
+  const displayImages = hasColors && activeColorTab
+    ? (form.color_images || {})[activeColorTab] || []
+    : form.images || [];
+
+  // Collect all images across all sources
+  const allImageUrls: string[] = [];
+  const seenUrls = new Set<string>();
+  Object.values(form.color_images || {}).flat().forEach((url: string) => {
+    if (!seenUrls.has(url)) { allImageUrls.push(url); seenUrls.add(url); }
+  });
+  (form.images || []).forEach((url: string) => {
+    if (!seenUrls.has(url)) { allImageUrls.push(url); seenUrls.add(url); }
+  });
+
+  // Apply a product template
+  const applyTemplate = (templateKey: string) => {
+    if (templateKey === '') return;
+    const template = PRODUCT_TEMPLATES[templateKey];
+    if (!template) return;
+    setForm({
+      ...form,
+      name: template.name,
+      description: template.description,
+      sku: template.sku,
+      stripe_price_id: template.stripe_price_id,
+      base_price: template.base_price,
+      sizes: template.sizes,
+      colors: template.colors,
+      slug: template.name.toLowerCase().replace(/\s+/g, '-'),
+    });
+    if (template.colors.length > 0) {
+      setActiveColorTab(template.colors[0]);
+    }
+  };
+
+  const isNewProduct = !product.id;
+
   return (
-    <form onSubmit={handleSubmit} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 space-y-6">
+      {/* Product Template Selector — only for new products */}
+      {isNewProduct && (
+        <div>
+          <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Template</label>
+          <select
+            onChange={(e) => applyTemplate(e.target.value)}
+            className="input"
+            defaultValue=""
+          >
+            <option value="">-- New custom product --</option>
+            {Object.entries(PRODUCT_TEMPLATES).map(([key, tpl]) => (
+              <option key={key} value={key}>{tpl.name}</option>
+            ))}
+          </select>
+          <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+            Select a template to auto-fill fields, or start from scratch.
+          </p>
+        </div>
+      )}
+
+      {/* Name */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Nome</label>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Name</label>
         <input
           type="text"
           value={form.name || ''}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           className="input"
+          placeholder="Cotton Tee"
           required
         />
       </div>
 
+      {/* SKU + Price */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-sm text-[#1B2B27] mb-2">Preço (CA$)</label>
+          <label className="block font-mono text-sm text-[#1B2B27] mb-2">SKU</label>
+          <input
+            type="text"
+            value={form.sku || ''}
+            onChange={(e) => setForm({ ...form, sku: e.target.value })}
+            className="input"
+            placeholder="OS-TEE-001"
+          />
+        </div>
+        <div>
+          <label className="block font-mono text-sm text-[#1B2B27] mb-2">Price (CA$)</label>
           <input
             type="number"
             step="0.01"
@@ -625,24 +863,26 @@ function ProductForm({
             required
           />
         </div>
-        <div>
-          <label className="block font-mono text-sm text-[#1B2B27] mb-2">Categoria</label>
-          <select
-            value={form.category_id || ''}
-            onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-            className="input"
-            required
-          >
-            <option value="">Selecione...</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
+      {/* Stripe Price ID */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Descrição</label>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Stripe Price ID</label>
+        <input
+          type="text"
+          value={form.stripe_price_id || ''}
+          onChange={(e) => setForm({ ...form, stripe_price_id: e.target.value })}
+          className="input font-mono text-xs"
+          placeholder="price_1T6yaQGntiIt3xka..."
+        />
+        <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+          Copy from Stripe dashboard → Products → Price ID
+        </p>
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Description</label>
         <textarea
           value={form.description || ''}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -651,84 +891,240 @@ function ProductForm({
         />
       </div>
 
-      {/* Image upload */}
+      {/* Sizes — clickable boxes */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Imagens</label>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {form.images?.map((img, i) => (
-            <div key={i} className="relative">
-              <img src={img} alt="" className="w-20 h-20 object-cover rounded-lg" />
+        <label className="block font-mono text-sm text-[#1B2B27] mb-3">Sizes</label>
+        <div className="flex flex-wrap gap-2">
+          {AVAILABLE_SIZES.map((size) => {
+            const isSelected = (form.sizes || []).includes(size);
+            return (
               <button
+                key={size}
                 type="button"
-                onClick={() => removeImage(i)}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs"
+                onClick={() => toggleSize(size)}
+                className={`font-mono text-sm px-4 py-2 rounded-lg border-2 transition-all ${
+                  isSelected
+                    ? 'border-[#1B2B27] bg-[#1B2B27] text-white'
+                    : 'border-stone-200 bg-white text-stone-400 hover:border-stone-300'
+                }`}
               >
-                ×
+                {size}
               </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          disabled={uploading}
-          className="input"
-        />
-        {uploading && <p className="text-sm text-[#1B2B27]/60 mt-1">Enviando...</p>}
       </div>
 
+      {/* Colors — square swatches */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">
-          Tamanhos (separados por vírgula)
-        </label>
-        <input
-          type="text"
-          value={(form.sizes || []).join(', ')}
-          onChange={(e) => setForm({ ...form, sizes: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-          className="input"
-          placeholder="P, M, G, GG"
-        />
+        <label className="block font-mono text-sm text-[#1B2B27] mb-3">Colors</label>
+        <div className="flex flex-wrap gap-3">
+          {AVAILABLE_COLORS.map((color) => {
+            const isSelected = (form.colors || []).includes(color.name);
+            return (
+              <button
+                key={color.name}
+                type="button"
+                onClick={() => toggleColor(color.name)}
+                title={color.name}
+                className={`relative w-10 h-10 rounded-lg border-2 transition-all ${
+                  isSelected
+                    ? 'border-[#1B2B27] ring-2 ring-[#1B2B27]/20 scale-110'
+                    : 'border-stone-300 hover:border-stone-400 hover:scale-105'
+                }`}
+                style={{ backgroundColor: color.hex }}
+              >
+                {isSelected && (
+                  <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${
+                    color.hex === '#FFFFFF' || color.hex === '#D3D3D3' ? 'text-[#1B2B27]' : 'text-white'
+                  }`}>
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
+      {/* Photos by Color — each color gets its own section */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">
-          Cores (separadas por vírgula)
+        <label className="block font-mono text-sm text-[#1B2B27] mb-1">
+          {hasColors ? 'Photos by Color' : 'Images'}
         </label>
-        <input
-          type="text"
-          value={(form.colors || []).join(', ')}
-          onChange={(e) => setForm({ ...form, colors: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-          className="input"
-          placeholder="Preto, Branco, Amber"
-        />
+        {hasColors && (
+          <p className="font-mono text-[10px] text-[#1B2B27]/40 mb-3">
+            Add photos for each color. Click the <span className="text-amber-500">★</span> to set the primary product photo.
+          </p>
+        )}
+
+        {hasColors ? (
+          <div className="space-y-3">
+            {selectedColors.map((color: string) => {
+              const colorDef = AVAILABLE_COLORS.find(c => c.name === color);
+              const colorImgs = (form.color_images || {})[color] || [];
+              return (
+                <div
+                  key={color}
+                  className={`rounded-xl border-2 p-3 transition-all ${
+                    activeColorTab === color
+                      ? 'border-[#1B2B27] bg-white'
+                      : 'border-stone-200 bg-stone-50'
+                  }`}
+                  onClick={() => setActiveColorTab(color)}
+                >
+                  {/* Color header */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="w-5 h-5 rounded-full border border-stone-300 shrink-0"
+                      style={{ backgroundColor: colorDef?.hex || '#ccc' }}
+                    />
+                    <span className="font-mono text-xs font-medium text-[#1B2B27]">
+                      {color}
+                    </span>
+                    <span className="font-mono text-[10px] text-stone-400">
+                      {colorImgs.length} {colorImgs.length === 1 ? 'photo' : 'photos'}
+                    </span>
+                  </div>
+
+                  {/* Photos for this color */}
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {colorImgs.map((img: string, i: number) => (
+                      <div key={`${color}-${i}`} className="relative group">
+                        <img src={img} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                        {/* Primary star */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setForm({ ...form, primary_image: img }); }}
+                          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[8px] transition-all ${
+                            form.primary_image === img
+                              ? 'bg-amber-400 text-white shadow-sm'
+                              : 'bg-black/40 text-white/60 opacity-0 group-hover:opacity-100'
+                          }`}
+                          title="Set as primary photo"
+                        >
+                          ★
+                        </button>
+                        {/* Remove */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeImage(img, color); }}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        >
+                          x
+                        </button>
+                      </div>
+                    ))}
+                    {colorImgs.length === 0 && (
+                      <span className="font-mono text-[10px] text-stone-400 py-2">
+                        No photos
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Upload for this color */}
+                  {activeColorTab === color && (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        disabled={uploading}
+                        className="input text-xs"
+                      />
+                      {uploading && (
+                        <p className="font-mono text-[10px] text-[#1B2B27]/60 mt-1">Uploading...</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* No colors — simple flat image list */
+          <div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(form.images || []).map((img: string, i: number) => (
+                <div key={`flat-${i}`} className="relative group">
+                  <img src={img} alt="" className="w-20 h-20 object-cover rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, primary_image: img })}
+                    className={`absolute top-1 left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-all ${
+                      form.primary_image === img
+                        ? 'bg-amber-400 text-white shadow-sm'
+                        : 'bg-black/40 text-white/60 opacity-0 group-hover:opacity-100'
+                    }`}
+                  >
+                    ★
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(img)}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+              {(form.images || []).length === 0 && (
+                <p className="font-mono text-xs text-stone-400 py-4">No photos added</p>
+              )}
+            </div>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              disabled={uploading}
+              className="input text-sm"
+            />
+            {uploading && (
+              <p className="font-mono text-xs text-[#1B2B27]/60 mt-1">Uploading...</p>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="flex gap-4">
-        <label className="flex items-center gap-2 font-mono text-sm">
+      {/* Primary image indicator */}
+      {allImageUrls.length > 0 && form.primary_image && (
+        <div className="bg-stone-50 rounded-lg p-3 flex items-center gap-3">
+          <img src={form.primary_image} alt="" className="w-10 h-10 object-cover rounded-lg border-2 border-amber-400" />
+          <p className="font-mono text-xs text-[#1B2B27]/60">
+            <span className="text-amber-500">★</span> Primary product photo
+          </p>
+        </div>
+      )}
+
+      {/* Checkboxes */}
+      <div className="flex gap-6">
+        <label className="flex items-center gap-2 font-mono text-sm cursor-pointer">
           <input
             type="checkbox"
             checked={form.is_active ?? true}
             onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+            className="w-4 h-4"
           />
-          Ativo
+          Active
         </label>
-        <label className="flex items-center gap-2 font-mono text-sm">
+        <label className="flex items-center gap-2 font-mono text-sm cursor-pointer">
           <input
             type="checkbox"
             checked={form.is_featured ?? false}
             onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
+            className="w-4 h-4"
           />
-          Destaque
+          Featured
         </label>
       </div>
 
+      {/* Buttons */}
       <div className="flex gap-4 pt-4">
         <button type="submit" disabled={saving} className="btn-accent flex-1 disabled:opacity-50">
-          {saving ? 'Salvando...' : 'Salvar'}
+          {saving ? 'Saving...' : 'Save'}
         </button>
         <button type="button" onClick={onCancel} className="btn-secondary flex-1">
-          Cancelar
+          Cancel
         </button>
       </div>
     </form>

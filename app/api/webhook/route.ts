@@ -1,222 +1,132 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { sendOrderConfirmationToCustomer, sendNewOrderToAdmin } from '@/lib/email';
 
-/**
- * Stripe Webhook Handler
- *
- * Events handled:
- * - checkout.session.completed → Update order to 'paid', create order_items
- * - payment_intent.payment_failed → Update order to 'cancelled'
- *
- * Tables used (schema by Blue):
- * - app_shop_orders
- * - app_shop_order_items
- */
-
-export async function POST(request: NextRequest) {
-  // Validate environment
+export async function POST(req: NextRequest) {
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
-    console.error('Missing Stripe environment variables');
-    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-  }
-
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('Missing Supabase environment variables');
-    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    return NextResponse.json({ error: 'Server config error' }, { status: 500 });
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2025-12-15.clover',
   });
 
-  // Use service role for webhook (no user context)
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const body = await request.text();
-  const signature = request.headers.get('stripe-signature');
+  const body = await req.text();
+  const sig = req.headers.get('stripe-signature');
 
-  if (!signature) {
-    console.error('Missing stripe-signature header');
+  if (!sig) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
   }
 
   let event: Stripe.Event;
-
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error('[WEBHOOK] Signature verification failed:', err.message);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  console.log(`Webhook received: ${event.type}`);
+  console.log(`[WEBHOOK] ${event.type}`);
 
-  // ============================================
-  // checkout.session.completed
-  // ============================================
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const metadata = session.metadata;
+    try {
+      const session = await stripe.checkout.sessions.retrieve(
+        event.data.object.id,
+        { expand: ['line_items.data.price.product'] }
+      );
 
-    if (metadata?.type === 'shop_order') {
-      const orderId = metadata.order_id;
-      const orderNumber = metadata.order_number;
-      const userId = metadata.user_id;
+      const itemsDetail = session.metadata?.items_detail
+        ? JSON.parse(session.metadata.items_detail)
+        : [];
+
+      const shippingDetails = (session as any).collected_information?.shipping_details
+        || (session as any).shipping_details;
+
+      const shippingAddress = shippingDetails?.address ? {
+        name: shippingDetails.name,
+        street: shippingDetails.address.line1,
+        apartment: shippingDetails.address.line2 || null,
+        city: shippingDetails.address.city,
+        province: shippingDetails.address.state,
+        postal_code: shippingDetails.address.postal_code,
+        country: shippingDetails.address.country,
+      } : null;
+
+      const customerEmail = session.customer_details?.email || null;
+      const amountTotal = session.amount_total || 0;
+      const shippingCost = (session as any).shipping_cost?.amount_total || 0;
+      const orderNumber = `OS-${Date.now().toString(36).toUpperCase()}`;
+
+      // A) Save order to Supabase
+      const { error: orderError } = await supabase
+        .from('app_shop_orders')
+        .insert({
+          order_number: orderNumber,
+          status: 'paid',
+          email: customerEmail,
+          items: itemsDetail,
+          shipping_address: shippingAddress,
+          total: amountTotal,
+          shipping_cost: shippingCost,
+          stripe_session_id: session.id,
+          created_at: new Date().toISOString(),
+        });
+
+      if (orderError) {
+        console.error('[WEBHOOK] Order save error:', orderError);
+      } else {
+        console.log(`[WEBHOOK] Order ${orderNumber} saved`);
+      }
+
+      // B) Send email notifications
+      const lineItemNames = session.line_items?.data.map((li: any) => {
+        const product = li.price?.product;
+        return product?.name || li.description || 'Product';
+      }) || [];
+
+      const emailItems = itemsDetail.map((item: any, idx: number) => ({
+        name: lineItemNames[idx] || item.name || item.sku,
+        quantity: item.qty,
+        price: (session.line_items?.data[idx]?.amount_total || 0) / 100 / (item.qty || 1),
+        size: item.size,
+        color: item.color,
+      }));
+
+      const emailData = {
+        orderNumber,
+        items: emailItems,
+        subtotal: (amountTotal - shippingCost) / 100,
+        shipping: shippingCost / 100,
+        total: amountTotal / 100,
+        shippingAddress,
+        customerEmail: customerEmail || undefined,
+        stripeSessionId: session.id,
+      };
 
       try {
-        // Get shipping details from Stripe session
-        const shippingDetails = (session as any).collected_information?.shipping_details
-          || (session as any).shipping_details;
-
-        const shippingAddress = shippingDetails?.address ? {
-          name: shippingDetails.name,
-          street: shippingDetails.address.line1,
-          apartment: shippingDetails.address.line2 || null,
-          city: shippingDetails.address.city,
-          province: shippingDetails.address.state,
-          postal_code: shippingDetails.address.postal_code,
-          country: shippingDetails.address.country,
-        } : null;
-
-        if (orderId) {
-          // Update existing order
-          const { error: updateError } = await supabase
-            .from('app_shop_orders')
-            .update({
-              status: 'paid',
-              paid_at: new Date().toISOString(),
-              stripe_session_id: session.id,
-              stripe_payment_intent_id: session.payment_intent as string,
-              shipping_address: shippingAddress,
-            })
-            .eq('id', orderId);
-
-          if (updateError) {
-            console.error('Order update error:', updateError);
-          }
-        } else {
-          // Create order if it doesn't exist (fallback)
-          const items = metadata.items ? JSON.parse(metadata.items) : [];
-          const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-          const shipping = session.amount_total ? (session.amount_total / 100) - subtotal : 0;
-
-          const { data: newOrder, error: createError } = await supabase
-            .from('app_shop_orders')
-            .insert({
-              user_id: userId || null,
-              order_number: orderNumber,
-              status: 'paid',
-              subtotal: subtotal,
-              shipping: shipping > 0 ? shipping : 0,
-              tax: 0,
-              total: session.amount_total ? session.amount_total / 100 : subtotal,
-              paid_at: new Date().toISOString(),
-              stripe_session_id: session.id,
-              stripe_payment_intent_id: session.payment_intent as string,
-              shipping_address: shippingAddress,
-            })
-            .select('id')
-            .single();
-
-          if (createError) {
-            console.error('Order creation error:', createError);
-          } else if (newOrder) {
-            // Use the new order ID for items
-            const finalOrderId = newOrder.id;
-
-            // Create order items
-            if (metadata.items) {
-              const orderItems = items.map((item: any) => ({
-                order_id: finalOrderId,
-                product_id: item.product_id || null,
-                variant_id: item.variant_id || null,
-                product_name: item.name,
-                quantity: item.quantity,
-                unit_price: item.price,
-                total_price: item.price * item.quantity,
-                size: item.size || null,
-                color: item.color || null,
-              }));
-
-              const { error: itemsError } = await supabase
-                .from('app_shop_order_items')
-                .insert(orderItems);
-
-              if (itemsError) {
-                console.error('Order items error:', itemsError);
-              }
-            }
-
-            console.log(`Order ${orderNumber} created and marked as paid`);
-            return NextResponse.json({ received: true });
-          }
+        const emailPromises: Promise<void>[] = [];
+        if (customerEmail) {
+          emailPromises.push(sendOrderConfirmationToCustomer(emailData, customerEmail));
         }
-
-        // Create order items for existing order
-        if (orderId && metadata.items) {
-          const items = JSON.parse(metadata.items);
-          const orderItems = items.map((item: any) => ({
-            order_id: orderId,
-            product_id: item.product_id || null,
-            variant_id: item.variant_id || null,
-            product_name: item.name,
-            quantity: item.quantity,
-            unit_price: item.price,
-            total_price: item.price * item.quantity,
-            size: item.size || null,
-            color: item.color || null,
-          }));
-
-          const { error: itemsError } = await supabase
-            .from('app_shop_order_items')
-            .insert(orderItems);
-
-          if (itemsError) {
-            console.error('Order items error:', itemsError);
-          }
-        }
-
-        console.log(`Order ${orderNumber} marked as paid`);
-      } catch (err) {
-        console.error('Webhook processing error:', err);
+        emailPromises.push(sendNewOrderToAdmin(emailData));
+        await Promise.allSettled(emailPromises);
+      } catch (emailError) {
+        console.error('[WEBHOOK] Email error:', emailError);
       }
+    } catch (err) {
+      console.error('[WEBHOOK] Processing error:', err);
     }
   }
 
-  // ============================================
-  // payment_intent.payment_failed
-  // ============================================
   if (event.type === 'payment_intent.payment_failed') {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
-    const metadata = paymentIntent.metadata;
-
-    if (metadata?.type === 'shop_order' && metadata.order_id) {
-      try {
-        const { error } = await supabase
-          .from('app_shop_orders')
-          .update({
-            status: 'cancelled',
-            cancelled_at: new Date().toISOString(),
-          })
-          .eq('id', metadata.order_id);
-
-        if (error) {
-          console.error('Order cancellation error:', error);
-        } else {
-          console.log(`Order ${metadata.order_number} cancelled due to payment failure`);
-        }
-      } catch (err) {
-        console.error('Payment failed webhook error:', err);
-      }
-    }
+    console.error(`[WEBHOOK] Payment failed: ${paymentIntent.id}`);
   }
 
   return NextResponse.json({ received: true });
