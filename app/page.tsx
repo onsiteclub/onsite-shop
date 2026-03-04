@@ -1083,13 +1083,13 @@ export default function ShopPage() {
           Logo | WEAR WHAT YOU DO | SHOP MEMBERS BAG
           ================================================================ */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#D4CFC4]/70 backdrop-blur-md border-b border-[#1B2B27]/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-2.5 flex items-center justify-between">
           {/* Logo - left */}
-          <a href="https://website2-tau-green.vercel.app/#home" className="flex-shrink-0">
+          <a href="https://onsiteclub.ca" className="flex-shrink-0">
             <img
               src="/assets/logo-onsite-club.png"
               alt="OnSite Club"
-              className="h-7 md:h-9 w-auto"
+              className="h-10 md:h-12 w-auto"
             />
           </a>
 
