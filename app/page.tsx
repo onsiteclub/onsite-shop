@@ -1040,9 +1040,10 @@ export default function ShopPage() {
   }, []);
 
   // Get display products: filter by view, then repeat to fill 12 slots
+  const membersFromDb = products.filter(p => p.category === 'members');
   const filteredProducts = activeView === 'members'
-    ? MEMBERS_MOCKUPS
-    : products;
+    ? (membersFromDb.length > 0 ? membersFromDb : MEMBERS_MOCKUPS)
+    : products.filter(p => p.category !== 'members');
 
   const displayProducts: Product[] = [];
   if (filteredProducts.length > 0) {
