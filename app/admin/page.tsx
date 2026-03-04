@@ -84,6 +84,12 @@ const PRODUCT_TEMPLATES: Record<string, {
 // TYPES
 // ============================================
 
+interface Category {
+  id: string;
+  slug: string;
+  name: string;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -100,6 +106,7 @@ interface Product {
   is_active: boolean;
   is_featured: boolean;
   is_published: boolean;
+  category_id: string | null;
 }
 
 export default function AdminPage() {
@@ -107,6 +114,7 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -158,10 +166,12 @@ export default function AdminPage() {
   }
 
   async function loadData() {
-    const { data: prods } = await supabase
-      .from('app_shop_products')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [{ data: prods }, { data: cats }] = await Promise.all([
+      supabase.from('app_shop_products').select('*').order('created_at', { ascending: false }),
+      supabase.from('categories').select('*').order('name'),
+    ]);
+
+    if (cats) setCategories(cats);
 
     if (prods) {
       setProducts(prods);
@@ -245,6 +255,7 @@ export default function AdminPage() {
         colors: product.colors || [],
         color_images: product.color_images || {},
         primary_image: product.primary_image || '',
+        category_id: product.category_id || null,
         is_active: product.is_active ?? true,
         is_featured: product.is_featured ?? false,
         is_published: false,
@@ -462,6 +473,7 @@ export default function AdminPage() {
         <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
           <ProductForm
             product={editingProduct}
+            categories={categories}
             onSave={handleSaveProduct}
             onCancel={() => setEditingProduct(null)}
             onUpload={handleImageUpload}
@@ -538,6 +550,7 @@ export default function AdminPage() {
             colors: [],
             color_images: {},
             primary_image: '',
+            category_id: null,
             is_active: true,
             is_featured: false,
             is_published: false,
@@ -569,9 +582,23 @@ export default function AdminPage() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-mono font-medium text-[#1B2B27] truncate">
-                    {product.name}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-mono font-medium text-[#1B2B27] truncate">
+                      {product.name}
+                    </h3>
+                    {(() => {
+                      const cat = categories.find(c => c.id === product.category_id);
+                      return cat ? (
+                        <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
+                          cat.slug === 'members'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-stone-100 text-stone-600'
+                        }`}>
+                          {cat.slug}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
                   <p className="font-mono text-xs text-[#1B2B27]/40">
                     {product.sku || 'no SKU'}
                   </p>
@@ -634,12 +661,14 @@ export default function AdminPage() {
 
 function ProductForm({
   product,
+  categories,
   onSave,
   onCancel,
   onUpload,
   saving,
 }: {
   product: Partial<Product>;
+  categories: Category[];
   onSave: (product: Partial<Product>) => void;
   onCancel: () => void;
   onUpload: (file: File) => Promise<string | null>;
@@ -651,6 +680,7 @@ function ProductForm({
     stripe_price_id: product.stripe_price_id || '',
     color_images: product.color_images || {} as Record<string, string[]>,
     primary_image: product.primary_image || product.images?.[0] || '',
+    category_id: product.category_id || null as string | null,
   });
   const [uploading, setUploading] = useState(false);
   const [activeColorTab, setActiveColorTab] = useState<string>(
@@ -838,6 +868,24 @@ function ProductForm({
           placeholder="Cotton Tee"
           required
         />
+      </div>
+
+      {/* Category */}
+      <div>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Category</label>
+        <select
+          value={form.category_id || ''}
+          onChange={(e) => setForm({ ...form, category_id: e.target.value || null })}
+          className="input"
+        >
+          <option value="">-- No category --</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>{cat.name || cat.slug}</option>
+          ))}
+        </select>
+        <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+          Products in &quot;members&quot; show as COMING SOON on the shop.
+        </p>
       </div>
 
       {/* SKU + Price */}
