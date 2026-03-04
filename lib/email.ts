@@ -126,8 +126,8 @@ function buildCustomerEmailHtml(order: OrderEmailData): string {
 
     <!-- Header -->
     <div style="text-align: center; margin-bottom: 32px;">
-      <h1 style="color: #1B2B27; font-size: 24px; margin: 0 0 8px;">OnSite Shop</h1>
-      <p style="color: #6B7280; font-size: 14px; margin: 0;">Wear What You Do</p>
+      <img src="https://shop.onsiteclub.ca/assets/logo-onsite-club.png" alt="OnSite Club" style="height: 48px; width: auto; margin-bottom: 8px;" />
+      <p style="color: #6B7280; font-size: 13px; margin: 0; letter-spacing: 2px; text-transform: uppercase;">Built For Those Who Build</p>
     </div>
 
     <!-- Card -->
@@ -207,6 +207,7 @@ function buildAdminEmailHtml(order: OrderEmailData): string {
 
     <!-- Header -->
     <div style="background: #1B2B27; border-radius: 16px 16px 0 0; padding: 24px; text-align: center;">
+      <img src="https://shop.onsiteclub.ca/assets/logo-onsite-club.png" alt="OnSite Club" style="height: 40px; width: auto; margin-bottom: 12px; filter: brightness(10);" />
       <h1 style="color: #B8860B; font-size: 20px; margin: 0;">New Sale!</h1>
       <p style="color: white; font-size: 28px; font-weight: bold; margin: 8px 0 0;">CA$${order.total.toFixed(2)}</p>
     </div>
