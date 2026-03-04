@@ -873,18 +873,26 @@ function ProductForm({
       {/* Category */}
       <div>
         <label className="block font-mono text-sm text-[#1B2B27] mb-2">Category</label>
-        <select
-          value={form.category_id || ''}
-          onChange={(e) => setForm({ ...form, category_id: e.target.value || null })}
-          className="input"
-        >
-          <option value="">-- No category --</option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>{cat.name || cat.slug}</option>
+        <div className="flex gap-2">
+          {categories.filter(c => c.slug === 'mens' || c.slug === 'members').map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setForm({ ...form, category_id: cat.id })}
+              className={`flex-1 font-mono text-sm py-2 px-4 rounded-lg border-2 transition-all ${
+                form.category_id === cat.id
+                  ? cat.slug === 'members'
+                    ? 'border-amber-500 bg-amber-50 text-amber-700 font-bold'
+                    : 'border-[#1B2B27] bg-[#1B2B27]/5 text-[#1B2B27] font-bold'
+                  : 'border-stone-200 text-stone-400 hover:border-stone-300'
+              }`}
+            >
+              {cat.slug === 'mens' ? 'SHOP' : 'MEMBERS'}
+            </button>
           ))}
-        </select>
+        </div>
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          Products in &quot;members&quot; show as COMING SOON on the shop.
+          Members products show as COMING SOON on the shop.
         </p>
       </div>
 
