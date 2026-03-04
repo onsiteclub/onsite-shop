@@ -1015,6 +1015,16 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
   }
 }
 
+// Members mockup products (coming soon placeholders)
+const MEMBERS_MOCKUPS: Product[] = [
+  { product_key: 'members-exclusive-tee', name: 'Members Exclusive Tee', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'Exclusive tee for OnSite Club members', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-premium-hoodie', name: 'Premium Hoodie', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'Premium hoodie for members only', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-limited-cap', name: 'Limited Edition Cap', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'Limited run cap for club members', sizes: ['One Size'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-crew-jacket', name: 'Crew Jacket', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'On-site crew jacket', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-safety-vest', name: 'Safety Vest', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'High-vis safety vest with OnSite branding', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-work-pants', name: 'Work Pants', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'Durable work pants for the job site', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+];
+
 // Main Page Component
 export default function ShopPage() {
   const [activeView, setActiveView] = useState<'all' | 'members'>('all');
@@ -1031,7 +1041,7 @@ export default function ShopPage() {
 
   // Get display products: filter by view, then repeat to fill 12 slots
   const filteredProducts = activeView === 'members'
-    ? products.filter(p => p.category === 'members')
+    ? MEMBERS_MOCKUPS
     : products;
 
   const displayProducts: Product[] = [];
