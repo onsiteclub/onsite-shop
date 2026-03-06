@@ -21,62 +21,56 @@ const AVAILABLE_COLORS = [
 const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 // ============================================
-// PRODUCT TEMPLATES
+// PRODUCT TYPES (shirt/item types → Stripe prices)
 // ============================================
 
-const PRODUCT_TEMPLATES: Record<string, {
-  name: string;
-  description: string;
-  sku: string;
+const PRODUCT_TYPES: Record<string, {
+  label: string;
+  skuPrefix: string;
   stripe_price_id: string;
   base_price: number;
-  sizes: string[];
-  colors: string[];
+  defaultSizes: string[];
+  description: string;
 }> = {
   'cotton-tee': {
-    name: 'OnSite Cotton Tee',
-    description: '100% ringspun cotton tee, pre-shrunk. High-durability screen print. Built to handle the tough work.',
-    sku: 'OS-CTN-TEE',
+    label: 'Cotton Tee — CA$29.99',
+    skuPrefix: 'CTEE',
     stripe_price_id: 'price_1T6yaQGntiIt3xkawNdIb3ek',
     base_price: 29.99,
-    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    colors: ['Black', 'White', 'Amber', 'Charcoal'],
+    defaultSizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    description: '100% ringspun cotton tee, pre-shrunk. High-durability screen print.',
   },
   'sport-tee': {
-    name: 'OnSite Sport Tee',
-    description: 'Moisture-wicking performance fabric. Lightweight and breathable. Built for long days on the job site.',
-    sku: 'OS-SPT-TEE',
+    label: 'Sport Tee — CA$34.99',
+    skuPrefix: 'STEE',
     stripe_price_id: 'price_1T6ybPGntiIt3xkaA7NoCQ4e',
     base_price: 34.99,
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: ['Black', 'Charcoal', 'Construction Green'],
+    defaultSizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    description: 'Moisture-wicking performance fabric. Lightweight and breathable.',
   },
   'hoodie': {
-    name: 'OnSite Heavy Hoodie',
-    description: 'Heavyweight 400g/m² hoodie. Lined hood. Kangaroo pocket. Ribbed cuffs and hem. Made for Canadian winters.',
-    sku: 'OS-HOODIE',
+    label: 'Hoodie — CA$49.99',
+    skuPrefix: 'HOOD',
     stripe_price_id: 'price_1T6ydIGntiIt3xkaOI5uKbgH',
     base_price: 49.99,
-    sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    colors: ['Black', 'Charcoal', 'Construction Green'],
+    defaultSizes: ['S', 'M', 'L', 'XL', 'XXL'],
+    description: 'Heavyweight 400g/m² hoodie. Lined hood. Kangaroo pocket.',
   },
   'cap': {
-    name: 'OnSite Classic Cap',
-    description: 'Structured cap with curved brim. Snapback fit. High-definition embroidered logo.',
-    sku: 'OS-CP',
+    label: 'Cap — CA$39.99',
+    skuPrefix: 'CAP',
     stripe_price_id: 'price_1T6ylSGntiIt3xka7i5gMdhM',
     base_price: 39.99,
-    sizes: ['One Size'],
-    colors: ['Black', 'Amber', 'Construction Green'],
+    defaultSizes: ['One Size'],
+    description: 'Structured cap with curved brim. Snapback fit.',
   },
   'sticker-kit': {
-    name: 'OnSite Sticker Kit',
-    description: '5-pack premium vinyl stickers. Water and sun resistant. Perfect for your hard hat or toolbox.',
-    sku: 'OS-STICKER',
+    label: 'Sticker Kit — CA$9.99',
+    skuPrefix: 'STK',
     stripe_price_id: 'price_1T6yfRGntiIt3xkaNuMeFJSF',
     base_price: 9.99,
-    sizes: ['One Size'],
-    colors: [],
+    defaultSizes: ['One Size'],
+    description: 'Premium vinyl stickers. Water and sun resistant.',
   },
 };
 
@@ -98,6 +92,7 @@ interface Product {
   base_price: number;
   sku: string;
   stripe_price_id: string;
+  product_type: string;
   images: string[];
   sizes: string[];
   colors: string[];
@@ -130,6 +125,10 @@ export default function AdminPage() {
   // Track if there are unpublished changes
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [publishing, setPublishing] = useState(false);
+
+  // Category management
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
 
   const supabase = createClient();
 
@@ -250,6 +249,7 @@ export default function AdminPage() {
         base_price: product.base_price,
         sku: product.sku || '',
         stripe_price_id: product.stripe_price_id || '',
+        product_type: product.product_type || '',
         images: product.images || [],
         sizes: product.sizes || [],
         colors: product.colors || [],
@@ -304,6 +304,34 @@ export default function AdminPage() {
     } else {
       await loadData();
       showToast('Product deleted!', 'success');
+    }
+  }
+
+  async function handleCreateCategory(name: string) {
+    if (!name.trim()) return;
+    const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+    const { error } = await supabase
+      .from('categories')
+      .insert({ name: name.trim(), slug });
+
+    if (error) {
+      showToast('Error creating category: ' + error.message, 'error');
+    } else {
+      await loadData();
+      setNewCategoryName('');
+      setShowCategoryForm(false);
+      showToast(`Category "${name.trim()}" created!`, 'success');
+    }
+  }
+
+  async function handleDeleteCategory(id: string) {
+    if (!confirm('Delete this category? Products using it will become uncategorized.')) return;
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) {
+      showToast('Error: ' + error.message, 'error');
+    } else {
+      await loadData();
+      showToast('Category deleted', 'success');
     }
   }
 
@@ -535,6 +563,56 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Categories management */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <h2 className="font-mono text-sm font-medium text-[#1B2B27]/60">Categories</h2>
+            <button
+              onClick={() => setShowCategoryForm(!showCategoryForm)}
+              className="font-mono text-xs text-[#B8860B] hover:text-[#9A7209]"
+            >
+              {showCategoryForm ? 'Cancel' : '+ Add'}
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => (
+              <div
+                key={cat.id}
+                className="group flex items-center gap-1.5 bg-white/80 border border-stone-200 rounded-lg px-3 py-1.5"
+              >
+                <span className="font-mono text-xs text-[#1B2B27]">{cat.name}</span>
+                <span className="font-mono text-[10px] text-stone-400">({cat.slug})</span>
+                {cat.slug !== 'mens' && cat.slug !== 'members' && (
+                  <button
+                    onClick={() => handleDeleteCategory(cat.id)}
+                    className="font-mono text-[10px] text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                  >
+                    x
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {showCategoryForm && (
+            <div className="flex gap-2 mt-2">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="e.g. Skulls, Nature, Abstract..."
+                className="input flex-1 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory(newCategoryName)}
+              />
+              <button
+                onClick={() => handleCreateCategory(newCategoryName)}
+                className="btn-accent text-sm"
+              >
+                Create
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Add product button */}
         <button
           onClick={() => setEditingProduct({
@@ -545,6 +623,7 @@ export default function AdminPage() {
             base_price: 0,
             sku: '',
             stripe_price_id: '',
+            product_type: '',
             images: [],
             sizes: ['S', 'M', 'L', 'XL'],
             colors: [],
@@ -601,6 +680,7 @@ export default function AdminPage() {
                   </div>
                   <p className="font-mono text-xs text-[#1B2B27]/40">
                     {product.sku || 'no SKU'}
+                    {product.product_type && ` • ${PRODUCT_TYPES[product.product_type]?.label.split(' —')[0] || product.product_type}`}
                   </p>
                   <p className="font-mono text-lg font-bold text-[#F6C343]">
                     CA${product.base_price?.toFixed(2)}
@@ -678,6 +758,7 @@ function ProductForm({
     ...product,
     sku: product.sku || '',
     stripe_price_id: product.stripe_price_id || '',
+    product_type: product.product_type || '',
     color_images: product.color_images || {} as Record<string, string[]>,
     primary_image: product.primary_image || product.images?.[0] || '',
     category_id: product.category_id || null as string | null,
@@ -812,101 +893,161 @@ function ProductForm({
     if (!seenUrls.has(url)) { allImageUrls.push(url); seenUrls.add(url); }
   });
 
-  // Apply a product template
-  const applyTemplate = (templateKey: string) => {
-    if (templateKey === '') return;
-    const template = PRODUCT_TEMPLATES[templateKey];
-    if (!template) return;
+  // Apply a product type (sets price, stripe_price_id, sizes, description)
+  const applyProductType = (typeKey: string) => {
+    if (typeKey === '') {
+      setForm({ ...form, product_type: '', stripe_price_id: '', base_price: 0 });
+      return;
+    }
+    const pt = PRODUCT_TYPES[typeKey];
+    if (!pt) return;
+
+    // Auto-generate SKU from name + type prefix
+    const nameSlug = (form.name || 'PRODUCT').toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20);
+    const autoSku = `${pt.skuPrefix}-${nameSlug}`;
+
     setForm({
       ...form,
-      name: template.name,
-      description: template.description,
-      sku: template.sku,
-      stripe_price_id: template.stripe_price_id,
-      base_price: template.base_price,
-      sizes: template.sizes,
-      colors: template.colors,
-      slug: template.name.toLowerCase().replace(/\s+/g, '-'),
+      product_type: typeKey,
+      stripe_price_id: pt.stripe_price_id,
+      base_price: pt.base_price,
+      sizes: pt.defaultSizes,
+      description: form.description || pt.description,
+      sku: form.sku || autoSku,
     });
-    if (template.colors.length > 0) {
-      setActiveColorTab(template.colors[0]);
-    }
   };
 
   const isNewProduct = !product.id;
 
   return (
     <form onSubmit={handleSubmit} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 space-y-6">
-      {/* Product Template Selector — only for new products */}
-      {isNewProduct && (
-        <div>
-          <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Template</label>
-          <select
-            onChange={(e) => applyTemplate(e.target.value)}
-            className="input"
-            defaultValue=""
-          >
-            <option value="">-- New custom product --</option>
-            {Object.entries(PRODUCT_TEMPLATES).map(([key, tpl]) => (
-              <option key={key} value={key}>{tpl.name}</option>
-            ))}
-          </select>
-          <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-            Select a template to auto-fill fields, or start from scratch.
-          </p>
-        </div>
-      )}
-
-      {/* Name */}
+      {/* Product Name */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Name</label>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Name</label>
         <input
           type="text"
           value={form.name || ''}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           className="input"
-          placeholder="Cotton Tee"
+          placeholder="Skull Art Cotton Tee"
           required
         />
       </div>
 
-      {/* Category */}
+      {/* Product Type — determines price & Stripe Price ID */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Category</label>
-        <div className="flex gap-2">
-          {categories.filter(c => c.slug === 'mens' || c.slug === 'members').map((cat) => (
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Type</label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {Object.entries(PRODUCT_TYPES).map(([key, pt]) => (
             <button
-              key={cat.id}
+              key={key}
               type="button"
-              onClick={() => setForm({ ...form, category_id: cat.id })}
-              className={`flex-1 font-mono text-sm py-2 px-4 rounded-lg border-2 transition-all ${
-                form.category_id === cat.id
-                  ? cat.slug === 'members'
-                    ? 'border-amber-500 bg-amber-50 text-amber-700 font-bold'
-                    : 'border-[#1B2B27] bg-[#1B2B27]/5 text-[#1B2B27] font-bold'
-                  : 'border-stone-200 text-stone-400 hover:border-stone-300'
+              onClick={() => applyProductType(key)}
+              className={`font-mono text-xs py-3 px-3 rounded-lg border-2 transition-all text-left ${
+                form.product_type === key
+                  ? 'border-[#1B2B27] bg-[#1B2B27] text-white font-bold'
+                  : 'border-stone-200 text-stone-500 hover:border-stone-300'
               }`}
             >
-              {cat.slug === 'mens' ? 'SHOP' : 'MEMBERS'}
+              {pt.label}
             </button>
           ))}
         </div>
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          Members products show as COMING SOON on the shop.
+          Select the item type. This sets the Stripe price automatically.
         </p>
       </div>
+
+      {/* Tab: Shop or Members */}
+      <div>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Show in</label>
+        <div className="flex gap-2 mb-2">
+          {(() => {
+            const membersCat = categories.find(c => c.slug === 'members');
+            const isMembers = membersCat && form.category_id === membersCat.id;
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const shopCat = categories.find(c => c.slug === 'mens');
+                    setForm({ ...form, category_id: shopCat?.id || null });
+                  }}
+                  className={`flex-1 font-mono text-sm py-2 px-4 rounded-lg border-2 transition-all ${
+                    !isMembers
+                      ? 'border-[#1B2B27] bg-[#1B2B27]/5 text-[#1B2B27] font-bold'
+                      : 'border-stone-200 text-stone-400 hover:border-stone-300'
+                  }`}
+                >
+                  SHOP
+                </button>
+                {membersCat && (
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, category_id: membersCat.id })}
+                    className={`flex-1 font-mono text-sm py-2 px-4 rounded-lg border-2 transition-all ${
+                      isMembers
+                        ? 'border-amber-500 bg-amber-50 text-amber-700 font-bold'
+                        : 'border-stone-200 text-stone-400 hover:border-stone-300'
+                    }`}
+                  >
+                    MEMBERS
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* Collection — only for shop products */}
+      {(() => {
+        const membersCat = categories.find(c => c.slug === 'members');
+        const isMembers = membersCat && form.category_id === membersCat.id;
+        const collections = categories.filter(c => c.slug !== 'mens' && c.slug !== 'members' && c.slug !== 'womens');
+
+        if (isMembers || collections.length === 0) return null;
+        return (
+          <div>
+            <label className="block font-mono text-sm text-[#1B2B27] mb-2">Collection</label>
+            <div className="flex flex-wrap gap-2">
+              {collections.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setForm({ ...form, category_id: cat.id })}
+                  className={`font-mono text-xs py-1.5 px-3 rounded-lg border-2 transition-all ${
+                    form.category_id === cat.id
+                      ? 'border-[#B8860B] bg-[#B8860B]/10 text-[#B8860B] font-bold'
+                      : 'border-stone-200 text-stone-400 hover:border-stone-300'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+            <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+              Group by art collection (optional). Create collections from the dashboard.
+            </p>
+          </div>
+        );
+      })()}
 
       {/* SKU + Price */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-sm text-[#1B2B27] mb-2">SKU</label>
+          <label className="block font-mono text-sm text-[#1B2B27] mb-2">SKU (unique)</label>
           <input
             type="text"
             value={form.sku || ''}
-            onChange={(e) => setForm({ ...form, sku: e.target.value })}
-            className="input"
-            placeholder="OS-TEE-001"
+            onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase() })}
+            className="input font-mono"
+            placeholder="CTEE-SKULL-01"
+            required
           />
+          <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+            Each product must have a unique SKU.
+          </p>
         </div>
         <div>
           <label className="block font-mono text-sm text-[#1B2B27] mb-2">Price (CA$)</label>
@@ -918,23 +1059,20 @@ function ProductForm({
             className="input"
             required
           />
+          <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+            {form.product_type ? 'Set by product type' : 'Select product type first'}
+          </p>
         </div>
       </div>
 
-      {/* Stripe Price ID */}
-      <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Stripe Price ID</label>
-        <input
-          type="text"
-          value={form.stripe_price_id || ''}
-          onChange={(e) => setForm({ ...form, stripe_price_id: e.target.value })}
-          className="input font-mono text-xs"
-          placeholder="price_1T6yaQGntiIt3xka..."
-        />
-        <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          Copy from Stripe dashboard → Products → Price ID
-        </p>
-      </div>
+      {/* Stripe Price ID (auto-set, shown for reference) */}
+      {form.stripe_price_id && (
+        <div className="bg-stone-50 rounded-lg px-3 py-2">
+          <p className="font-mono text-[10px] text-stone-400">
+            Stripe Price: <span className="text-stone-600">{form.stripe_price_id}</span>
+          </p>
+        </div>
+      )}
 
       {/* Description */}
       <div>

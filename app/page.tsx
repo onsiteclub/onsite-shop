@@ -989,17 +989,18 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
       return [];
     }
 
-    // Match each Supabase product to STRIPE_PRODUCTS by SKU
+    // Map Supabase products — use stripe_price_id from DB if available,
+    // fall back to STRIPE_PRODUCTS SKU match for legacy products
     return data.map((p: any) => {
       const stripeMatch = Object.entries(STRIPE_PRODUCTS).find(
         ([, sp]) => sp.sku === p.sku
       );
 
       return {
-        product_key: stripeMatch?.[0] || p.sku || p.id,
+        product_key: p.sku || p.id,
         name: p.name,
-        price: stripeMatch ? stripeMatch[1].price / 100 : p.base_price ?? 0,
-        price_id: stripeMatch?.[1].priceId || '',
+        price: p.base_price ?? (stripeMatch ? stripeMatch[1].price / 100 : 0),
+        price_id: p.stripe_price_id || stripeMatch?.[1].priceId || '',
         category: p.category?.slug || 'mens',
         image: p.primary_image || p.images?.[0] || '/products/placeholder.webp',
         images: p.images || [],

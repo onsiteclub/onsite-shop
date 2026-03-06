@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { STRIPE_PRODUCTS } from '@/lib/stripe-config';
 
 export async function GET() {
   try {
@@ -21,22 +20,16 @@ export async function GET() {
       return NextResponse.json({ products: [] });
     }
 
-    // Filter out members products and match with Stripe prices
+    // Filter out members products, use base_price from DB
     const products = data
       .filter((p: any) => p.category?.slug !== 'members')
       .slice(0, 3)
-      .map((p: any) => {
-        const stripeMatch = Object.entries(STRIPE_PRODUCTS).find(
-          ([, sp]) => sp.sku === p.sku
-        );
-
-        return {
-          name: p.name,
-          price: stripeMatch ? stripeMatch[1].price / 100 : p.base_price ?? 0,
-          image: p.primary_image || p.images?.[0] || null,
-          url: 'https://shop.onsiteclub.ca',
-        };
-      });
+      .map((p: any) => ({
+        name: p.name,
+        price: p.base_price ?? 0,
+        image: p.primary_image || p.images?.[0] || null,
+        url: 'https://shop.onsiteclub.ca',
+      }));
 
     return NextResponse.json(
       { products },

@@ -8,6 +8,11 @@ import {
   type ProductKey,
 } from '@/lib/stripe-config';
 
+// Price IDs we accept (from stripe-config, used as validation allowlist)
+const VALID_PRICE_IDS = new Set(
+  Object.values(STRIPE_PRODUCTS).map(p => p.priceId)
+);
+
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -24,35 +29,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
     }
 
-    // Build line_items from STRIPE_PRODUCTS (source of truth for price IDs)
+    // Build line_items — use price_id from cart (set when product was loaded from DB)
+    // Falls back to STRIPE_PRODUCTS lookup by product_key for legacy products
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     const items_detail: Array<{ sku: string; name: string; design: string; color: string; size: string; qty: number }> = [];
     let subtotal = 0;
 
     for (const item of items) {
-      const product = STRIPE_PRODUCTS[item.product_key as ProductKey];
-      if (!product) {
+      // Try price_id from cart first, then fall back to STRIPE_PRODUCTS lookup
+      const legacyProduct = STRIPE_PRODUCTS[item.product_key as ProductKey];
+      const priceId = item.price_id || legacyProduct?.priceId;
+
+      if (!priceId || !VALID_PRICE_IDS.has(priceId)) {
         return NextResponse.json(
-          { error: `Unknown product: ${item.product_key}` },
+          { error: `Invalid product: ${item.product_key}` },
           { status: 400 }
         );
       }
 
       line_items.push({
-        price: product.priceId,
+        price: priceId,
         quantity: item.quantity,
       });
 
       items_detail.push({
-        sku: product.sku,
-        name: product.name,
+        sku: item.sku || legacyProduct?.sku || item.product_key,
+        name: item.name || legacyProduct?.name || 'Product',
         design: item.design || '',
         color: item.color,
         size: item.size,
         qty: item.quantity,
       });
 
-      subtotal += product.price * item.quantity;
+      subtotal += item.price * item.quantity;
     }
 
     // Shipping options (free shipping if above threshold)
