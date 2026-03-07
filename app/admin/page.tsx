@@ -75,77 +75,25 @@ const PRODUCT_TYPES: Record<string, {
 };
 
 // ============================================
-// PRODUCT NAME PRESETS (dropdown suggestions, still editable)
+// ART TYPES (tipo de arte/estampa)
 // ============================================
 
-const PRODUCT_NAME_PRESETS: Record<string, string[]> = {
-  'cotton-tee': [
-    'Skull Art Cotton Tee',
-    'Faith Builder Cotton Tee',
-    'OnSite Classic Cotton Tee',
-    'OnSite Vintage Cotton Tee',
-    'Street Code Cotton Tee',
-    'Hard Work Cotton Tee',
-    'Blueprint Cotton Tee',
-    'Iron Will Cotton Tee',
-    'Trade Life Cotton Tee',
-    'Concrete Jungle Cotton Tee',
-    'Golden Hour Cotton Tee',
-    'Night Shift Cotton Tee',
-    'Brotherhood Cotton Tee',
-    'Built Different Cotton Tee',
-    'Heavy Duty Cotton Tee',
-  ],
-  'sport-tee': [
-    'Skull Art Sport Tee',
-    'Faith Builder Sport Tee',
-    'OnSite Classic Sport Tee',
-    'OnSite Vintage Sport Tee',
-    'Street Code Sport Tee',
-    'Hard Work Sport Tee',
-    'Blueprint Sport Tee',
-    'Iron Will Sport Tee',
-    'Trade Life Sport Tee',
-    'Concrete Jungle Sport Tee',
-    'Golden Hour Sport Tee',
-    'Night Shift Sport Tee',
-    'Brotherhood Sport Tee',
-    'Built Different Sport Tee',
-    'Heavy Duty Sport Tee',
-  ],
-  'hoodie': [
-    'Skull Art Hoodie',
-    'Faith Builder Hoodie',
-    'OnSite Classic Hoodie',
-    'OnSite Vintage Hoodie',
-    'Street Code Hoodie',
-    'Hard Work Hoodie',
-    'Blueprint Hoodie',
-    'Iron Will Hoodie',
-    'Trade Life Hoodie',
-    'Concrete Jungle Hoodie',
-    'Golden Hour Hoodie',
-    'Night Shift Hoodie',
-    'Brotherhood Hoodie',
-    'Built Different Hoodie',
-    'Heavy Duty Hoodie',
-  ],
-  'cap': [
-    'OnSite Classic Cap',
-    'OnSite Vintage Cap',
-    'Skull Art Cap',
-    'Blueprint Cap',
-    'Trade Life Cap',
-    'Brotherhood Cap',
-    'Iron Will Cap',
-  ],
-  'sticker-kit': [
-    'OnSite Sticker Kit',
-    'Skull Art Sticker Kit',
-    'Trade Life Sticker Kit',
-    'Brotherhood Sticker Kit',
-    'Blueprint Sticker Kit',
-  ],
+const ART_TYPES: Record<string, { label: string; code: string; description: string }> = {
+  phrase: {
+    label: 'Frase',
+    code: 'FR',
+    description: 'Arte escrita — frase impressa na camiseta',
+  },
+  drawing: {
+    label: 'Desenho',
+    code: 'DW',
+    description: 'Arte grafica — estampa/ilustracao',
+  },
+  mixed: {
+    label: 'Mix / Vintage',
+    code: 'MX',
+    description: 'Mistura de frase + desenho, estilo autoral/vintage',
+  },
 };
 
 // ============================================
@@ -967,6 +915,28 @@ function ProductForm({
     if (!seenUrls.has(url)) { allImageUrls.push(url); seenUrls.add(url); }
   });
 
+  // ---- Art type & design number state ----
+  // Parse existing SKU to extract art_type and design_number if editing
+  const parseSkuParts = (sku: string) => {
+    const match = sku.match(/^[A-Z]{3,4}-(FR|DW|MX)(\d{3})/);
+    if (match) return { artType: match[1] === 'FR' ? 'phrase' : match[1] === 'DW' ? 'drawing' : 'mixed', designNum: match[2] };
+    return { artType: '', designNum: '' };
+  };
+  const initialParts = parseSkuParts(product.sku || '');
+  const [artType, setArtType] = useState(initialParts.artType);
+  const [designNum, setDesignNum] = useState(initialParts.designNum);
+
+  // Build name & SKU automatically from selections
+  const buildProductIdentity = (pType: string, aType: string, dNum: string) => {
+    const pt = PRODUCT_TYPES[pType];
+    const at = ART_TYPES[aType as keyof typeof ART_TYPES];
+    if (!pt || !at || !dNum) return null;
+    const num = dNum.padStart(3, '0');
+    const sku = `${pt.skuPrefix}-${at.code}${num}`;
+    const name = `${at.label} #${num} — ${pt.label.split(' —')[0]}`;
+    return { sku, name };
+  };
+
   // Apply a product type (sets price, stripe_price_id, sizes, description)
   const applyProductType = (typeKey: string) => {
     if (typeKey === '') {
@@ -976,9 +946,7 @@ function ProductForm({
     const pt = PRODUCT_TYPES[typeKey];
     if (!pt) return;
 
-    // Auto-generate SKU from name + type prefix
-    const nameSlug = (form.name || 'PRODUCT').toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20);
-    const autoSku = `${pt.skuPrefix}-${nameSlug}`;
+    const identity = buildProductIdentity(typeKey, artType, designNum);
 
     setForm({
       ...form,
@@ -987,36 +955,36 @@ function ProductForm({
       base_price: pt.base_price,
       sizes: pt.defaultSizes,
       description: form.description || pt.description,
-      sku: form.sku || autoSku,
+      ...(identity ? { sku: identity.sku, name: identity.name } : {}),
     });
+  };
+
+  // Apply art type selection
+  const applyArtType = (aType: string) => {
+    setArtType(aType);
+    const identity = buildProductIdentity(form.product_type, aType, designNum);
+    if (identity) {
+      setForm({ ...form, sku: identity.sku, name: identity.name });
+    }
+  };
+
+  // Apply design number
+  const applyDesignNum = (num: string) => {
+    const clean = num.replace(/\D/g, '').slice(0, 3);
+    setDesignNum(clean);
+    const identity = buildProductIdentity(form.product_type, artType, clean);
+    if (identity) {
+      setForm({ ...form, sku: identity.sku, name: identity.name });
+    }
   };
 
   const isNewProduct = !product.id;
 
   return (
     <form onSubmit={handleSubmit} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 space-y-6">
-      {/* Product Name — dropdown with presets, still editable */}
+      {/* 1. Product Type — determines price & Stripe Price ID */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Name</label>
-        <input
-          type="text"
-          list="product-name-presets"
-          value={form.name || ''}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="input"
-          placeholder="Select or type a name..."
-          required
-        />
-        <datalist id="product-name-presets">
-          {(PRODUCT_NAME_PRESETS[form.product_type] || Object.values(PRODUCT_NAME_PRESETS).flat()).map((name) => (
-            <option key={name} value={name} />
-          ))}
-        </datalist>
-      </div>
-
-      {/* Product Type — determines price & Stripe Price ID */}
-      <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Type</label>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">1. Tipo do Produto</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {Object.entries(PRODUCT_TYPES).map(([key, pt]) => (
             <button
@@ -1033,8 +1001,63 @@ function ProductForm({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* 2. Art Type — Frase / Desenho / Mix */}
+      <div>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Tipo de Arte</label>
+        <div className="grid grid-cols-3 gap-2">
+          {Object.entries(ART_TYPES).map(([key, at]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => applyArtType(key)}
+              className={`font-mono text-xs py-3 px-3 rounded-lg border-2 transition-all text-center ${
+                artType === key
+                  ? 'border-amber-600 bg-amber-600 text-white font-bold'
+                  : 'border-stone-200 text-stone-500 hover:border-stone-300'
+              }`}
+            >
+              <span className="block text-sm">{at.label}</span>
+              <span className="block text-[10px] opacity-70 mt-0.5">{at.code}</span>
+            </button>
+          ))}
+        </div>
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          Select the item type. This sets the Stripe price automatically.
+          FR = Frase &middot; DW = Desenho &middot; MX = Mix/Vintage
+        </p>
+      </div>
+
+      {/* 3. Design Number */}
+      <div>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">3. Numero do Design</label>
+        <input
+          type="text"
+          value={designNum}
+          onChange={(e) => applyDesignNum(e.target.value)}
+          className="input font-mono text-lg tracking-widest text-center"
+          placeholder="001"
+          maxLength={3}
+          style={{ maxWidth: 120 }}
+        />
+        <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+          Numero unico da arte (001-999). Mesmo numero = mesmo design em produtos diferentes.
+        </p>
+      </div>
+
+      {/* Auto-generated Name (editable) */}
+      <div>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Nome do Produto</label>
+        <input
+          type="text"
+          value={form.name || ''}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          className="input"
+          placeholder="Selecione tipo + arte + numero acima"
+          required
+        />
+        <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+          Gerado automaticamente. Edite se quiser personalizar.
         </p>
       </div>
 
@@ -1116,17 +1139,19 @@ function ProductForm({
       {/* SKU + Price */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-sm text-[#1B2B27] mb-2">SKU (unique)</label>
+          <label className="block font-mono text-sm text-[#1B2B27] mb-2">SKU</label>
           <input
             type="text"
             value={form.sku || ''}
             onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase() })}
-            className="input font-mono"
-            placeholder="CTEE-SKULL-01"
+            className="input font-mono font-bold tracking-wider"
+            placeholder="CTEE-FR001"
             required
           />
           <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-            Each product must have a unique SKU.
+            Auto: {form.product_type && artType && designNum
+              ? `${PRODUCT_TYPES[form.product_type]?.skuPrefix}-${ART_TYPES[artType as keyof typeof ART_TYPES]?.code}${designNum.padStart(3, '0')}`
+              : 'Selecione tipo + arte + numero'}
           </p>
         </div>
         <div>

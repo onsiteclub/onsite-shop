@@ -10,7 +10,7 @@ Compativel com a tabela `app_shop_products` do Supabase e com o Stripe.
 ## Estrutura do SKU
 
 ```
-{TIPO}-{DESIGN}-{IMPRESSAO}
+{TIPO}-{ARTE}{NUMERO}
 ```
 
 ### Nivel 1: TIPO (Tipo do produto)
@@ -28,52 +28,62 @@ Compativel com a tabela `app_shop_products` do Supabase e com o Stripe.
 
 ---
 
-### Nivel 2: DESIGN (Identificador unico do design/estampa)
+### Nivel 2: ARTE (Tipo de arte) + NUMERO (Design unico)
 
-Formato: **3 digitos sequenciais** - `001` a `999`
+Formato: **{CODIGO_ARTE}{3 digitos}** — ex: `FR001`, `DW015`, `MX003`
 
-Cada design tem um registro no **Catalogo de Designs** (tabela abaixo).
-O mesmo design pode ser usado em diferentes tipos de produto.
+| Codigo | Tipo de Arte        | Descricao                                         | Qtd estimada |
+|--------|--------------------|----------------------------------------------------|--------------|
+| FR     | Frase              | Arte escrita — frase impressa na camiseta          | ~50+         |
+| DW     | Desenho            | Arte grafica — estampa/ilustracao                  | ~20+         |
+| MX     | Mix / Vintage      | Mistura de frase + desenho, estilo autoral/vintage | variavel     |
+
+O numero (001-999) identifica qual frase/desenho/mix especifico.
+O mesmo numero com o mesmo tipo de arte = mesmo design em produtos diferentes.
 
 ---
 
-### Nivel 3: IMPRESSAO (Variante de impressao/tecido)
+### Variante de Impressao (para arquivos de arte)
 
-| Codigo | Variante        | Descricao                                       | Aplicacao                      |
-|--------|----------------|--------------------------------------------------|--------------------------------|
-| LT     | Light (Clara)  | Arte para impressao em tecido claro              | White, Light Grey              |
-| DK     | Dark (Escura)  | Arte para impressao em tecido escuro             | Black, Charcoal, Greens        |
-| GD     | Gold           | Arte para impressao em tecido gold/amber         | Amber, Gold tones              |
-| UNI    | Universal      | Arte unica que funciona em qualquer tecido       | Bordados, estampas universais  |
+Cada design existe em ate 3 versoes de impressao (para diferentes cores de tecido):
 
-> Para adicionar novas variantes: `NE` (Neon), `PS` (Pastel), `CM` (Camo), etc.
+| Sufixo | Variante        | Aplicacao                      |
+|--------|----------------|--------------------------------|
+| LT     | Light (Clara)  | White, Light Grey              |
+| DK     | Dark (Escura)  | Black, Charcoal, Greens        |
+| GD     | Gold           | Amber, Gold tones              |
+| UNI    | Universal      | Bordados, estampas universais  |
+
+> Este sufixo e usado nos ARQUIVOS de arte, nao no SKU do produto.
 
 ---
 
 ## Exemplos Completos de SKU
 
 ```
-CTEE-001-LT   = Cotton Tee, Design #001, versao Light
-CTEE-001-DK   = Cotton Tee, Design #001, versao Dark
-CTEE-001-GD   = Cotton Tee, Design #001, versao Gold
-STEE-001-LT   = Sport Tee, Design #001, versao Light
-HOOD-015-DK   = Hoodie, Design #015, versao Dark
-CAP-003-UNI   = Cap, Design #003, bordado universal
-STK-010-UNI   = Sticker Kit, Design #010, universal
+CTEE-FR001    = Cotton Tee, Frase #001
+CTEE-FR042    = Cotton Tee, Frase #042
+CTEE-DW005    = Cotton Tee, Desenho #005
+STEE-FR001    = Sport Tee, Frase #001 (mesma frase, produto diferente)
+STEE-DW012    = Sport Tee, Desenho #012
+HOOD-MX003    = Hoodie, Mix/Vintage #003
+CAP-DW001     = Cap, Desenho #001
+STK-DW010     = Sticker Kit, Desenho #010
 ```
 
 ### SKU de Variante (com tamanho) - usado na tabela `product_variants`
 
 ```
-{TIPO}-{DESIGN}-{IMPRESSAO}-{TAMANHO}
+{TIPO}-{ARTE}{NUMERO}-{TAMANHO}
 ```
 
 | SKU Completo      | Significado                                    |
 |-------------------|------------------------------------------------|
-| CTEE-001-LT-M    | Cotton Tee, Design 001, Light, Tamanho M       |
-| CTEE-001-DK-XL   | Cotton Tee, Design 001, Dark, Tamanho XL       |
-| HOOD-015-DK-L    | Hoodie, Design 015, Dark, Tamanho L            |
-| CAP-003-UNI-OS   | Cap, Design 003, Universal, One Size           |
+| CTEE-FR001-M      | Cotton Tee, Frase #001, Tamanho M              |
+| CTEE-DW005-XL     | Cotton Tee, Desenho #005, Tamanho XL           |
+| STEE-FR042-L      | Sport Tee, Frase #042, Tamanho L               |
+| HOOD-MX003-L      | Hoodie, Mix #003, Tamanho L                    |
+| CAP-DW001-OS      | Cap, Desenho #001, One Size                    |
 
 **Tamanhos validos:** `XS` | `S` | `M` | `L` | `XL` | `XXL` | `OS` (One Size)
 
@@ -110,18 +120,21 @@ Esta tabela e a referencia mestre. Cada design recebe um numero unico permanente
 
 ### Arquivos de arte/estampa (source files)
 
+Cada arte tem 3 versoes para diferentes cores de tecido:
+
 ```
-DSN-{DESIGN_ID}-{IMPRESSAO}.{ext}
+{ARTE}{NUMERO}-{IMPRESSAO}.{ext}
 ```
 
 Exemplos:
 ```
-DSN-001-LT.png     = Design 001, versao para tecido claro
-DSN-001-DK.png     = Design 001, versao para tecido escuro
-DSN-001-GD.png     = Design 001, versao para tecido gold
-DSN-002-LT.png     = Design 002, versao para tecido claro
-DSN-002-DK.png     = Design 002, versao para tecido escuro
-DSN-002-GD.png     = Design 002, versao para tecido gold
+FR001-LT.png     = Frase 001, versao para tecido claro
+FR001-DK.png     = Frase 001, versao para tecido escuro
+FR001-GD.png     = Frase 001, versao para tecido gold
+DW005-LT.png     = Desenho 005, versao para tecido claro
+DW005-DK.png     = Desenho 005, versao para tecido escuro
+DW005-GD.png     = Desenho 005, versao para tecido gold
+MX003-LT.png     = Mix 003, versao para tecido claro
 ```
 
 ### Mockups / fotos de produto (para upload no Supabase Storage)
@@ -132,9 +145,9 @@ DSN-002-GD.png     = Design 002, versao para tecido gold
 
 Exemplos:
 ```
-CTEE-001-LT-1.webp    = Cotton Tee, Design 001, Light, foto 1
-CTEE-001-LT-2.webp    = Cotton Tee, Design 001, Light, foto 2
-CTEE-001-DK-1.webp    = Cotton Tee, Design 001, Dark, foto 1
+CTEE-FR001-1.webp    = Cotton Tee, Frase 001, foto 1
+CTEE-FR001-2.webp    = Cotton Tee, Frase 001, foto 2
+STEE-DW005-1.webp    = Sport Tee, Desenho 005, foto 1
 ```
 
 ---
@@ -157,21 +170,24 @@ Quando o cliente seleciona uma **cor**, o sistema sabe qual variante de impressa
 
 ## Como Consultar uma Compra
 
-Quando um cliente compra, o pedido (`order_items`) tera:
-- `product_name`: ex. "OnSite Skull Roses Cotton Tee"
+Quando um cliente compra, o pedido tera:
+- `product_name`: ex. "Frase #007 — Cotton Tee"
+- `sku`: ex. `CTEE-FR007`
 - `size`: ex. "L"
 - `color`: ex. "Black"
 
 Para identificar exatamente o que enviar:
 
-1. **Pegue o SKU** do produto na tabela `app_shop_products`
-   - Ex: `CTEE-007-DK`
-2. **Decodifique:**
+1. **Leia o SKU:** `CTEE-FR007`
    - `CTEE` = Cotton Tee
-   - `007` = Design #007 → consulte o Catalogo de Designs → "Skull Roses"
-   - `DK` = Versao para tecido escuro
-3. **Arquivo de arte:** `DSN-007-DK.png`
-4. **Tamanho:** verifique o campo `size` do pedido
+   - `FR` = Frase
+   - `007` = Frase #007 → consulte o Catalogo de Designs
+2. **Cor do tecido** → determina qual arquivo de arte usar:
+   - Black → `FR007-DK.png` (versao escura)
+   - White → `FR007-LT.png` (versao clara)
+   - Amber → `FR007-GD.png` (versao gold)
+3. **Tamanho:** campo `size` do pedido (ex: "L")
+4. **Resumo:** Imprimir `FR007-DK.png` em Cotton Tee preta, tamanho L
 
 ---
 
@@ -179,14 +195,25 @@ Para identificar exatamente o que enviar:
 
 ```
 designs/
-├── DSN-001-LT.png
-├── DSN-001-DK.png
-├── DSN-001-GD.png
-├── DSN-002-LT.png
-├── DSN-002-DK.png
-├── DSN-002-GD.png
-├── ...
-└── catalog.json          ← catalogo master (opcional, gerado automaticamente)
+├── frases/
+│   ├── FR001-LT.png
+│   ├── FR001-DK.png
+│   ├── FR001-GD.png
+│   ├── FR002-LT.png
+│   ├── FR002-DK.png
+│   ├── FR002-GD.png
+│   └── ... (ate FR050+)
+├── desenhos/
+│   ├── DW001-LT.png
+│   ├── DW001-DK.png
+│   ├── DW001-GD.png
+│   └── ... (ate DW020+)
+├── mix/
+│   ├── MX001-LT.png
+│   ├── MX001-DK.png
+│   ├── MX001-GD.png
+│   └── ...
+└── catalog.json          ← catalogo master
 ```
 
 ---
@@ -213,27 +240,42 @@ existe em ate 3 versoes: para tecido claro (LT), tecido escuro (DK) e tecido gol
    - Se nao houver indicacao clara, analise a imagem (fundo transparente com arte
      clara = LT, arte clara = DK inverso, etc.)
 
-4. **Renomear:** Formato `DSN-{ID}-{VARIANTE}.{extensao_original}`
-   - Ex: `minha-frase-camiseta-escura.png` → `DSN-001-DK.png`
+4. **Renomear:** Formato `{TIPO_ARTE}{ID}-{VARIANTE}.{extensao_original}`
+   - Frase: `minha-frase-escura.png` → `FR001-DK.png`
+   - Desenho: `skull-design-clara.png` → `DW001-LT.png`
+   - Mix: `vintage-badge-gold.png` → `MX001-GD.png`
 
-5. **Gerar catalogo:** Apos renomear, criar/atualizar o arquivo `catalog.json`:
+5. **Mover para subpasta:** Mover frases para `frases/`, desenhos para `desenhos/`, mix para `mix/`
+
+6. **Gerar catalogo:** Apos renomear, criar/atualizar o arquivo `catalog.json`:
 
 ```json
 {
   "version": "1.0",
-  "updated_at": "2026-03-06",
+  "updated_at": "2026-03-07",
   "designs": [
     {
-      "id": "001",
+      "id": "FR001",
+      "type": "phrase",
       "original_name": "nome-original-do-arquivo",
-      "short_name": "Nome Curto",
-      "description": "Descricao da frase ou estampa",
-      "theme": "QUOTE",
+      "description": "Texto exato da frase",
       "variants": ["LT", "DK", "GD"],
       "files": {
-        "LT": "DSN-001-LT.png",
-        "DK": "DSN-001-DK.png",
-        "GD": "DSN-001-GD.png"
+        "LT": "frases/FR001-LT.png",
+        "DK": "frases/FR001-DK.png",
+        "GD": "frases/FR001-GD.png"
+      }
+    },
+    {
+      "id": "DW001",
+      "type": "drawing",
+      "original_name": "skull-design",
+      "description": "Caveira com rosas",
+      "variants": ["LT", "DK", "GD"],
+      "files": {
+        "LT": "desenhos/DW001-LT.png",
+        "DK": "desenhos/DW001-DK.png",
+        "GD": "desenhos/DW001-GD.png"
       }
     }
   ]
@@ -257,15 +299,15 @@ Campos relevantes na tabela `app_shop_products`:
 
 | Campo           | Valor Exemplo                          |
 |-----------------|----------------------------------------|
-| name            | "Skull Roses Tee - Dark"               |
-| slug            | "skull-roses-tee-dark"                 |
-| sku             | "CTEE-007-DK"                          |
+| name            | "Frase #007 — Cotton Tee"              |
+| slug            | "frase-007-cotton-tee"                 |
+| sku             | "CTEE-FR007"                           |
 | product_type    | "cotton-tee"                           |
 | stripe_price_id | "price_1T6yaQGntiIt3xkawNdIb3ek"      |
 | base_price      | 29.99                                  |
-| colors          | ["Black", "Charcoal"]                  |
+| colors          | ["Black", "White", "Amber"]            |
 | sizes           | ["XS", "S", "M", "L", "XL", "XXL"]    |
-| color_images    | {"Black": ["url1"], "Charcoal": [...]} |
+| color_images    | {"Black": ["url1"], "White": [...]}    |
 
 ---
 
@@ -281,8 +323,8 @@ O sistema suporta:
 ### Exemplo de crescimento:
 
 ```
-Hoje:     CTEE-001-LT  (Cotton Tee, Design 1, Light)
-Amanha:   STEE-001-LT  (Sport Tee, mesmo Design 1, Light)
-Proximo:  HOOD-001-DK  (Hoodie, mesmo Design 1, Dark)
-Futuro:   LONG-001-NE  (Long Sleeve, mesmo Design 1, Neon - novo tipo + nova variante)
+Hoje:     CTEE-FR001    (Cotton Tee, Frase 1)
+Amanha:   STEE-FR001    (Sport Tee, mesma Frase 1)
+Proximo:  HOOD-FR001    (Hoodie, mesma Frase 1)
+Futuro:   LONG-DW025    (Long Sleeve, Desenho 25 — novo tipo de produto)
 ```
