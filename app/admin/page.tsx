@@ -75,6 +75,80 @@ const PRODUCT_TYPES: Record<string, {
 };
 
 // ============================================
+// PRODUCT NAME PRESETS (dropdown suggestions, still editable)
+// ============================================
+
+const PRODUCT_NAME_PRESETS: Record<string, string[]> = {
+  'cotton-tee': [
+    'Skull Art Cotton Tee',
+    'Faith Builder Cotton Tee',
+    'OnSite Classic Cotton Tee',
+    'OnSite Vintage Cotton Tee',
+    'Street Code Cotton Tee',
+    'Hard Work Cotton Tee',
+    'Blueprint Cotton Tee',
+    'Iron Will Cotton Tee',
+    'Trade Life Cotton Tee',
+    'Concrete Jungle Cotton Tee',
+    'Golden Hour Cotton Tee',
+    'Night Shift Cotton Tee',
+    'Brotherhood Cotton Tee',
+    'Built Different Cotton Tee',
+    'Heavy Duty Cotton Tee',
+  ],
+  'sport-tee': [
+    'Skull Art Sport Tee',
+    'Faith Builder Sport Tee',
+    'OnSite Classic Sport Tee',
+    'OnSite Vintage Sport Tee',
+    'Street Code Sport Tee',
+    'Hard Work Sport Tee',
+    'Blueprint Sport Tee',
+    'Iron Will Sport Tee',
+    'Trade Life Sport Tee',
+    'Concrete Jungle Sport Tee',
+    'Golden Hour Sport Tee',
+    'Night Shift Sport Tee',
+    'Brotherhood Sport Tee',
+    'Built Different Sport Tee',
+    'Heavy Duty Sport Tee',
+  ],
+  'hoodie': [
+    'Skull Art Hoodie',
+    'Faith Builder Hoodie',
+    'OnSite Classic Hoodie',
+    'OnSite Vintage Hoodie',
+    'Street Code Hoodie',
+    'Hard Work Hoodie',
+    'Blueprint Hoodie',
+    'Iron Will Hoodie',
+    'Trade Life Hoodie',
+    'Concrete Jungle Hoodie',
+    'Golden Hour Hoodie',
+    'Night Shift Hoodie',
+    'Brotherhood Hoodie',
+    'Built Different Hoodie',
+    'Heavy Duty Hoodie',
+  ],
+  'cap': [
+    'OnSite Classic Cap',
+    'OnSite Vintage Cap',
+    'Skull Art Cap',
+    'Blueprint Cap',
+    'Trade Life Cap',
+    'Brotherhood Cap',
+    'Iron Will Cap',
+  ],
+  'sticker-kit': [
+    'OnSite Sticker Kit',
+    'Skull Art Sticker Kit',
+    'Trade Life Sticker Kit',
+    'Brotherhood Sticker Kit',
+    'Blueprint Sticker Kit',
+  ],
+};
+
+// ============================================
 // TYPES
 // ============================================
 
@@ -921,17 +995,23 @@ function ProductForm({
 
   return (
     <form onSubmit={handleSubmit} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 space-y-6">
-      {/* Product Name */}
+      {/* Product Name — dropdown with presets, still editable */}
       <div>
         <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Name</label>
         <input
           type="text"
+          list="product-name-presets"
           value={form.name || ''}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           className="input"
-          placeholder="Skull Art Cotton Tee"
+          placeholder="Select or type a name..."
           required
         />
+        <datalist id="product-name-presets">
+          {(PRODUCT_NAME_PRESETS[form.product_type] || Object.values(PRODUCT_NAME_PRESETS).flat()).map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
       </div>
 
       {/* Product Type — determines price & Stripe Price ID */}
