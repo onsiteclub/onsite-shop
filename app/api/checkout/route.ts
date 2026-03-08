@@ -8,11 +8,6 @@ import {
   type ProductKey,
 } from '@/lib/stripe-config';
 
-// Price IDs we accept (from stripe-config, used as validation allowlist)
-const VALID_PRICE_IDS = new Set(
-  Object.values(STRIPE_PRODUCTS).map(p => p.priceId)
-);
-
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -36,13 +31,13 @@ export async function POST(req: NextRequest) {
     let subtotal = 0;
 
     for (const item of items) {
-      // Try price_id from cart first, then fall back to STRIPE_PRODUCTS lookup
+      // Try price_id from cart first (DB products), then fall back to STRIPE_PRODUCTS lookup (legacy)
       const legacyProduct = STRIPE_PRODUCTS[item.product_key as ProductKey];
       const priceId = item.price_id || legacyProduct?.priceId;
 
-      if (!priceId || !VALID_PRICE_IDS.has(priceId)) {
+      if (!priceId || !priceId.startsWith('price_')) {
         return NextResponse.json(
-          { error: `Invalid product: ${item.product_key}` },
+          { error: `Invalid product: ${item.product_key} — missing Stripe price` },
           { status: 400 }
         );
       }

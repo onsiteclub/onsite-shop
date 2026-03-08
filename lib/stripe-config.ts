@@ -37,8 +37,8 @@ export const STRIPE_PRODUCTS = {
     sizes: ['One Size'],
     category: 'apparel',
   },
-  'sticker': {
-    name: 'OnSite Sticker',
+  'sticker-kit': {
+    name: 'OnSite Sticker Kit',
     priceId: 'price_1T6yfRGntiIt3xkaNuMeFJSF',
     price: 999,
     sku: 'OS-STICKER',

@@ -989,18 +989,22 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
       return [];
     }
 
-    // Map Supabase products — use stripe_price_id from DB if available,
-    // fall back to STRIPE_PRODUCTS SKU match for legacy products
+    // Map Supabase products — resolve price_id from DB or product_type
+    // Product type keys in STRIPE_PRODUCTS: 'cotton-tee' → priceId, etc.
+    // Also handles legacy SKU match as last fallback
     return data.map((p: any) => {
-      const stripeMatch = Object.entries(STRIPE_PRODUCTS).find(
-        ([, sp]) => sp.sku === p.sku
-      );
+      // 1st: stripe_price_id from DB (set by admin when choosing product type)
+      // 2nd: match product_type to STRIPE_PRODUCTS key (e.g. 'cotton-tee', 'sport-tee')
+      // 3rd: legacy SKU match (old products)
+      const typeMatch = p.product_type ? STRIPE_PRODUCTS[p.product_type as keyof typeof STRIPE_PRODUCTS] : null;
+      const skuMatch = Object.values(STRIPE_PRODUCTS).find(sp => sp.sku === p.sku);
+      const priceId = p.stripe_price_id || typeMatch?.priceId || skuMatch?.priceId || '';
 
       return {
         product_key: p.sku || p.id,
         name: p.name,
-        price: p.base_price ?? (stripeMatch ? stripeMatch[1].price / 100 : 0),
-        price_id: p.stripe_price_id || stripeMatch?.[1].priceId || '',
+        price: p.base_price ?? (typeMatch ? typeMatch.price / 100 : 0),
+        price_id: priceId,
         category: p.category?.slug || 'mens',
         image: p.primary_image || p.images?.[0] || '/products/placeholder.webp',
         images: p.images || [],
