@@ -989,21 +989,30 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
       return [];
     }
 
-    // Map Supabase products — resolve price_id from DB or product_type
-    // Product type keys in STRIPE_PRODUCTS: 'cotton-tee' → priceId, etc.
-    // Also handles legacy SKU match as last fallback
+    // SKU prefix → product type mapping (fallback when DB fields are missing)
+    const SKU_PREFIX_MAP: Record<string, keyof typeof STRIPE_PRODUCTS> = {
+      'CTEE': 'cotton-tee',
+      'STEE': 'sport-tee',
+      'HOOD': 'hoodie',
+      'CAP': 'cap',
+      'STK': 'sticker-kit',
+    };
+
     return data.map((p: any) => {
-      // 1st: stripe_price_id from DB (set by admin when choosing product type)
-      // 2nd: match product_type to STRIPE_PRODUCTS key (e.g. 'cotton-tee', 'sport-tee')
-      // 3rd: legacy SKU match (old products)
+      // Resolve price_id with multiple fallbacks:
+      // 1. stripe_price_id from DB
+      // 2. product_type field → STRIPE_PRODUCTS
+      // 3. SKU prefix (CTEE/STEE/HOOD/CAP/STK) → STRIPE_PRODUCTS
       const typeMatch = p.product_type ? STRIPE_PRODUCTS[p.product_type as keyof typeof STRIPE_PRODUCTS] : null;
-      const skuMatch = Object.values(STRIPE_PRODUCTS).find(sp => sp.sku === p.sku);
-      const priceId = p.stripe_price_id || typeMatch?.priceId || skuMatch?.priceId || '';
+      const skuPrefix = (p.sku || '').split('-')[0];
+      const skuType = SKU_PREFIX_MAP[skuPrefix];
+      const skuPrefixMatch = skuType ? STRIPE_PRODUCTS[skuType] : null;
+      const priceId = p.stripe_price_id || typeMatch?.priceId || skuPrefixMatch?.priceId || '';
 
       return {
         product_key: p.sku || p.id,
         name: p.name,
-        price: p.base_price ?? (typeMatch ? typeMatch.price / 100 : 0),
+        price: p.base_price ?? (typeMatch?.price || skuPrefixMatch?.price || 0) / 100,
         price_id: priceId,
         category: p.category?.slug || 'mens',
         image: p.primary_image || p.images?.[0] || '/products/placeholder.webp',
