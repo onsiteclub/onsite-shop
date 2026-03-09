@@ -8,6 +8,31 @@ import {
   type ProductKey,
 } from '@/lib/stripe-config';
 
+// SKU prefix → STRIPE_PRODUCTS key (resolves price from any SKU)
+const SKU_PREFIX_TO_PRODUCT: Record<string, ProductKey> = {
+  'CTEE': 'cotton-tee',
+  'STEE': 'sport-tee',
+  'HOOD': 'hoodie',
+  'CAP':  'cap',
+  'STK':  'sticker-kit',
+};
+
+function resolvePriceId(productKey: string, cartPriceId?: string): string | null {
+  // 1. price_id from cart (set by shop page from DB)
+  if (cartPriceId && cartPriceId.startsWith('price_')) return cartPriceId;
+
+  // 2. Direct match in STRIPE_PRODUCTS (legacy keys like 'cotton-tee')
+  const direct = STRIPE_PRODUCTS[productKey as ProductKey];
+  if (direct) return direct.priceId;
+
+  // 3. SKU prefix match (e.g. 'STK-FR001' → prefix 'STK' → 'sticker-kit')
+  const prefix = productKey.split('-')[0];
+  const productType = SKU_PREFIX_TO_PRODUCT[prefix];
+  if (productType) return STRIPE_PRODUCTS[productType].priceId;
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -24,20 +49,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
     }
 
-    // Build line_items — use price_id from cart (set when product was loaded from DB)
-    // Falls back to STRIPE_PRODUCTS lookup by product_key for legacy products
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     const items_detail: Array<{ sku: string; name: string; design: string; color: string; size: string; qty: number }> = [];
     let subtotal = 0;
 
     for (const item of items) {
-      // Try price_id from cart first (DB products), then fall back to STRIPE_PRODUCTS lookup (legacy)
-      const legacyProduct = STRIPE_PRODUCTS[item.product_key as ProductKey];
-      const priceId = item.price_id || legacyProduct?.priceId;
+      const priceId = resolvePriceId(item.product_key, item.price_id);
 
-      if (!priceId || !priceId.startsWith('price_')) {
+      if (!priceId) {
         return NextResponse.json(
-          { error: `Invalid product: ${item.product_key} — missing Stripe price` },
+          { error: `Invalid product: ${item.product_key} — could not resolve Stripe price` },
           { status: 400 }
         );
       }
@@ -48,8 +69,8 @@ export async function POST(req: NextRequest) {
       });
 
       items_detail.push({
-        sku: item.sku || legacyProduct?.sku || item.product_key,
-        name: item.name || legacyProduct?.name || 'Product',
+        sku: item.sku || item.product_key,
+        name: item.name || 'Product',
         design: item.design || '',
         color: item.color,
         size: item.size,
