@@ -17,18 +17,23 @@ const SKU_PREFIX_TO_PRODUCT: Record<string, ProductKey> = {
   'STK':  'sticker-kit',
 };
 
-function resolvePriceId(productKey: string, cartPriceId?: string): string | null {
-  // 1. price_id from cart (set by shop page from DB)
-  if (cartPriceId && cartPriceId.startsWith('price_')) return cartPriceId;
-
-  // 2. Direct match in STRIPE_PRODUCTS (legacy keys like 'cotton-tee')
+function resolveProduct(productKey: string, cartPriceId?: string): { priceId: string; price: number } | null {
+  // 1. Direct match in STRIPE_PRODUCTS (legacy keys like 'cotton-tee')
   const direct = STRIPE_PRODUCTS[productKey as ProductKey];
-  if (direct) return direct.priceId;
+  if (direct) return { priceId: direct.priceId, price: direct.price };
 
-  // 3. SKU prefix match (e.g. 'STK-FR001' → prefix 'STK' → 'sticker-kit')
+  // 2. SKU prefix match (e.g. 'STK-FR001' → prefix 'STK' → 'sticker-kit')
   const prefix = productKey.split('-')[0];
   const productType = SKU_PREFIX_TO_PRODUCT[prefix];
-  if (productType) return STRIPE_PRODUCTS[productType].priceId;
+  if (productType) {
+    const p = STRIPE_PRODUCTS[productType];
+    return { priceId: p.priceId, price: p.price };
+  }
+
+  // 3. price_id from cart (DB products) — price unknown, use 0 for shipping calc
+  if (cartPriceId && cartPriceId.startsWith('price_')) {
+    return { priceId: cartPriceId, price: 0 };
+  }
 
   return null;
 }
@@ -54,9 +59,9 @@ export async function POST(req: NextRequest) {
     let subtotal = 0;
 
     for (const item of items) {
-      const priceId = resolvePriceId(item.product_key, item.price_id);
+      const resolved = resolveProduct(item.product_key, item.price_id);
 
-      if (!priceId) {
+      if (!resolved) {
         return NextResponse.json(
           { error: `Invalid product: ${item.product_key} — could not resolve Stripe price` },
           { status: 400 }
@@ -64,7 +69,7 @@ export async function POST(req: NextRequest) {
       }
 
       line_items.push({
-        price: priceId,
+        price: resolved.priceId,
         quantity: item.quantity,
       });
 
@@ -77,7 +82,8 @@ export async function POST(req: NextRequest) {
         qty: item.quantity,
       });
 
-      subtotal += item.price * item.quantity;
+      // Use trusted price from STRIPE_PRODUCTS (cents), not from client
+      subtotal += resolved.price * item.quantity;
     }
 
     // Shipping options (free shipping if above threshold)
