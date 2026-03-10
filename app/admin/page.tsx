@@ -26,6 +26,7 @@ const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 const PRODUCT_TYPES: Record<string, {
   label: string;
+  productName: string;
   skuPrefix: string;
   stripe_price_id: string;
   base_price: number;
@@ -34,43 +35,48 @@ const PRODUCT_TYPES: Record<string, {
 }> = {
   'cotton-tee': {
     label: 'Cotton Tee — CA$29.99',
+    productName: 'OnSite DryBlend Tee',
     skuPrefix: 'CTEE',
     stripe_price_id: 'price_1T6yaQGntiIt3xkawNdIb3ek',
     base_price: 29.99,
     defaultSizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-    description: '100% ringspun cotton tee, pre-shrunk. High-durability screen print.',
+    description: '5.5 oz/yd², 50/50 cotton/polyester blend, 20 singles. Midweight DryBlend® moisture-wicking fabric. Classic fit, taped neck & shoulders, double-needle sleeve and bottom hems. Tear-away label. Sizes S–5XL.',
   },
   'sport-tee': {
     label: 'Sport Tee — CA$34.99',
+    productName: 'OnSite Performance Tee',
     skuPrefix: 'STEE',
     stripe_price_id: 'price_1T6ybPGntiIt3xkaA7NoCQ4e',
     base_price: 34.99,
     defaultSizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    description: 'Moisture-wicking performance fabric. Lightweight and breathable.',
+    description: '4.13 oz/yd², 100% polyester interlock. Moisture-wicking performance fabric with UV 50+ protection. Lightweight and breathable. Tear-away label. Sizes S–4XL.',
   },
   'hoodie': {
     label: 'Hoodie — CA$49.99',
+    productName: 'OnSite Heavyweight Hoodie',
     skuPrefix: 'HOOD',
     stripe_price_id: 'price_1T6ydIGntiIt3xkaOI5uKbgH',
     base_price: 49.99,
     defaultSizes: ['S', 'M', 'L', 'XL', 'XXL'],
-    description: 'Heavyweight 400g/m² hoodie. Lined hood. Kangaroo pocket.',
+    description: '12.7 oz/Lyd, 260 GSM, 50/50 cotton/polyester. 2-End Fleece Bio polished fabric. Hood with matching drawstring, set-in sleeves, pouch pockets 2x2. Athletic rib knit cuffs with Lycra. Double-needle stitching throughout. Sizes S–3XL.',
   },
   'cap': {
     label: 'Cap — CA$39.99',
+    productName: 'OnSite Snapback Cap',
     skuPrefix: 'CAP',
     stripe_price_id: 'price_1T6ylSGntiIt3xka7i5gMdhM',
     base_price: 39.99,
     defaultSizes: ['One Size'],
-    description: 'Structured cap with curved brim. Snapback fit.',
+    description: '100% cotton twill, structured 6-panel mid-profile. Pre-curved visor, adjustable snapback closure. Embroidered OnSite Club logo. One size fits most.',
   },
   'sticker-kit': {
     label: 'Sticker Kit — CA$9.99',
+    productName: 'OnSite Jobsite Sticker Pack',
     skuPrefix: 'STK',
     stripe_price_id: 'price_1T6yfRGntiIt3xkaNuMeFJSF',
     base_price: 9.99,
     defaultSizes: ['One Size'],
-    description: 'Premium vinyl stickers. Water and sun resistant.',
+    description: 'Premium vinyl sticker pack. Waterproof, UV-resistant, and built for hard hats, toolboxes, and trucks. Easy peel-and-stick application. Durable outdoor-grade adhesive.',
   },
 };
 
@@ -933,7 +939,7 @@ function ProductForm({
     if (!pt || !at || !dNum) return null;
     const num = dNum.padStart(3, '0');
     const sku = `${pt.skuPrefix}-${at.code}${num}`;
-    const name = `${at.label} #${num} — ${pt.label.split(' —')[0]}`;
+    const name = `${pt.productName} — ${at.label} #${num}`;
     return { sku, name };
   };
 
@@ -954,7 +960,7 @@ function ProductForm({
       stripe_price_id: pt.stripe_price_id,
       base_price: pt.base_price,
       sizes: pt.defaultSizes,
-      description: form.description || pt.description,
+      description: pt.description,
       ...(identity ? { sku: identity.sku, name: identity.name } : {}),
     });
   };
