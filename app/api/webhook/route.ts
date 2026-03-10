@@ -91,7 +91,9 @@ export async function POST(req: NextRequest) {
       }) || [];
 
       const emailItems = itemsDetail.map((item: any, idx: number) => ({
-        name: lineItemNames[idx] || item.name || item.sku,
+        name: item.name || lineItemNames[idx] || 'Product',
+        sku: item.sku || '',
+        design: item.design || '',
         quantity: item.qty,
         price: (session.line_items?.data[idx]?.amount_total || 0) / 100 / (item.qty || 1),
         size: item.size,

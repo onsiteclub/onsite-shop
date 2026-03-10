@@ -8,6 +8,8 @@ interface OrderEmailData {
   orderNumber: string;
   items: Array<{
     name: string;
+    sku?: string;
+    design?: string;
     quantity: number;
     price: number;
     size?: string;
@@ -92,6 +94,25 @@ function buildItemsTableHtml(items: OrderEmailData['items']): string {
       <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB;">
         <strong style="color: #1B2B27;">${item.name}</strong>
         ${item.size || item.color ? `<br><span style="color: #6B7280; font-size: 13px;">${[item.color, item.size].filter(Boolean).join(' — ')}</span>` : ''}
+      </td>
+      <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB; text-align: center; color: #6B7280;">
+        ${item.quantity}
+      </td>
+      <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB; text-align: right; color: #1B2B27;">
+        CA$${(item.price * item.quantity).toFixed(2)}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function buildAdminItemsTableHtml(items: OrderEmailData['items']): string {
+  return items.map(item => `
+    <tr>
+      <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB;">
+        <strong style="color: #1B2B27;">${item.name}</strong>
+        ${item.sku ? `<br><code style="font-size: 12px; background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 4px; font-weight: bold;">${item.sku}</code>` : ''}
+        ${item.design ? `<br><span style="color: #6B7280; font-size: 12px;">Design: ${item.design}</span>` : ''}
+        <br><span style="color: #6B7280; font-size: 13px;">${[item.color, item.size].filter(Boolean).join(' — ')}</span>
       </td>
       <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB; text-align: center; color: #6B7280;">
         ${item.quantity}
@@ -226,13 +247,13 @@ function buildAdminEmailHtml(order: OrderEmailData): string {
       <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 24px;">
         <thead>
           <tr style="border-bottom: 2px solid #1B2B27;">
-            <th style="text-align: left; padding: 8px 0;">Product</th>
+            <th style="text-align: left; padding: 8px 0;">Product / SKU</th>
             <th style="text-align: center; padding: 8px 0;">Qty</th>
             <th style="text-align: right; padding: 8px 0;">Amount</th>
           </tr>
         </thead>
         <tbody>
-          ${buildItemsTableHtml(order.items)}
+          ${buildAdminItemsTableHtml(order.items)}
         </tbody>
       </table>
 
