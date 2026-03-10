@@ -87,8 +87,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Shipping options (free shipping if above threshold)
+    // Stripe allows max 5 shipping options
     const shipping_options = subtotal >= FREE_SHIPPING_THRESHOLD
-      ? [FREE_SHIPPING_OPTION, ...SHIPPING_OPTIONS]
+      ? [FREE_SHIPPING_OPTION, ...SHIPPING_OPTIONS.slice(0, 4)]
       : [...SHIPPING_OPTIONS];
 
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'http://localhost:3001';
