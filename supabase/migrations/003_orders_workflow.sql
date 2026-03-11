@@ -137,6 +137,11 @@ ALTER TABLE app_shop_orders ALTER COLUMN tax SET DEFAULT 0;
 ALTER TABLE app_shop_orders ALTER COLUMN total DROP NOT NULL;
 ALTER TABLE app_shop_orders ALTER COLUMN total SET DEFAULT 0;
 
+-- Replace old status CHECK constraint with the simplified workflow statuses
+ALTER TABLE app_shop_orders DROP CONSTRAINT IF EXISTS app_shop_orders_status_check;
+ALTER TABLE app_shop_orders ADD CONSTRAINT app_shop_orders_status_check
+  CHECK (status IN ('paid', 'processing', 'shipped', 'delivered', 'archived'));
+
 -- ============================================
 -- 6. MIGRATE LEGACY DATA
 -- ============================================

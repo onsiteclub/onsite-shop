@@ -772,7 +772,9 @@ function ProductModal({
               ) : (
                 <div className="flex gap-2">
                   <button
+                    disabled={addedFeedback}
                     onClick={() => {
+                      if (addedFeedback) return;
                       // Validate selections
                       if (product.sizes?.length > 1 && !selectedSize) {
                         setValidationError('Please select a size');
@@ -798,7 +800,7 @@ function ProductModal({
                     }}
                     className={`flex-1 font-mono py-2.5 md:py-3 px-3 rounded-lg transition-colors uppercase tracking-wider text-xs md:text-sm font-bold ${
                       addedFeedback
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-green-600 text-white cursor-not-allowed'
                         : 'bg-[#1B2B27] text-white hover:bg-[#2a3f39]'
                     }`}
                   >
@@ -875,10 +877,15 @@ function UniformProductCard({
     }
   };
 
+  const clickedRef = useRef(false);
   const handleMouseDown = () => setIsPressed(true);
   const handleMouseUp = () => {
     setIsPressed(false);
-    onClick();
+    if (!clickedRef.current) {
+      clickedRef.current = true;
+      onClick();
+      setTimeout(() => { clickedRef.current = false; }, 300);
+    }
   };
 
   const hoverScale = isHovered ? 1.05 : 1;
@@ -898,7 +905,14 @@ function UniformProductCard({
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onTouchStart={() => onHoverChange?.(true)}
-      onTouchEnd={() => { onHoverChange?.(false); onClick(); }}
+      onTouchEnd={() => {
+        onHoverChange?.(false);
+        if (!clickedRef.current) {
+          clickedRef.current = true;
+          onClick();
+          setTimeout(() => { clickedRef.current = false; }, 300);
+        }
+      }}
     >
       {/* Floating shadow layer */}
       <div
