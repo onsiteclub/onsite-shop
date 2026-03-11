@@ -265,41 +265,35 @@ export default function AdminOrdersPage() {
 
   // ---- Status updates ----
 
+  async function apiUpdateOrder(orderId: string, data: Record<string, any>) {
+    const res = await fetch('/api/orders/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: orderId, data }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Update failed');
+    }
+    return res.json();
+  }
+
   async function updateOrderStatus(orderId: string, newStatus: string) {
     setUpdatingStatus(true);
-    const updateData: Record<string, any> = { status: newStatus };
+    try {
+      const updateData: Record<string, any> = { status: newStatus };
 
-    // Timestamps for columns that are guaranteed to exist (old schema)
-    if (newStatus === 'shipped') {
-      updateData.shipped_at = new Date().toISOString();
-      if (editTrackingCode.trim()) updateData.tracking_code = editTrackingCode.trim();
-    }
-    else if (newStatus === 'delivered') updateData.delivered_at = new Date().toISOString();
-    else if (newStatus === 'cancelled') updateData.cancelled_at = new Date().toISOString();
+      if (newStatus === 'processing') updateData.processing_at = new Date().toISOString();
+      else if (newStatus === 'ready_to_ship') updateData.ready_at = new Date().toISOString();
+      else if (newStatus === 'shipped') {
+        updateData.shipped_at = new Date().toISOString();
+        if (editTrackingCode.trim()) updateData.tracking_code = editTrackingCode.trim();
+      }
+      else if (newStatus === 'delivered') updateData.delivered_at = new Date().toISOString();
+      else if (newStatus === 'cancelled') updateData.cancelled_at = new Date().toISOString();
 
-    // First: update status + guaranteed columns
-    const { error } = await supabase
-      .from('app_shop_orders')
-      .update(updateData)
-      .eq('id', orderId);
+      await apiUpdateOrder(orderId, updateData);
 
-    if (error) {
-      console.error('Status update failed:', error);
-      setUpdatingStatus(false);
-      return;
-    }
-
-    // Try to save timeline timestamps (processing_at, ready_at)
-    // These columns may not exist yet if migration hasn't been run — ignore errors
-    const timelineData: Record<string, any> = {};
-    if (newStatus === 'processing') timelineData.processing_at = new Date().toISOString();
-    else if (newStatus === 'ready_to_ship') timelineData.ready_at = new Date().toISOString();
-    if (Object.keys(timelineData).length > 0) {
-      await supabase.from('app_shop_orders').update(timelineData).eq('id', orderId);
-      // Silently ignore errors — columns may not exist yet
-    }
-
-    {
       // Send shipped email
       if (newStatus === 'shipped' && selectedOrder?.email && editTrackingCode.trim()) {
         try {
@@ -318,31 +312,35 @@ export default function AdminOrdersPage() {
       }
 
       await loadOrders();
-      // Refresh selected order from updated list
       setSelectedOrder(prev => {
         if (!prev || prev.id !== orderId) return prev;
         return { ...prev, status: newStatus, ...updateData };
       });
+    } catch (err: any) {
+      console.error('Status update failed:', err);
+      alert(`Failed to update status: ${err.message}`);
     }
     setUpdatingStatus(false);
   }
 
   async function saveStaffNotes(orderId: string) {
-    await supabase
-      .from('app_shop_orders')
-      .update({ staff_notes: editStaffNotes || null })
-      .eq('id', orderId);
-    await loadOrders();
-    setSelectedOrder(prev => prev?.id === orderId ? { ...prev, staff_notes: editStaffNotes || null } : prev);
+    try {
+      await apiUpdateOrder(orderId, { staff_notes: editStaffNotes || null });
+      await loadOrders();
+      setSelectedOrder(prev => prev?.id === orderId ? { ...prev, staff_notes: editStaffNotes || null } : prev);
+    } catch (err: any) {
+      alert(`Failed to save notes: ${err.message}`);
+    }
   }
 
   async function saveTrackingCode(orderId: string) {
-    await supabase
-      .from('app_shop_orders')
-      .update({ tracking_code: editTrackingCode || null })
-      .eq('id', orderId);
-    await loadOrders();
-    setSelectedOrder(prev => prev?.id === orderId ? { ...prev, tracking_code: editTrackingCode || null } : prev);
+    try {
+      await apiUpdateOrder(orderId, { tracking_code: editTrackingCode || null });
+      await loadOrders();
+      setSelectedOrder(prev => prev?.id === orderId ? { ...prev, tracking_code: editTrackingCode || null } : prev);
+    } catch (err: any) {
+      alert(`Failed to save tracking code: ${err.message}`);
+    }
   }
 
   // ---- Delete ----
