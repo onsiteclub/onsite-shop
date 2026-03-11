@@ -95,10 +95,14 @@ function sc(status: string) {
 // ============================================
 
 function normalizeOrder(row: any): Order {
+  const baseStatus = normalizeStatus(row.status);
+  // Archived is derived: delivered + archived_at set
+  const effectiveStatus = (baseStatus === 'delivered' && row.archived_at) ? 'archived' : baseStatus;
+
   return {
     id: row.id,
     order_number: row.order_number || 'Unknown',
-    status: normalizeStatus(row.status),
+    status: effectiveStatus,
     email: row.email || null,
     items: Array.isArray(row.items) ? row.items : [],
     total: typeof row.total === 'number' ? row.total : 0,
@@ -272,12 +276,17 @@ export default function AdminOrdersPage() {
   async function updateOrderStatus(orderId: string, newStatus: string, extraData?: Record<string, any>) {
     setUpdatingStatus(true);
     try {
-      const updateData: Record<string, any> = { status: newStatus, ...extraData };
+      const updateData: Record<string, any> = { ...extraData };
 
-      if (newStatus === 'processing') updateData.processing_at = new Date().toISOString();
-      else if (newStatus === 'shipped') updateData.shipped_at = new Date().toISOString();
-      else if (newStatus === 'delivered') updateData.delivered_at = new Date().toISOString();
-      else if (newStatus === 'archived') updateData.archived_at = new Date().toISOString();
+      // Archive doesn't change DB status — it stays 'delivered' with archived_at set
+      if (newStatus === 'archived') {
+        updateData.archived_at = new Date().toISOString();
+      } else {
+        updateData.status = newStatus;
+        if (newStatus === 'processing') updateData.processing_at = new Date().toISOString();
+        else if (newStatus === 'shipped') updateData.shipped_at = new Date().toISOString();
+        else if (newStatus === 'delivered') updateData.delivered_at = new Date().toISOString();
+      }
 
       await apiUpdateOrder(orderId, updateData);
 
@@ -305,7 +314,7 @@ export default function AdminOrdersPage() {
       } else {
         setSelectedOrder(prev => {
           if (!prev || prev.id !== orderId) return prev;
-          return { ...prev, ...updateData };
+          return { ...prev, status: newStatus, ...updateData };
         });
       }
     } catch (err: any) {
@@ -329,6 +338,7 @@ export default function AdminOrdersPage() {
     }
 
     // Tab filters — archived only shown via search
+    if (order.status === 'archived') return false; // archived hidden from all tabs
     if (filter === 'active') return ACTIVE_STATUSES.includes(order.status);
     if (filter === 'delivered') return order.status === 'delivered';
     if (filter === 'reports') return false; // reports tab handles its own display
