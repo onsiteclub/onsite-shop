@@ -1214,15 +1214,7 @@ export default function ShopPage() {
         />
       )}
 
-      {/* Admin link - discrete */}
-      <div className="relative z-10 text-center pb-6">
-        <a
-          href="/admin"
-          className="font-mono text-[10px] text-[#1B2B27]/20 hover:text-[#1B2B27]/50 transition-colors"
-        >
-          Admin
-        </a>
-      </div>
+      <div className="pb-6" />
     </div>
   );
 }
