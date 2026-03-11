@@ -627,32 +627,7 @@ export default function AdminOrdersPage() {
                 <OrderTimeline order={selectedOrder} />
               </div>
 
-              {/* ---- 3. SHIPPING LABEL ---- */}
-              {selectedOrder.shipping_address ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-5 bg-white">
-                  <p className="font-mono text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
-                    Ship To
-                  </p>
-                  <div className="font-mono text-base text-[#1B2B27] leading-relaxed">
-                    <p className="font-bold text-lg">{selectedOrder.shipping_address.name || '—'}</p>
-                    {selectedOrder.shipping_address.street && <p>{selectedOrder.shipping_address.street}</p>}
-                    {selectedOrder.shipping_address.apartment && <p>{selectedOrder.shipping_address.apartment}</p>}
-                    <p>
-                      {[selectedOrder.shipping_address.city, selectedOrder.shipping_address.province].filter(Boolean).join(', ')}
-                      {selectedOrder.shipping_address.postal_code && (
-                        <span className="ml-3 font-bold tracking-wider">{selectedOrder.shipping_address.postal_code}</span>
-                      )}
-                    </p>
-                    <p className="text-gray-500 text-sm mt-1">{selectedOrder.shipping_address.country || 'Canada'}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 bg-gray-50 text-center">
-                  <p className="font-mono text-sm text-gray-400">No shipping address</p>
-                </div>
-              )}
-
-              {/* ---- 4. PACKING LIST ---- */}
+              {/* ---- 3. PACKING LIST ---- */}
               <div>
                 <p className="font-mono text-xs font-bold text-[#1B2B27]/60 uppercase tracking-wider mb-3">
                   Packing List ({itemCount(selectedOrder)} item{itemCount(selectedOrder) !== 1 ? 's' : ''})
@@ -685,6 +660,31 @@ export default function AdminOrdersPage() {
                   </div>
                 )}
               </div>
+
+              {/* ---- 4. SHIPPING LABEL ---- */}
+              {selectedOrder.shipping_address ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-5 bg-white">
+                  <p className="font-mono text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
+                    Ship To
+                  </p>
+                  <div className="font-mono text-base text-[#1B2B27] leading-relaxed">
+                    <p className="font-bold text-lg">{selectedOrder.shipping_address.name || '—'}</p>
+                    {selectedOrder.shipping_address.street && <p>{selectedOrder.shipping_address.street}</p>}
+                    {selectedOrder.shipping_address.apartment && <p>{selectedOrder.shipping_address.apartment}</p>}
+                    <p>
+                      {[selectedOrder.shipping_address.city, selectedOrder.shipping_address.province].filter(Boolean).join(', ')}
+                      {selectedOrder.shipping_address.postal_code && (
+                        <span className="ml-3 font-bold tracking-wider">{selectedOrder.shipping_address.postal_code}</span>
+                      )}
+                    </p>
+                    <p className="text-gray-500 text-sm mt-1">{selectedOrder.shipping_address.country || 'Canada'}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 bg-gray-50 text-center">
+                  <p className="font-mono text-sm text-gray-400">No shipping address</p>
+                </div>
+              )}
 
               {/* ---- 5. ORDER SUMMARY ---- */}
               <div className="bg-gray-50 rounded-xl p-4 font-mono text-sm">
