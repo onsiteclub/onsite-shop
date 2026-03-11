@@ -140,8 +140,8 @@ export default function CartPage() {
         </h1>
 
         <div className="grid lg:grid-cols-5 gap-8">
-          {/* Shipping Address + Summary — left 3 cols */}
-          <div className="lg:col-span-3 space-y-4">
+          {/* Shipping Address + Summary — right 3 cols */}
+          <div className="lg:col-span-3 lg:order-2 space-y-4">
 
             {/* Shipping Address Form */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
@@ -272,8 +272,8 @@ export default function CartPage() {
             </div>
           </div>
 
-          {/* Cart items — right 2 cols */}
-          <div className="lg:col-span-2 space-y-4">
+          {/* Cart items — left 2 cols */}
+          <div className="lg:col-span-2 lg:order-1 space-y-4">
             {items.map((item, idx) => (
               <div
                 key={`${item.product_key}-${item.size}-${item.color}-${idx}`}
