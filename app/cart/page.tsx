@@ -140,67 +140,8 @@ export default function CartPage() {
         </h1>
 
         <div className="grid lg:grid-cols-5 gap-8">
-          {/* Cart items — left 3 cols */}
+          {/* Shipping Address + Summary — left 3 cols */}
           <div className="lg:col-span-3 space-y-4">
-            {items.map((item, idx) => (
-              <div
-                key={`${item.product_key}-${item.size}-${item.color}-${idx}`}
-                className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 flex gap-4"
-              >
-                <div className="w-24 h-24 bg-stone-100 rounded-xl flex items-center justify-center text-4xl shrink-0 overflow-hidden">
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                  ) : (
-                    '📦'
-                  )}
-                </div>
-
-                <div className="flex-1">
-                  <h3 className="font-mono font-medium text-stone-800">{item.name}</h3>
-                  <p className="font-mono text-sm text-stone-500">
-                    {item.color}{item.size ? ` — ${item.size}` : ''}
-                  </p>
-                  {item.design && (
-                    <p className="font-mono text-xs text-stone-400">{item.design}</p>
-                  )}
-                  <p className="font-mono text-amber-600 font-bold mt-1">{fmt(item.price)}</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => updateQuantity(item.product_key, item.color, item.size, item.quantity - 1)}
-                    className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center"
-                  >
-                    -
-                  </button>
-                  <span className="font-mono w-8 text-center">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item.product_key, item.color, item.size, item.quantity + 1)}
-                    className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center"
-                  >
-                    +
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => removeItem(item.product_key, item.color, item.size)}
-                  className="text-stone-400 hover:text-red-500 transition-colors"
-                >
-                  🗑️
-                </button>
-              </div>
-            ))}
-
-            <button
-              onClick={clearCart}
-              className="font-mono text-sm text-stone-400 hover:text-stone-600"
-            >
-              Clear cart
-            </button>
-          </div>
-
-          {/* Summary + Shipping Address — right 2 cols */}
-          <div className="lg:col-span-2 space-y-4">
 
             {/* Shipping Address Form */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
@@ -329,6 +270,65 @@ export default function CartPage() {
                 Secure payment via Stripe
               </p>
             </div>
+          </div>
+
+          {/* Cart items — right 2 cols */}
+          <div className="lg:col-span-2 space-y-4">
+            {items.map((item, idx) => (
+              <div
+                key={`${item.product_key}-${item.size}-${item.color}-${idx}`}
+                className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 flex gap-4"
+              >
+                <div className="w-24 h-24 bg-stone-100 rounded-xl flex items-center justify-center text-4xl shrink-0 overflow-hidden">
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    '📦'
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <h3 className="font-mono font-medium text-stone-800">{item.name}</h3>
+                  <p className="font-mono text-sm text-stone-500">
+                    {item.color}{item.size ? ` — ${item.size}` : ''}
+                  </p>
+                  {item.design && (
+                    <p className="font-mono text-xs text-stone-400">{item.design}</p>
+                  )}
+                  <p className="font-mono text-amber-600 font-bold mt-1">{fmt(item.price)}</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => updateQuantity(item.product_key, item.color, item.size, item.quantity - 1)}
+                    className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono w-8 text-center">{item.quantity}</span>
+                  <button
+                    onClick={() => updateQuantity(item.product_key, item.color, item.size, item.quantity + 1)}
+                    className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => removeItem(item.product_key, item.color, item.size)}
+                  className="text-stone-400 hover:text-red-500 transition-colors"
+                >
+                  🗑️
+                </button>
+              </div>
+            ))}
+
+            <button
+              onClick={clearCart}
+              className="font-mono text-sm text-stone-400 hover:text-stone-600"
+            >
+              Clear cart
+            </button>
           </div>
         </div>
       </div>

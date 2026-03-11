@@ -663,42 +663,23 @@ export default function AdminOrdersPage() {
                     <p className="font-mono text-sm text-gray-400">No item details available</p>
                   </div>
                 ) : (
-                  <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    {/* Table header */}
+                    <div className="bg-gray-50 px-4 py-2 grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center font-mono text-xs text-[#1B2B27]/50 uppercase tracking-wider border-b border-gray-200">
+                      <span>Product</span>
+                      <span className="w-20 text-center">SKU</span>
+                      <span className="w-14 text-center">Size</span>
+                      <span className="w-16 text-center">Color</span>
+                      <span className="w-10 text-center">Qty</span>
+                    </div>
+                    {/* Rows */}
                     {selectedOrder.items.map((item, idx) => (
-                      <div key={idx} className="bg-white p-4 flex gap-4 items-center">
-                        {/* Image */}
-                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border border-gray-100">
-                          {item.image ? (
-                            <img src={item.image} alt={item.name || 'Product'} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-2xl text-gray-300">📦</span>
-                          )}
-                        </div>
-
-                        {/* Info — structured rows */}
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <p className="font-mono text-base font-bold text-[#1B2B27] leading-tight">{item.name || 'Product'}</p>
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
-                            {item.sku && (
-                              <span className="text-amber-700 font-semibold">{item.sku}</span>
-                            )}
-                            {item.size && (
-                              <span className="text-[#1B2B27]">Size: <strong>{item.size}</strong></span>
-                            )}
-                            {item.color && (
-                              <span className="text-[#1B2B27]">Color: <strong>{item.color}</strong></span>
-                            )}
-                          </div>
-                          {item.design && (
-                            <p className="font-mono text-sm text-[#1B2B27]/60">Design: {item.design}</p>
-                          )}
-                        </div>
-
-                        {/* Quantity — large, unmistakable */}
-                        <div className="shrink-0 w-16 h-16 rounded-xl bg-[#1B2B27] flex flex-col items-center justify-center">
-                          <p className="font-mono text-2xl font-black text-white leading-none">{item.qty || 1}</p>
-                          <p className="font-mono text-[9px] text-white/60 uppercase tracking-wider mt-0.5">units</p>
-                        </div>
+                      <div key={idx} className="px-4 py-3 grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center border-b border-gray-100 last:border-b-0 bg-white">
+                        <span className="font-mono text-sm font-bold text-[#1B2B27] truncate">{item.name || 'Product'}</span>
+                        <span className="font-mono text-sm text-amber-700 font-semibold w-20 text-center">{item.sku || '—'}</span>
+                        <span className="font-mono text-sm text-[#1B2B27] w-14 text-center font-semibold">{item.size || '—'}</span>
+                        <span className="font-mono text-sm text-[#1B2B27] w-16 text-center">{item.color || '—'}</span>
+                        <span className="font-mono text-sm font-black text-[#1B2B27] w-10 text-center">{item.qty || 1}</span>
                       </div>
                     ))}
                   </div>
