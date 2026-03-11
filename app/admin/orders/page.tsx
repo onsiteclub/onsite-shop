@@ -269,22 +269,37 @@ export default function AdminOrdersPage() {
     setUpdatingStatus(true);
     const updateData: Record<string, any> = { status: newStatus };
 
-    // Record timestamp for each status transition
-    if (newStatus === 'processing') updateData.processing_at = new Date().toISOString();
-    else if (newStatus === 'ready_to_ship') updateData.ready_at = new Date().toISOString();
-    else if (newStatus === 'shipped') {
+    // Timestamps for columns that are guaranteed to exist (old schema)
+    if (newStatus === 'shipped') {
       updateData.shipped_at = new Date().toISOString();
       if (editTrackingCode.trim()) updateData.tracking_code = editTrackingCode.trim();
     }
     else if (newStatus === 'delivered') updateData.delivered_at = new Date().toISOString();
     else if (newStatus === 'cancelled') updateData.cancelled_at = new Date().toISOString();
 
+    // First: update status + guaranteed columns
     const { error } = await supabase
       .from('app_shop_orders')
       .update(updateData)
       .eq('id', orderId);
 
-    if (!error) {
+    if (error) {
+      console.error('Status update failed:', error);
+      setUpdatingStatus(false);
+      return;
+    }
+
+    // Try to save timeline timestamps (processing_at, ready_at)
+    // These columns may not exist yet if migration hasn't been run — ignore errors
+    const timelineData: Record<string, any> = {};
+    if (newStatus === 'processing') timelineData.processing_at = new Date().toISOString();
+    else if (newStatus === 'ready_to_ship') timelineData.ready_at = new Date().toISOString();
+    if (Object.keys(timelineData).length > 0) {
+      await supabase.from('app_shop_orders').update(timelineData).eq('id', orderId);
+      // Silently ignore errors — columns may not exist yet
+    }
+
+    {
       // Send shipped email
       if (newStatus === 'shipped' && selectedOrder?.email && editTrackingCode.trim()) {
         try {
