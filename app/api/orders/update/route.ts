@@ -73,6 +73,9 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // Optional columns that may not exist in production yet
+    const OPTIONAL_COLUMNS = ['processing_at', 'ready_at'];
+
     // Try full update first
     const { data: updated, error } = await serviceClient
       .from('app_shop_orders')
@@ -82,12 +85,12 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      // If error is about missing columns (processing_at, ready_at),
-      // retry without those columns
-      if (error.code === '42703') {
+      // If error mentions a missing column, retry without optional columns
+      const hasOptional = OPTIONAL_COLUMNS.some(col => col in sanitized);
+      if (hasOptional && (error.message?.includes('column') || error.code === '42703' || error.code === 'PGRST204')) {
         const fallback: Record<string, any> = {};
         for (const [k, v] of Object.entries(sanitized)) {
-          if (k !== 'processing_at' && k !== 'ready_at') {
+          if (!OPTIONAL_COLUMNS.includes(k)) {
             fallback[k] = v;
           }
         }
