@@ -1061,6 +1061,8 @@ export default function ShopPage() {
   const cartItems = useCartStore((state) => state.items);
   const [isHoveringProduct, setIsHoveringProduct] = useState(false);
   const [isModalOpening, setIsModalOpening] = useState(false);
+  const [tapCount, setTapCount] = useState(0);
+  const tapTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Load products from Supabase
   useEffect(() => {
@@ -1123,14 +1125,30 @@ export default function ShopPage() {
           ================================================================ */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#D4CFC4]/70 backdrop-blur-md border-b border-[#1B2B27]/10">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-2.5 flex items-center justify-between">
-          {/* Logo - left */}
-          <a href="https://onsiteclub.ca" className="flex-shrink-0">
+          {/* Logo - left (5 rapid taps → /admin) */}
+          <div
+            className="flex-shrink-0 cursor-pointer"
+            onClick={() => {
+              const next = tapCount + 1;
+              if (tapTimer.current) clearTimeout(tapTimer.current);
+              if (next >= 5) {
+                setTapCount(0);
+                window.location.href = '/admin';
+                return;
+              }
+              setTapCount(next);
+              tapTimer.current = setTimeout(() => {
+                setTapCount(0);
+                window.location.href = 'https://onsiteclub.ca';
+              }, 2000);
+            }}
+          >
             <img
               src="/assets/logo-onsite-club.png"
               alt="OnSite Club"
               className="h-10 md:h-12 w-auto"
             />
-          </a>
+          </div>
 
           {/* Tagline - center (hidden on mobile) */}
           <p className="hidden md:block font-mono text-[11px] text-[#1B2B27]/50 tracking-[0.3em] uppercase absolute left-1/2 -translate-x-1/2">
