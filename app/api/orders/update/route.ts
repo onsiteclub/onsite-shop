@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     const ALLOWED_FIELDS = [
       'status', 'staff_notes', 'tracking_code',
       'shipped_at', 'delivered_at', 'cancelled_at',
-      'processing_at', 'ready_at',
+      'processing_at', 'ready_at', 'archived_at',
     ];
 
     const sanitized: Record<string, any> = {};
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Optional columns that may not exist in production yet
-    const OPTIONAL_COLUMNS = ['processing_at', 'ready_at'];
+    const OPTIONAL_COLUMNS = ['processing_at', 'ready_at', 'archived_at'];
 
     // Try full update first
     const { data: updated, error } = await serviceClient

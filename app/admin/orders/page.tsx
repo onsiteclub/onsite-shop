@@ -15,7 +15,7 @@ interface OrderItem {
   color?: string;
   size?: string;
   qty?: number;
-  price?: number; // cents — may be missing on old orders
+  price?: number;
   image?: string | null;
 }
 
@@ -44,47 +44,45 @@ interface Order {
   stripe_session_id: string | null;
   created_at: string;
   processing_at: string | null;
-  ready_at: string | null;
   shipped_at: string | null;
   delivered_at: string | null;
-  cancelled_at: string | null;
+  archived_at: string | null;
 }
 
 // ============================================
-// STATUS CONFIG
+// STATUS CONFIG — simplified linear flow
 // ============================================
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  paid:          { label: 'Paid',          color: 'text-green-800',  bg: 'bg-green-100' },
-  processing:    { label: 'Processing',    color: 'text-yellow-800', bg: 'bg-yellow-100' },
-  out_of_stock:  { label: 'Out of Stock',  color: 'text-orange-800', bg: 'bg-orange-100' },
-  ready_to_ship: { label: 'Ready to Ship', color: 'text-cyan-800',   bg: 'bg-cyan-100' },
-  shipped:       { label: 'Shipped',       color: 'text-blue-800',   bg: 'bg-blue-100' },
-  delivered:     { label: 'Delivered',      color: 'text-purple-800', bg: 'bg-purple-100' },
-  cancelled:     { label: 'Cancelled',      color: 'text-red-800',    bg: 'bg-red-100' },
+  paid:       { label: 'Paid',       color: 'text-green-800',  bg: 'bg-green-100' },
+  processing: { label: 'Processing', color: 'text-yellow-800', bg: 'bg-yellow-100' },
+  shipped:    { label: 'Shipped',    color: 'text-blue-800',   bg: 'bg-blue-100' },
+  delivered:  { label: 'Delivered',  color: 'text-purple-800', bg: 'bg-purple-100' },
+  archived:   { label: 'Archived',   color: 'text-gray-600',   bg: 'bg-gray-100' },
 };
 
 const KNOWN_STATUSES = Object.keys(STATUS_META);
-const ACTIVE_STATUSES = ['paid', 'processing', 'out_of_stock', 'ready_to_ship', 'shipped'];
-const ARCHIVED_STATUSES = ['delivered', 'cancelled'];
+const ACTIVE_STATUSES = ['paid', 'processing', 'shipped'];
+const COMPLETED_STATUSES = ['delivered'];
 
-// Timeline steps in order
 const TIMELINE_STEPS = [
-  { key: 'paid',          label: 'Paid',          dateField: 'created_at' },
-  { key: 'processing',    label: 'Processing',    dateField: 'processing_at' },
-  { key: 'ready_to_ship', label: 'Ready',         dateField: 'ready_at' },
-  { key: 'shipped',       label: 'Shipped',       dateField: 'shipped_at' },
-  { key: 'delivered',     label: 'Delivered',      dateField: 'delivered_at' },
+  { key: 'paid',       label: 'Paid',       dateField: 'created_at' },
+  { key: 'processing', label: 'Processing', dateField: 'processing_at' },
+  { key: 'shipped',    label: 'Shipped',    dateField: 'shipped_at' },
+  { key: 'delivered',  label: 'Delivered',  dateField: 'delivered_at' },
 ] as const;
 
 const STATUS_ORDER: Record<string, number> = {
-  paid: 0, processing: 1, out_of_stock: 1, ready_to_ship: 2, shipped: 3, delivered: 4, cancelled: -1,
+  paid: 0, processing: 1, shipped: 2, delivered: 3, archived: 3,
 };
 
 function normalizeStatus(status: string | null | undefined): string {
   if (!status) return 'paid';
   if (KNOWN_STATUSES.includes(status)) return status;
+  // Legacy statuses
   if (status === 'pending') return 'paid';
+  if (status === 'ready_to_ship' || status === 'out_of_stock') return 'processing';
+  if (status === 'cancelled') return 'archived';
   return 'paid';
 }
 
@@ -112,10 +110,9 @@ function normalizeOrder(row: any): Order {
     stripe_session_id: row.stripe_session_id || null,
     created_at: row.created_at || new Date().toISOString(),
     processing_at: row.processing_at || null,
-    ready_at: row.ready_at || null,
     shipped_at: row.shipped_at || null,
     delivered_at: row.delivered_at || null,
-    cancelled_at: row.cancelled_at || null,
+    archived_at: row.archived_at || null,
   };
 }
 
@@ -127,9 +124,10 @@ const fmtDate = (iso: string) =>
   });
 
 const fmtDateShort = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-CA', {
-    month: 'short', day: 'numeric',
-  });
+  new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+
+const fmtDateFull = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
 
 const itemCount = (order: Order) =>
   order.items.reduce((sum, i) => sum + (i.qty || 1), 0);
@@ -140,62 +138,46 @@ const itemCount = (order: Order) =>
 
 function OrderTimeline({ order }: { order: Order }) {
   const currentIdx = STATUS_ORDER[order.status] ?? 0;
-  const isCancelled = order.status === 'cancelled';
 
   return (
     <div className="w-full">
-      {isCancelled ? (
-        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
-          <span className="text-red-500 text-lg">✕</span>
-          <div>
-            <p className="font-mono text-sm font-bold text-red-700">Order Cancelled</p>
-            {order.cancelled_at && (
-              <p className="font-mono text-xs text-red-500">{fmtDate(order.cancelled_at)}</p>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-start justify-between gap-1">
-          {TIMELINE_STEPS.map((step, idx) => {
-            const isCompleted = idx < currentIdx;
-            const isCurrent = idx === currentIdx;
-            const dateValue = (order as any)[step.dateField] as string | null;
+      <div className="flex items-start justify-between gap-1">
+        {TIMELINE_STEPS.map((step, idx) => {
+          const isCompleted = idx < currentIdx;
+          const isCurrent = idx === currentIdx;
+          const dateValue = (order as any)[step.dateField] as string | null;
 
-            return (
-              <div key={step.key} className="flex-1 flex flex-col items-center text-center">
-                {/* Connector + Circle */}
-                <div className="flex items-center w-full mb-2">
-                  {idx > 0 && (
-                    <div className={`flex-1 h-0.5 ${isCompleted || isCurrent ? 'bg-green-400' : 'bg-gray-200'}`} />
-                  )}
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                    isCompleted
-                      ? 'bg-green-500 text-white'
-                      : isCurrent
-                      ? 'bg-amber-400 text-white ring-4 ring-amber-100'
-                      : 'bg-gray-200 text-gray-400'
-                  }`}>
-                    {isCompleted ? '✓' : idx + 1}
-                  </div>
-                  {idx < TIMELINE_STEPS.length - 1 && (
-                    <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-green-400' : 'bg-gray-200'}`} />
-                  )}
-                </div>
-                {/* Label */}
-                <p className={`font-mono text-xs font-medium ${
-                  isCurrent ? 'text-amber-700' : isCompleted ? 'text-green-700' : 'text-gray-400'
+          return (
+            <div key={step.key} className="flex-1 flex flex-col items-center text-center">
+              <div className="flex items-center w-full mb-2">
+                {idx > 0 && (
+                  <div className={`flex-1 h-0.5 ${isCompleted || isCurrent ? 'bg-green-400' : 'bg-gray-200'}`} />
+                )}
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                  isCompleted
+                    ? 'bg-green-500 text-white'
+                    : isCurrent
+                    ? 'bg-amber-400 text-white ring-4 ring-amber-100'
+                    : 'bg-gray-200 text-gray-400'
                 }`}>
-                  {step.label}
-                </p>
-                {/* Date */}
-                <p className="font-mono text-[10px] text-gray-400 mt-0.5 h-4">
-                  {dateValue ? fmtDateShort(dateValue) : '—'}
-                </p>
+                  {isCompleted ? '✓' : idx + 1}
+                </div>
+                {idx < TIMELINE_STEPS.length - 1 && (
+                  <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-green-400' : 'bg-gray-200'}`} />
+                )}
               </div>
-            );
-          })}
-        </div>
-      )}
+              <p className={`font-mono text-xs font-medium ${
+                isCurrent ? 'text-amber-700' : isCompleted ? 'text-green-700' : 'text-gray-400'
+              }`}>
+                {step.label}
+              </p>
+              <p className="font-mono text-[10px] text-gray-400 mt-0.5 h-4">
+                {dateValue ? fmtDateShort(dateValue) : '—'}
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -212,11 +194,18 @@ export default function AdminOrdersPage() {
   const [filter, setFilter] = useState<string>('active');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [deleting, setDeleting] = useState(false);
 
   // Modal editable fields
   const [editStaffNotes, setEditStaffNotes] = useState('');
   const [editTrackingCode, setEditTrackingCode] = useState('');
+
+  // Reports
+  const [reportStartDate, setReportStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(1); // first of current month
+    return d.toISOString().split('T')[0];
+  });
+  const [reportEndDate, setReportEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const supabase = createClient();
 
@@ -263,7 +252,7 @@ export default function AdminOrdersPage() {
     }
   }
 
-  // ---- Status updates ----
+  // ---- API helper ----
 
   async function apiUpdateOrder(orderId: string, data: Record<string, any>) {
     const res = await fetch('/api/orders/update', {
@@ -278,31 +267,29 @@ export default function AdminOrdersPage() {
     return res.json();
   }
 
-  async function updateOrderStatus(orderId: string, newStatus: string) {
+  // ---- Status updates ----
+
+  async function updateOrderStatus(orderId: string, newStatus: string, extraData?: Record<string, any>) {
     setUpdatingStatus(true);
     try {
-      const updateData: Record<string, any> = { status: newStatus };
+      const updateData: Record<string, any> = { status: newStatus, ...extraData };
 
       if (newStatus === 'processing') updateData.processing_at = new Date().toISOString();
-      else if (newStatus === 'ready_to_ship') updateData.ready_at = new Date().toISOString();
-      else if (newStatus === 'shipped') {
-        updateData.shipped_at = new Date().toISOString();
-        if (editTrackingCode.trim()) updateData.tracking_code = editTrackingCode.trim();
-      }
+      else if (newStatus === 'shipped') updateData.shipped_at = new Date().toISOString();
       else if (newStatus === 'delivered') updateData.delivered_at = new Date().toISOString();
-      else if (newStatus === 'cancelled') updateData.cancelled_at = new Date().toISOString();
+      else if (newStatus === 'archived') updateData.archived_at = new Date().toISOString();
 
       await apiUpdateOrder(orderId, updateData);
 
       // Send shipped email
-      if (newStatus === 'shipped' && selectedOrder?.email && editTrackingCode.trim()) {
+      if (newStatus === 'shipped' && selectedOrder?.email && (extraData?.tracking_code || editTrackingCode.trim())) {
         try {
           await fetch('/api/orders/notify-shipped', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderNumber: selectedOrder.order_number,
-              trackingCode: editTrackingCode.trim(),
+              trackingCode: extraData?.tracking_code || editTrackingCode.trim(),
               customerEmail: selectedOrder.email,
             }),
           });
@@ -312,82 +299,26 @@ export default function AdminOrdersPage() {
       }
 
       await loadOrders();
-      setSelectedOrder(prev => {
-        if (!prev || prev.id !== orderId) return prev;
-        return { ...prev, status: newStatus, ...updateData };
-      });
+
+      if (newStatus === 'archived') {
+        setSelectedOrder(null);
+      } else {
+        setSelectedOrder(prev => {
+          if (!prev || prev.id !== orderId) return prev;
+          return { ...prev, ...updateData };
+        });
+      }
     } catch (err: any) {
       console.error('Status update failed:', err);
-      alert(`Failed to update status: ${err.message}`);
+      alert(`Failed to update: ${err.message}`);
     }
     setUpdatingStatus(false);
-  }
-
-  async function saveStaffNotes(orderId: string) {
-    try {
-      await apiUpdateOrder(orderId, { staff_notes: editStaffNotes || null });
-      await loadOrders();
-      setSelectedOrder(prev => prev?.id === orderId ? { ...prev, staff_notes: editStaffNotes || null } : prev);
-    } catch (err: any) {
-      alert(`Failed to save notes: ${err.message}`);
-    }
-  }
-
-  async function saveTrackingCode(orderId: string) {
-    try {
-      await apiUpdateOrder(orderId, { tracking_code: editTrackingCode || null });
-      await loadOrders();
-      setSelectedOrder(prev => prev?.id === orderId ? { ...prev, tracking_code: editTrackingCode || null } : prev);
-    } catch (err: any) {
-      alert(`Failed to save tracking code: ${err.message}`);
-    }
-  }
-
-  // ---- Delete ----
-
-  async function deleteOrder(orderId: string) {
-    setDeleting(true);
-    try {
-      const res = await fetch('/api/orders/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: orderId }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      setSelectedOrder(null);
-      await loadOrders();
-    } catch (err: any) {
-      alert(`Failed to delete: ${err.message}`);
-    }
-    setDeleting(false);
-  }
-
-  async function deleteAllArchived() {
-    const ids = orders.filter(o => ARCHIVED_STATUSES.includes(o.status)).map(o => o.id);
-    if (ids.length === 0) return;
-    setDeleting(true);
-    try {
-      const res = await fetch('/api/orders/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      setSelectedOrder(null);
-      await loadOrders();
-    } catch (err: any) {
-      alert(`Failed to delete: ${err.message}`);
-    }
-    setDeleting(false);
   }
 
   // ---- Filtering ----
 
   const filteredOrders = orders.filter(order => {
-    if (filter === 'active' && ARCHIVED_STATUSES.includes(order.status)) return false;
-    if (filter === 'archived' && !ARCHIVED_STATUSES.includes(order.status)) return false;
-    if (filter !== 'active' && filter !== 'archived' && order.status !== filter) return false;
-
+    // Search mode — search ALL orders including archived
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -396,10 +327,34 @@ export default function AdminOrdersPage() {
         (order.shipping_address?.name && order.shipping_address.name.toLowerCase().includes(q))
       );
     }
-    return true;
+
+    // Tab filters — archived only shown via search
+    if (filter === 'active') return ACTIVE_STATUSES.includes(order.status);
+    if (filter === 'delivered') return order.status === 'delivered';
+    if (filter === 'reports') return false; // reports tab handles its own display
+    if (ACTIVE_STATUSES.includes(filter)) return order.status === filter;
+    return ACTIVE_STATUSES.includes(order.status);
   });
 
-  const archivedCount = orders.filter(o => ARCHIVED_STATUSES.includes(o.status)).length;
+  // Reports data
+  const reportOrders = orders.filter(order => {
+    const isReportable = ['shipped', 'delivered', 'archived'].includes(order.status);
+    if (!isReportable) return false;
+
+    const orderDate = order.shipped_at || order.created_at;
+    const d = new Date(orderDate).toISOString().split('T')[0];
+    return d >= reportStartDate && d <= reportEndDate;
+  });
+
+  const reportTotals = reportOrders.reduce(
+    (acc, o) => ({
+      count: acc.count + 1,
+      subtotal: acc.subtotal + (o.total - o.shipping_cost),
+      shipping: acc.shipping + o.shipping_cost,
+      total: acc.total + o.total,
+    }),
+    { count: 0, subtotal: 0, shipping: 0, total: 0 }
+  );
 
   // ---- Loading / Auth ----
 
@@ -425,6 +380,9 @@ export default function AdminOrdersPage() {
 
   // ---- RENDER ----
 
+  const activeCount = orders.filter(o => ACTIVE_STATUSES.includes(o.status)).length;
+  const deliveredCount = orders.filter(o => o.status === 'delivered').length;
+
   return (
     <div className="min-h-screen bg-grain">
       {/* ===== Header ===== */}
@@ -433,12 +391,14 @@ export default function AdminOrdersPage() {
           <div className="flex items-center gap-4">
             <Link href="/admin" className="font-mono text-sm text-white/60 hover:text-white">← Admin</Link>
             <span className="font-mono text-sm text-white/40">|</span>
-            <h1 className="font-mono text-sm font-medium text-white">Orders ({filteredOrders.length})</h1>
+            <h1 className="font-mono text-sm font-medium text-white">
+              Orders {filter !== 'reports' && `(${filteredOrders.length})`}
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             <input
               type="text"
-              placeholder="Search order #, email, name..."
+              placeholder="Search all orders..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 font-mono text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/50 w-56"
@@ -453,83 +413,168 @@ export default function AdminOrdersPage() {
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* ===== Filters ===== */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2 items-center">
-          {['active', ...ACTIVE_STATUSES, 'archived'].map((s) => {
-            const count = s === 'active'
-              ? orders.filter(o => ACTIVE_STATUSES.includes(o.status)).length
-              : s === 'archived' ? archivedCount
-              : orders.filter(o => o.status === s).length;
-            return (
-              <button
-                key={s}
-                onClick={() => setFilter(s)}
-                className={`px-4 py-2 rounded-full font-mono text-xs whitespace-nowrap transition-colors ${
-                  filter === s ? 'bg-[#1B2B27] text-white' : 'bg-white/80 text-[#1B2B27]/70 hover:bg-white'
-                }`}
-              >
-                {s === 'active' ? 'Active' : s === 'archived' ? 'Archived' : sc(s).label}
-                <span className="ml-1 opacity-60">({count})</span>
-              </button>
-            );
-          })}
-          {filter === 'archived' && archivedCount > 0 && (
+          {[
+            { key: 'active', label: 'Active', count: activeCount },
+            { key: 'paid', label: 'Paid', count: orders.filter(o => o.status === 'paid').length },
+            { key: 'processing', label: 'Processing', count: orders.filter(o => o.status === 'processing').length },
+            { key: 'shipped', label: 'Shipped', count: orders.filter(o => o.status === 'shipped').length },
+            { key: 'delivered', label: 'Delivered', count: deliveredCount },
+            { key: 'reports', label: 'Reports', count: null },
+          ].map(({ key, label, count }) => (
             <button
-              onClick={() => { if (confirm(`Permanently delete all ${archivedCount} archived orders?`)) deleteAllArchived(); }}
-              disabled={deleting}
-              className="ml-auto px-4 py-2 rounded-full font-mono text-xs whitespace-nowrap bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+              key={key}
+              onClick={() => { setFilter(key); setSearchQuery(''); }}
+              className={`px-4 py-2 rounded-full font-mono text-xs whitespace-nowrap transition-colors ${
+                filter === key ? 'bg-[#1B2B27] text-white' : 'bg-white/80 text-[#1B2B27]/70 hover:bg-white'
+              }`}
             >
-              {deleting ? 'Deleting...' : `Delete All Archived (${archivedCount})`}
+              {label}
+              {count !== null && <span className="ml-1 opacity-60">({count})</span>}
             </button>
-          )}
+          ))}
         </div>
 
-        {/* ===== Order List ===== */}
-        {filteredOrders.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="font-mono text-[#1B2B27]/60">No orders found.</p>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {filteredOrders.map((order) => (
-              <div
-                key={order.id}
-                className="bg-white/90 backdrop-blur-sm rounded-xl p-4 hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => setSelectedOrder(order)}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1 flex-wrap">
-                      <span className="font-mono text-sm font-bold text-[#1B2B27]">{order.order_number}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${sc(order.status).bg} ${sc(order.status).color}`}>
-                        {sc(order.status).label}
-                      </span>
-                      {order.customer_notes && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-pink-100 text-pink-700">Has notes</span>
-                      )}
-                      {order.tracking_code && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-600">Tracked</span>
-                      )}
-                    </div>
-                    <div className="font-mono text-xs text-[#1B2B27]/60 space-y-0.5">
-                      <p>{fmtDate(order.created_at)}</p>
-                      {order.shipping_address?.name && (
-                        <p className="font-medium text-[#1B2B27]/80">{order.shipping_address.name}</p>
-                      )}
-                      {order.email && <p>{order.email}</p>}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-mono text-lg font-bold text-[#1B2B27]">{fmtMoney(order.total)}</p>
-                    <p className="font-mono text-xs text-[#1B2B27]/60">{itemCount(order)} item(s)</p>
-                  </div>
-                </div>
+        {/* ===== Reports Tab ===== */}
+        {filter === 'reports' && !searchQuery.trim() && (
+          <div>
+            {/* Date range picker */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 mb-4 flex flex-wrap items-end gap-4">
+              <div>
+                <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1">From</label>
+                <input
+                  type="date"
+                  value={reportStartDate}
+                  onChange={e => setReportStartDate(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm"
+                />
               </div>
-            ))}
+              <div>
+                <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1">To</label>
+                <input
+                  type="date"
+                  value={reportEndDate}
+                  onChange={e => setReportEndDate(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm"
+                />
+              </div>
+              <p className="font-mono text-xs text-[#1B2B27]/50">
+                Showing shipped/delivered orders in this period
+              </p>
+            </div>
+
+            {/* Report table */}
+            {reportOrders.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="font-mono text-[#1B2B27]/60">No orders in this period.</p>
+              </div>
+            ) : (
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Order</th>
+                      <th className="text-left font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Date</th>
+                      <th className="text-left font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Customer</th>
+                      <th className="text-right font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Items</th>
+                      <th className="text-right font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Subtotal</th>
+                      <th className="text-right font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Shipping</th>
+                      <th className="text-right font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportOrders.map(order => (
+                      <tr
+                        key={order.id}
+                        className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setSelectedOrder(order)}
+                      >
+                        <td className="font-mono text-sm px-4 py-3 font-bold">{order.order_number}</td>
+                        <td className="font-mono text-xs px-4 py-3 text-[#1B2B27]/60">
+                          {fmtDateFull(order.shipped_at || order.created_at)}
+                        </td>
+                        <td className="font-mono text-xs px-4 py-3">
+                          {order.shipping_address?.name || order.email || '—'}
+                        </td>
+                        <td className="font-mono text-xs px-4 py-3 text-right">{itemCount(order)}</td>
+                        <td className="font-mono text-sm px-4 py-3 text-right">{fmtMoney(order.total - order.shipping_cost)}</td>
+                        <td className="font-mono text-sm px-4 py-3 text-right">{fmtMoney(order.shipping_cost)}</td>
+                        <td className="font-mono text-sm px-4 py-3 text-right font-bold">{fmtMoney(order.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-[#1B2B27]/5 font-bold">
+                      <td className="font-mono text-sm px-4 py-3" colSpan={3}>
+                        Total — {reportTotals.count} order{reportTotals.count !== 1 ? 's' : ''}
+                      </td>
+                      <td className="font-mono text-xs px-4 py-3 text-right">
+                        {reportOrders.reduce((s, o) => s + itemCount(o), 0)}
+                      </td>
+                      <td className="font-mono text-sm px-4 py-3 text-right">{fmtMoney(reportTotals.subtotal)}</td>
+                      <td className="font-mono text-sm px-4 py-3 text-right">{fmtMoney(reportTotals.shipping)}</td>
+                      <td className="font-mono text-sm px-4 py-3 text-right text-green-700">{fmtMoney(reportTotals.total)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
           </div>
+        )}
+
+        {/* ===== Order List ===== */}
+        {(filter !== 'reports' || searchQuery.trim()) && (
+          <>
+            {filteredOrders.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="font-mono text-[#1B2B27]/60">
+                  {searchQuery.trim() ? 'No orders match your search.' : 'No orders found.'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {filteredOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="bg-white/90 backdrop-blur-sm rounded-xl p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => setSelectedOrder(order)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-1 flex-wrap">
+                          <span className="font-mono text-sm font-bold text-[#1B2B27]">{order.order_number}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${sc(order.status).bg} ${sc(order.status).color}`}>
+                            {sc(order.status).label}
+                          </span>
+                          {order.customer_notes && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-pink-100 text-pink-700">Has notes</span>
+                          )}
+                          {order.tracking_code && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-600">Tracked</span>
+                          )}
+                        </div>
+                        <div className="font-mono text-xs text-[#1B2B27]/60 space-y-0.5">
+                          <p>{fmtDate(order.created_at)}</p>
+                          {order.shipping_address?.name && (
+                            <p className="font-medium text-[#1B2B27]/80">{order.shipping_address.name}</p>
+                          )}
+                          {order.email && <p>{order.email}</p>}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-mono text-lg font-bold text-[#1B2B27]">{fmtMoney(order.total)}</p>
+                        <p className="font-mono text-xs text-[#1B2B27]/60">{itemCount(order)} item(s)</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* ============================================================ */}
-      {/* ORDER DETAIL MODAL — designed for warehouse/packing employee */}
+      {/* ORDER DETAIL MODAL — designed for warehouse employee         */}
       {/* ============================================================ */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setSelectedOrder(null)}>
@@ -538,7 +583,12 @@ export default function AdminOrdersPage() {
             {/* ---- HEADER ---- */}
             <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between rounded-t-2xl z-10">
               <div>
-                <h2 className="font-mono text-xl font-bold text-[#1B2B27]">{selectedOrder.order_number}</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-mono text-xl font-bold text-[#1B2B27]">{selectedOrder.order_number}</h2>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${sc(selectedOrder.status).bg} ${sc(selectedOrder.status).color}`}>
+                    {sc(selectedOrder.status).label}
+                  </span>
+                </div>
                 <p className="font-mono text-xs text-[#1B2B27]/50 mt-0.5">
                   {selectedOrder.email || 'No email'} · {fmtDate(selectedOrder.created_at)}
                 </p>
@@ -554,7 +604,7 @@ export default function AdminOrdersPage() {
               {selectedOrder.customer_notes && (
                 <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
                   <p className="font-mono text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">
-                    ⚠ Customer Instructions
+                    Customer Instructions
                   </p>
                   <p className="font-mono text-sm text-[#1B2B27] leading-relaxed">
                     {selectedOrder.customer_notes}
@@ -588,7 +638,7 @@ export default function AdminOrdersPage() {
                 </div>
               ) : (
                 <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 bg-gray-50 text-center">
-                  <p className="font-mono text-sm text-gray-400">No shipping address (order placed before address tracking)</p>
+                  <p className="font-mono text-sm text-gray-400">No shipping address</p>
                 </div>
               )}
 
@@ -600,13 +650,12 @@ export default function AdminOrdersPage() {
 
                 {selectedOrder.items.length === 0 ? (
                   <div className="bg-gray-50 rounded-xl p-4 text-center">
-                    <p className="font-mono text-sm text-gray-400">No item details (order placed before tracking was added)</p>
+                    <p className="font-mono text-sm text-gray-400">No item details available</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="bg-gray-50 rounded-xl p-3 flex gap-4 items-center">
-                        {/* Image */}
                         <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center shrink-0 overflow-hidden border border-gray-200">
                           {item.image ? (
                             <img src={item.image} alt={item.name || 'Product'} className="w-full h-full object-cover" />
@@ -614,17 +663,13 @@ export default function AdminOrdersPage() {
                             <span className="text-3xl">📦</span>
                           )}
                         </div>
-
-                        {/* Details */}
                         <div className="flex-1 min-w-0">
                           <p className="font-mono text-sm font-bold text-[#1B2B27]">{item.name || 'Product'}</p>
-
                           {item.sku && (
                             <code className="inline-block mt-1 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
                               {item.sku}
                             </code>
                           )}
-
                           <div className="flex gap-4 mt-1.5">
                             {item.color && (
                               <span className="font-mono text-xs text-[#1B2B27]/70">
@@ -637,17 +682,13 @@ export default function AdminOrdersPage() {
                               </span>
                             )}
                           </div>
-
                           {item.design && (
                             <p className="font-mono text-xs text-[#1B2B27]/50 mt-1">Design: {item.design}</p>
                           )}
-
                           {item.price != null && item.price > 0 && (
                             <p className="font-mono text-xs text-[#1B2B27]/50 mt-1">{fmtMoney(item.price)} each</p>
                           )}
                         </div>
-
-                        {/* Quantity — big and clear */}
                         <div className="shrink-0 text-center px-3">
                           <p className="font-mono text-2xl font-black text-[#1B2B27]">×{item.qty || 1}</p>
                           <p className="font-mono text-[10px] text-[#1B2B27]/40 uppercase">qty</p>
@@ -676,10 +717,45 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* ---- 6. ACTIONS ---- */}
+              {/* ---- 6. STAFF NOTES (read-only unless processing) ---- */}
+              {(selectedOrder.staff_notes || selectedOrder.status === 'processing') && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="font-mono text-xs font-bold text-[#1B2B27]/40 uppercase tracking-wider mb-2">Staff Notes</p>
+                  {selectedOrder.status === 'processing' ? (
+                    <textarea
+                      placeholder="Packing notes, special instructions..."
+                      value={editStaffNotes}
+                      onChange={e => setEditStaffNotes(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm focus:outline-none focus:border-gray-400 bg-white resize-none"
+                    />
+                  ) : (
+                    <p className="font-mono text-sm text-[#1B2B27]/70">{selectedOrder.staff_notes}</p>
+                  )}
+                </div>
+              )}
+
+              {/* ---- 7. TRACKING INFO (for shipped/delivered/archived) ---- */}
+              {selectedOrder.tracking_code && selectedOrder.status !== 'processing' && (
+                <div className="flex items-center gap-3 bg-blue-50 rounded-xl p-4">
+                  <span className="font-mono text-xs text-blue-600">Tracking:</span>
+                  <code className="font-mono text-sm font-bold text-blue-800">{selectedOrder.tracking_code}</code>
+                  <a
+                    href={`https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${selectedOrder.tracking_code}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto font-mono text-xs text-blue-600 hover:underline"
+                  >
+                    Track on Canada Post →
+                  </a>
+                </div>
+              )}
+
+              {/* ---- 8. ACTION AREA ---- */}
               <div className="bg-white border-2 border-[#1B2B27]/10 rounded-xl p-4">
                 <p className="font-mono text-xs font-bold text-[#1B2B27]/60 uppercase tracking-wider mb-3">Next Step</p>
 
+                {/* PAID → Start Processing */}
                 {selectedOrder.status === 'paid' && (
                   <button
                     onClick={() => updateOrderStatus(selectedOrder.id, 'processing')}
@@ -690,36 +766,8 @@ export default function AdminOrdersPage() {
                   </button>
                 )}
 
+                {/* PROCESSING → Enter tracking + notes, then Mark as Shipped */}
                 {selectedOrder.status === 'processing' && (
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'ready_to_ship')}
-                      disabled={updatingStatus}
-                      className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-cyan-600 text-white hover:bg-cyan-700 disabled:opacity-50 transition-colors"
-                    >
-                      {updatingStatus ? 'Updating...' : 'Mark Ready to Ship →'}
-                    </button>
-                    <button
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'out_of_stock')}
-                      disabled={updatingStatus}
-                      className="w-full px-4 py-2.5 rounded-xl font-mono text-xs bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 disabled:opacity-50 transition-colors"
-                    >
-                      Out of Stock
-                    </button>
-                  </div>
-                )}
-
-                {selectedOrder.status === 'out_of_stock' && (
-                  <button
-                    onClick={() => updateOrderStatus(selectedOrder.id, 'processing')}
-                    disabled={updatingStatus}
-                    className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-yellow-500 text-white hover:bg-yellow-600 disabled:opacity-50 transition-colors"
-                  >
-                    {updatingStatus ? 'Updating...' : '← Back to Processing'}
-                  </button>
-                )}
-
-                {selectedOrder.status === 'ready_to_ship' && (
                   <div className="space-y-3">
                     <div>
                       <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1">Canada Post Tracking Code</label>
@@ -737,7 +785,10 @@ export default function AdminOrdersPage() {
                           alert('Please enter a tracking code before marking as shipped.');
                           return;
                         }
-                        updateOrderStatus(selectedOrder.id, 'shipped');
+                        updateOrderStatus(selectedOrder.id, 'shipped', {
+                          tracking_code: editTrackingCode.trim(),
+                          staff_notes: editStaffNotes || null,
+                        });
                       }}
                       disabled={updatingStatus}
                       className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
@@ -747,115 +798,41 @@ export default function AdminOrdersPage() {
                   </div>
                 )}
 
+                {/* SHIPPED → Confirm Delivered */}
                 {selectedOrder.status === 'shipped' && (
-                  <div className="space-y-3">
-                    {selectedOrder.tracking_code && (
-                      <div className="flex items-center gap-3 bg-blue-50 rounded-xl p-3">
-                        <span className="font-mono text-xs text-blue-600">Tracking:</span>
-                        <code className="font-mono text-sm font-bold text-blue-800">{selectedOrder.tracking_code}</code>
-                        <a
-                          href={`https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${selectedOrder.tracking_code}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-auto font-mono text-xs text-blue-600 hover:underline"
-                        >
-                          Track →
-                        </a>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
-                      disabled={updatingStatus}
-                      className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
-                    >
-                      {updatingStatus ? 'Updating...' : 'Confirm Delivered ✓'}
-                    </button>
-                  </div>
-                )}
-
-                {selectedOrder.status === 'delivered' && (
-                  <div className="text-center py-2">
-                    <p className="font-mono text-sm text-purple-600 font-bold">Order complete</p>
-                  </div>
-                )}
-
-                {selectedOrder.status === 'cancelled' && (
-                  <div className="text-center py-2">
-                    <p className="font-mono text-sm text-red-600 font-bold">This order was cancelled</p>
-                  </div>
-                )}
-
-                {/* Cancel — always available for active orders */}
-                {!ARCHIVED_STATUSES.includes(selectedOrder.status) && (
                   <button
-                    onClick={() => { if (confirm('Cancel this order?')) updateOrderStatus(selectedOrder.id, 'cancelled'); }}
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
                     disabled={updatingStatus}
-                    className="w-full mt-2 px-4 py-2 rounded-xl font-mono text-xs text-red-500 hover:bg-red-50 border border-red-200 disabled:opacity-50 transition-colors"
+                    className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
                   >
-                    Cancel Order
+                    {updatingStatus ? 'Updating...' : 'Confirm Delivered ✓'}
                   </button>
                 )}
-              </div>
 
-              {/* ---- 7. STAFF NOTES ---- */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="font-mono text-xs font-bold text-[#1B2B27]/40 uppercase tracking-wider mb-2">Staff Notes</p>
-                <textarea
-                  placeholder="Internal notes (stock check, packing details, issues...)"
-                  value={editStaffNotes}
-                  onChange={e => setEditStaffNotes(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm focus:outline-none focus:border-gray-400 bg-white resize-none"
-                />
-                <button
-                  onClick={() => saveStaffNotes(selectedOrder.id)}
-                  className="mt-2 px-4 py-1.5 rounded-lg font-mono text-xs bg-gray-200 hover:bg-gray-300 text-[#1B2B27] transition-colors"
-                >
-                  Save Notes
-                </button>
-              </div>
+                {/* DELIVERED → Archive */}
+                {selectedOrder.status === 'delivered' && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Archive this order? It will be removed from the main list and only accessible via search.')) {
+                        updateOrderStatus(selectedOrder.id, 'archived');
+                      }
+                    }}
+                    disabled={updatingStatus}
+                    className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                  >
+                    {updatingStatus ? 'Archiving...' : 'Archive This Order'}
+                  </button>
+                )}
 
-              {/* ---- Tracking (standalone, for shipped orders that have one) ---- */}
-              {selectedOrder.status !== 'ready_to_ship' && (
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="font-mono text-xs font-bold text-[#1B2B27]/40 uppercase tracking-wider mb-2">Tracking Code</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Canada Post tracking number..."
-                      value={editTrackingCode}
-                      onChange={e => setEditTrackingCode(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm focus:outline-none focus:border-gray-400 bg-white"
-                    />
-                    <button
-                      onClick={() => saveTrackingCode(selectedOrder.id)}
-                      className="px-4 py-2 rounded-lg font-mono text-xs bg-gray-200 hover:bg-gray-300 text-[#1B2B27] transition-colors"
-                    >
-                      Save
-                    </button>
+                {/* ARCHIVED → Done */}
+                {selectedOrder.status === 'archived' && (
+                  <div className="text-center py-2">
+                    <p className="font-mono text-sm text-gray-500">This order has been archived.</p>
+                    {selectedOrder.archived_at && (
+                      <p className="font-mono text-xs text-gray-400 mt-1">Archived on {fmtDateFull(selectedOrder.archived_at)}</p>
+                    )}
                   </div>
-                  {selectedOrder.tracking_code && (
-                    <a
-                      href={`https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${selectedOrder.tracking_code}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block mt-2 font-mono text-xs text-blue-600 hover:underline"
-                    >
-                      Track on Canada Post →
-                    </a>
-                  )}
-                </div>
-              )}
-
-              {/* ---- 8. DANGER ZONE ---- */}
-              <div className="pt-2">
-                <button
-                  onClick={() => { if (confirm(`Permanently delete order ${selectedOrder.order_number}? This cannot be undone.`)) deleteOrder(selectedOrder.id); }}
-                  disabled={deleting}
-                  className="w-full px-4 py-2.5 rounded-xl font-mono text-xs text-red-400 hover:text-red-600 hover:bg-red-50 border border-red-100 disabled:opacity-50 transition-colors"
-                >
-                  {deleting ? 'Deleting...' : 'Delete This Order Permanently'}
-                </button>
+                )}
               </div>
 
             </div>

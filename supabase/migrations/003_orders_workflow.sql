@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS app_shop_orders (
   ready_at        TIMESTAMPTZ,
   shipped_at      TIMESTAMPTZ,
   delivered_at    TIMESTAMPTZ,
-  cancelled_at    TIMESTAMPTZ
+  cancelled_at    TIMESTAMPTZ,
+  archived_at     TIMESTAMPTZ
 );
 
 -- If the table already exists, ensure all columns are present.
@@ -53,6 +54,7 @@ ALTER TABLE app_shop_orders ADD COLUMN IF NOT EXISTS ready_at        TIMESTAMPTZ
 ALTER TABLE app_shop_orders ADD COLUMN IF NOT EXISTS shipped_at      TIMESTAMPTZ;
 ALTER TABLE app_shop_orders ADD COLUMN IF NOT EXISTS delivered_at    TIMESTAMPTZ;
 ALTER TABLE app_shop_orders ADD COLUMN IF NOT EXISTS cancelled_at    TIMESTAMPTZ;
+ALTER TABLE app_shop_orders ADD COLUMN IF NOT EXISTS archived_at     TIMESTAMPTZ;
 
 -- ============================================
 -- 2. INDEXES
@@ -140,6 +142,11 @@ ALTER TABLE app_shop_orders ALTER COLUMN total SET DEFAULT 0;
 -- ============================================
 -- Fix old orders stuck on 'pending' (legacy default from orders table).
 UPDATE app_shop_orders SET status = 'paid' WHERE status = 'pending';
+
+-- Migrate legacy statuses that no longer exist in the simplified workflow
+UPDATE app_shop_orders SET status = 'processing' WHERE status = 'ready_to_ship';
+UPDATE app_shop_orders SET status = 'processing' WHERE status = 'out_of_stock';
+UPDATE app_shop_orders SET status = 'archived', archived_at = cancelled_at WHERE status = 'cancelled';
 
 -- Ensure items is never null
 UPDATE app_shop_orders SET items = '[]' WHERE items IS NULL;
