@@ -663,45 +663,41 @@ export default function AdminOrdersPage() {
                     <p className="font-mono text-sm text-gray-400">No item details available</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
                     {selectedOrder.items.map((item, idx) => (
-                      <div key={idx} className="bg-gray-50 rounded-xl p-3 flex gap-4 items-center">
-                        <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center shrink-0 overflow-hidden border border-gray-200">
+                      <div key={idx} className="bg-white p-4 flex gap-4 items-center">
+                        {/* Image */}
+                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border border-gray-100">
                           {item.image ? (
                             <img src={item.image} alt={item.name || 'Product'} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-3xl">📦</span>
+                            <span className="text-2xl text-gray-300">📦</span>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-mono text-sm font-bold text-[#1B2B27]">{item.name || 'Product'}</p>
-                          {item.sku && (
-                            <code className="inline-block mt-1 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
-                              {item.sku}
-                            </code>
-                          )}
-                          <div className="flex gap-4 mt-1.5">
-                            {item.color && (
-                              <span className="font-mono text-xs text-[#1B2B27]/70">
-                                <span className="text-[#1B2B27]/40">Color:</span> <span className="font-medium">{item.color}</span>
-                              </span>
+
+                        {/* Info — structured rows */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="font-mono text-base font-bold text-[#1B2B27] leading-tight">{item.name || 'Product'}</p>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-sm">
+                            {item.sku && (
+                              <span className="text-amber-700 font-semibold">{item.sku}</span>
                             )}
                             {item.size && (
-                              <span className="font-mono text-xs text-[#1B2B27]/70">
-                                <span className="text-[#1B2B27]/40">Size:</span> <span className="font-medium">{item.size}</span>
-                              </span>
+                              <span className="text-[#1B2B27]">Size: <strong>{item.size}</strong></span>
+                            )}
+                            {item.color && (
+                              <span className="text-[#1B2B27]">Color: <strong>{item.color}</strong></span>
                             )}
                           </div>
                           {item.design && (
-                            <p className="font-mono text-xs text-[#1B2B27]/50 mt-1">Design: {item.design}</p>
-                          )}
-                          {item.price != null && item.price > 0 && (
-                            <p className="font-mono text-xs text-[#1B2B27]/50 mt-1">{fmtMoney(item.price)} each</p>
+                            <p className="font-mono text-sm text-[#1B2B27]/60">Design: {item.design}</p>
                           )}
                         </div>
-                        <div className="shrink-0 text-center px-3">
-                          <p className="font-mono text-2xl font-black text-[#1B2B27]">×{item.qty || 1}</p>
-                          <p className="font-mono text-[10px] text-[#1B2B27]/40 uppercase">qty</p>
+
+                        {/* Quantity — large, unmistakable */}
+                        <div className="shrink-0 w-16 h-16 rounded-xl bg-[#1B2B27] flex flex-col items-center justify-center">
+                          <p className="font-mono text-2xl font-black text-white leading-none">{item.qty || 1}</p>
+                          <p className="font-mono text-[9px] text-white/60 uppercase tracking-wider mt-0.5">units</p>
                         </div>
                       </div>
                     ))}
