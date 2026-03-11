@@ -45,20 +45,28 @@ export async function POST(req: NextRequest) {
         ? JSON.parse(session.metadata.items_detail)
         : [];
 
-      const shippingDetails = (session as any).collected_information?.shipping_details
-        || (session as any).shipping_details;
-
-      const shippingAddress = shippingDetails?.address ? {
-        name: shippingDetails.name,
-        street: shippingDetails.address.line1,
-        apartment: shippingDetails.address.line2 || null,
-        city: shippingDetails.address.city,
-        province: shippingDetails.address.state,
-        postal_code: shippingDetails.address.postal_code,
-        country: shippingDetails.address.country,
-      } : null;
+      // Address: prefer metadata (new flow), fallback to Stripe-collected (old orders)
+      let shippingAddress = null;
+      if (session.metadata?.shipping_address) {
+        shippingAddress = JSON.parse(session.metadata.shipping_address);
+      } else {
+        const shippingDetails = (session as any).collected_information?.shipping_details
+          || (session as any).shipping_details;
+        if (shippingDetails?.address) {
+          shippingAddress = {
+            name: shippingDetails.name,
+            street: shippingDetails.address.line1,
+            apartment: shippingDetails.address.line2 || null,
+            city: shippingDetails.address.city,
+            province: shippingDetails.address.state,
+            postal_code: shippingDetails.address.postal_code,
+            country: shippingDetails.address.country,
+          };
+        }
+      }
 
       const customerEmail = session.customer_details?.email || null;
+      const customerNotes = session.metadata?.customer_notes || null;
       const amountTotal = session.amount_total || 0;
       const shippingCost = (session as any).shipping_cost?.amount_total || 0;
       const orderNumber = `OS-${Date.now().toString(36).toUpperCase()}`;
@@ -72,6 +80,7 @@ export async function POST(req: NextRequest) {
           email: customerEmail,
           items: itemsDetail,
           shipping_address: shippingAddress,
+          customer_notes: customerNotes,
           total: amountTotal,
           shipping_cost: shippingCost,
           stripe_session_id: session.id,

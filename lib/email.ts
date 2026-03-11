@@ -84,6 +84,23 @@ export async function sendNewOrderToAdmin(order: OrderEmailData) {
   console.log(`[EMAIL] Admin notification sent to ${adminEmail}`);
 }
 
+export async function sendShippedNotification(
+  orderNumber: string,
+  trackingCode: string,
+  customerEmail: string
+) {
+  const resend = getResend();
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: customerEmail,
+    subject: `OnSite Shop — Order ${orderNumber} has been shipped!`,
+    html: buildShippedEmailHtml(orderNumber, trackingCode),
+  });
+
+  console.log(`[EMAIL] Shipped notification sent to ${customerEmail}`);
+}
+
 // ============================================
 // HTML TEMPLATES
 // ============================================
@@ -279,6 +296,53 @@ function buildAdminEmailHtml(order: OrderEmailData): string {
         </a>
       </div>
 
+    </div>
+
+  </div>
+</body>
+</html>`;
+}
+
+function buildShippedEmailHtml(orderNumber: string, trackingCode: string): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; background-color: #F5F3EF; font-family: 'Helvetica Neue', Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 32px;">
+      <img src="https://shop.onsiteclub.ca/assets/logo-onsite-club.png" alt="OnSite Club" style="height: 48px; width: auto; margin-bottom: 8px;" />
+      <p style="color: #6B7280; font-size: 13px; margin: 0; letter-spacing: 2px; text-transform: uppercase;">Built For Those Who Build</p>
+    </div>
+
+    <!-- Card -->
+    <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h2 style="color: #1B2B27; font-size: 20px; margin: 16px 0 4px;">Your Order Has Shipped!</h2>
+        <p style="color: #6B7280; font-size: 14px; margin: 0;">Order <strong>${orderNumber}</strong></p>
+      </div>
+
+      <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+        <p style="color: #0369A1; font-size: 13px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">Tracking Number</p>
+        <p style="color: #1B2B27; font-size: 20px; font-weight: bold; margin: 0; font-family: monospace; letter-spacing: 2px;">${trackingCode}</p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${trackingCode}" style="display: inline-block; background: #1B2B27; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+          Track on Canada Post
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; margin-top: 32px;">
+      <p style="color: #9CA3AF; font-size: 12px;">
+        OnSite Club — Construction Community in Canada
+      </p>
     </div>
 
   </div>

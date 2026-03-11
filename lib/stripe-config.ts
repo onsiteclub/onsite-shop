@@ -120,3 +120,44 @@ export const FREE_SHIPPING_OPTION: Stripe.Checkout.SessionCreateParams.ShippingO
 };
 
 export const FREE_SHIPPING_THRESHOLD = 5000; // $50 in cents
+
+// ============================================
+// PROVINCE → SHIPPING COST (auto-calculated)
+// ============================================
+
+export const PROVINCE_SHIPPING: Record<string, { cost: number; region: string }> = {
+  ON: { cost: 999, region: 'Ontario' },
+  QC: { cost: 1199, region: 'Quebec' },
+  NB: { cost: 1299, region: 'Maritimes' },
+  NS: { cost: 1299, region: 'Maritimes' },
+  PE: { cost: 1299, region: 'Maritimes' },
+  NL: { cost: 1299, region: 'Maritimes' },
+  MB: { cost: 1499, region: 'Western Canada' },
+  SK: { cost: 1499, region: 'Western Canada' },
+  AB: { cost: 1499, region: 'Western Canada' },
+  BC: { cost: 1499, region: 'Western Canada' },
+  YT: { cost: 1999, region: 'Northern Canada' },
+  NT: { cost: 1999, region: 'Northern Canada' },
+  NU: { cost: 1999, region: 'Northern Canada' },
+};
+
+export const PROVINCES = [
+  { code: 'AB', name: 'Alberta' },
+  { code: 'BC', name: 'British Columbia' },
+  { code: 'MB', name: 'Manitoba' },
+  { code: 'NB', name: 'New Brunswick' },
+  { code: 'NL', name: 'Newfoundland & Labrador' },
+  { code: 'NS', name: 'Nova Scotia' },
+  { code: 'NT', name: 'Northwest Territories' },
+  { code: 'NU', name: 'Nunavut' },
+  { code: 'ON', name: 'Ontario' },
+  { code: 'PE', name: 'Prince Edward Island' },
+  { code: 'QC', name: 'Quebec' },
+  { code: 'SK', name: 'Saskatchewan' },
+  { code: 'YT', name: 'Yukon' },
+] as const;
+
+export function getShippingCost(province: string, subtotal: number): number {
+  if (subtotal >= FREE_SHIPPING_THRESHOLD) return 0;
+  return PROVINCE_SHIPPING[province]?.cost ?? 1499;
+}

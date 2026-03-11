@@ -2,69 +2,241 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@/lib/supabase/client';
+
+// ============================================
+// TYPES
+// ============================================
 
 interface OrderItem {
-  id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  size: string | null;
-  color: string | null;
+  sku?: string;
+  name?: string;
+  design?: string;
+  color?: string;
+  size?: string;
+  qty?: number;
+  price?: number; // cents — may be missing on old orders
+  image?: string | null;
+}
+
+interface ShippingAddress {
+  name?: string;
+  street?: string;
+  apartment?: string;
+  city?: string;
+  province?: string;
+  postal_code?: string;
+  country?: string;
 }
 
 interface Order {
   id: string;
   order_number: string;
   status: string;
-  subtotal: number;
-  shipping: number;
-  tax: number;
+  email: string | null;
+  items: OrderItem[];
   total: number;
-  shipping_address: {
-    name?: string;
-    street?: string;
-    apartment?: string;
-    city?: string;
-    province?: string;
-    postal_code?: string;
-    country?: string;
-  } | null;
+  shipping_cost: number;
+  shipping_address: ShippingAddress | null;
+  customer_notes: string | null;
+  staff_notes: string | null;
+  tracking_code: string | null;
   stripe_session_id: string | null;
-  stripe_payment_intent_id: string | null;
-  paid_at: string | null;
-  cancelled_at: string | null;
   created_at: string;
-  user_id: string | null;
-  order_items?: OrderItem[];
+  processing_at: string | null;
+  ready_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  cancelled_at: string | null;
 }
+
+// ============================================
+// STATUS CONFIG
+// ============================================
+
+const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+  paid:          { label: 'Paid',          color: 'text-green-800',  bg: 'bg-green-100' },
+  processing:    { label: 'Processing',    color: 'text-yellow-800', bg: 'bg-yellow-100' },
+  out_of_stock:  { label: 'Out of Stock',  color: 'text-orange-800', bg: 'bg-orange-100' },
+  ready_to_ship: { label: 'Ready to Ship', color: 'text-cyan-800',   bg: 'bg-cyan-100' },
+  shipped:       { label: 'Shipped',       color: 'text-blue-800',   bg: 'bg-blue-100' },
+  delivered:     { label: 'Delivered',      color: 'text-purple-800', bg: 'bg-purple-100' },
+  cancelled:     { label: 'Cancelled',      color: 'text-red-800',    bg: 'bg-red-100' },
+};
+
+const KNOWN_STATUSES = Object.keys(STATUS_META);
+const ACTIVE_STATUSES = ['paid', 'processing', 'out_of_stock', 'ready_to_ship', 'shipped'];
+const ARCHIVED_STATUSES = ['delivered', 'cancelled'];
+
+// Timeline steps in order
+const TIMELINE_STEPS = [
+  { key: 'paid',          label: 'Paid',          dateField: 'created_at' },
+  { key: 'processing',    label: 'Processing',    dateField: 'processing_at' },
+  { key: 'ready_to_ship', label: 'Ready',         dateField: 'ready_at' },
+  { key: 'shipped',       label: 'Shipped',       dateField: 'shipped_at' },
+  { key: 'delivered',     label: 'Delivered',      dateField: 'delivered_at' },
+] as const;
+
+const STATUS_ORDER: Record<string, number> = {
+  paid: 0, processing: 1, out_of_stock: 1, ready_to_ship: 2, shipped: 3, delivered: 4, cancelled: -1,
+};
+
+function normalizeStatus(status: string | null | undefined): string {
+  if (!status) return 'paid';
+  if (KNOWN_STATUSES.includes(status)) return status;
+  if (status === 'pending') return 'paid';
+  return 'paid';
+}
+
+function sc(status: string) {
+  return STATUS_META[status] || STATUS_META.paid;
+}
+
+// ============================================
+// HELPERS
+// ============================================
+
+function normalizeOrder(row: any): Order {
+  return {
+    id: row.id,
+    order_number: row.order_number || 'Unknown',
+    status: normalizeStatus(row.status),
+    email: row.email || null,
+    items: Array.isArray(row.items) ? row.items : [],
+    total: typeof row.total === 'number' ? row.total : 0,
+    shipping_cost: typeof row.shipping_cost === 'number' ? row.shipping_cost : 0,
+    shipping_address: row.shipping_address && typeof row.shipping_address === 'object' ? row.shipping_address : null,
+    customer_notes: row.customer_notes || null,
+    staff_notes: row.staff_notes || null,
+    tracking_code: row.tracking_code || null,
+    stripe_session_id: row.stripe_session_id || null,
+    created_at: row.created_at || new Date().toISOString(),
+    processing_at: row.processing_at || null,
+    ready_at: row.ready_at || null,
+    shipped_at: row.shipped_at || null,
+    delivered_at: row.delivered_at || null,
+    cancelled_at: row.cancelled_at || null,
+  };
+}
+
+const fmtMoney = (cents: number) => `CA$${(cents / 100).toFixed(2)}`;
+
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-CA', {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+
+const fmtDateShort = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-CA', {
+    month: 'short', day: 'numeric',
+  });
+
+const itemCount = (order: Order) =>
+  order.items.reduce((sum, i) => sum + (i.qty || 1), 0);
+
+// ============================================
+// TIMELINE COMPONENT
+// ============================================
+
+function OrderTimeline({ order }: { order: Order }) {
+  const currentIdx = STATUS_ORDER[order.status] ?? 0;
+  const isCancelled = order.status === 'cancelled';
+
+  return (
+    <div className="w-full">
+      {isCancelled ? (
+        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+          <span className="text-red-500 text-lg">✕</span>
+          <div>
+            <p className="font-mono text-sm font-bold text-red-700">Order Cancelled</p>
+            {order.cancelled_at && (
+              <p className="font-mono text-xs text-red-500">{fmtDate(order.cancelled_at)}</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-start justify-between gap-1">
+          {TIMELINE_STEPS.map((step, idx) => {
+            const isCompleted = idx < currentIdx;
+            const isCurrent = idx === currentIdx;
+            const dateValue = (order as any)[step.dateField] as string | null;
+
+            return (
+              <div key={step.key} className="flex-1 flex flex-col items-center text-center">
+                {/* Connector + Circle */}
+                <div className="flex items-center w-full mb-2">
+                  {idx > 0 && (
+                    <div className={`flex-1 h-0.5 ${isCompleted || isCurrent ? 'bg-green-400' : 'bg-gray-200'}`} />
+                  )}
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                    isCompleted
+                      ? 'bg-green-500 text-white'
+                      : isCurrent
+                      ? 'bg-amber-400 text-white ring-4 ring-amber-100'
+                      : 'bg-gray-200 text-gray-400'
+                  }`}>
+                    {isCompleted ? '✓' : idx + 1}
+                  </div>
+                  {idx < TIMELINE_STEPS.length - 1 && (
+                    <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-green-400' : 'bg-gray-200'}`} />
+                  )}
+                </div>
+                {/* Label */}
+                <p className={`font-mono text-xs font-medium ${
+                  isCurrent ? 'text-amber-700' : isCompleted ? 'text-green-700' : 'text-gray-400'
+                }`}>
+                  {step.label}
+                </p>
+                {/* Date */}
+                <p className="font-mono text-[10px] text-gray-400 mt-0.5 h-4">
+                  {dateValue ? fmtDateShort(dateValue) : '—'}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [filter, setFilter] = useState<string>('all');
+  const [filter, setFilter] = useState<string>('active');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Modal editable fields
+  const [editStaffNotes, setEditStaffNotes] = useState('');
+  const [editTrackingCode, setEditTrackingCode] = useState('');
+
+  const supabase = createClient();
+
+  // ---- Init ----
+
+  useEffect(() => { checkAdminAndLoadOrders(); }, []);
 
   useEffect(() => {
-    checkAdminAndLoadOrders();
-  }, []);
+    if (selectedOrder) {
+      setEditStaffNotes(selectedOrder.staff_notes || '');
+      setEditTrackingCode(selectedOrder.tracking_code || '');
+    }
+  }, [selectedOrder?.id]);
+
+  // ---- Data ----
 
   async function checkAdminAndLoadOrders() {
     const { data } = await supabase.auth.getUser();
+    if (!data.user) { setLoading(false); return; }
 
-    if (!data.user) {
-      setLoading(false);
-      return;
-    }
-
-    // Check if user is admin
     const { data: admin } = await supabase
       .from('admin_users')
       .select('*')
@@ -75,36 +247,37 @@ export default function AdminOrdersPage() {
       setIsAdmin(true);
       await loadOrders();
     }
-
     setLoading(false);
   }
 
   async function loadOrders() {
     const { data, error } = await supabase
       .from('app_shop_orders')
-      .select(`
-        *,
-        app_shop_order_items (*)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error loading orders:', error);
     } else {
-      setOrders(data || []);
+      setOrders((data || []).map(normalizeOrder));
     }
   }
 
-  async function updateOrderStatus(orderId: string, newStatus: string) {
-    const updateData: any = { status: newStatus };
+  // ---- Status updates ----
 
-    if (newStatus === 'shipped') {
+  async function updateOrderStatus(orderId: string, newStatus: string) {
+    setUpdatingStatus(true);
+    const updateData: Record<string, any> = { status: newStatus };
+
+    // Record timestamp for each status transition
+    if (newStatus === 'processing') updateData.processing_at = new Date().toISOString();
+    else if (newStatus === 'ready_to_ship') updateData.ready_at = new Date().toISOString();
+    else if (newStatus === 'shipped') {
       updateData.shipped_at = new Date().toISOString();
-    } else if (newStatus === 'delivered') {
-      updateData.delivered_at = new Date().toISOString();
-    } else if (newStatus === 'cancelled') {
-      updateData.cancelled_at = new Date().toISOString();
+      if (editTrackingCode.trim()) updateData.tracking_code = editTrackingCode.trim();
     }
+    else if (newStatus === 'delivered') updateData.delivered_at = new Date().toISOString();
+    else if (newStatus === 'cancelled') updateData.cancelled_at = new Date().toISOString();
 
     const { error } = await supabase
       .from('app_shop_orders')
@@ -112,49 +285,110 @@ export default function AdminOrdersPage() {
       .eq('id', orderId);
 
     if (!error) {
-      await loadOrders();
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+      // Send shipped email
+      if (newStatus === 'shipped' && selectedOrder?.email && editTrackingCode.trim()) {
+        try {
+          await fetch('/api/orders/notify-shipped', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNumber: selectedOrder.order_number,
+              trackingCode: editTrackingCode.trim(),
+              customerEmail: selectedOrder.email,
+            }),
+          });
+        } catch (emailErr) {
+          console.error('Failed to send shipped email:', emailErr);
+        }
       }
+
+      await loadOrders();
+      // Refresh selected order from updated list
+      setSelectedOrder(prev => {
+        if (!prev || prev.id !== orderId) return prev;
+        return { ...prev, status: newStatus, ...updateData };
+      });
     }
+    setUpdatingStatus(false);
   }
 
+  async function saveStaffNotes(orderId: string) {
+    await supabase
+      .from('app_shop_orders')
+      .update({ staff_notes: editStaffNotes || null })
+      .eq('id', orderId);
+    await loadOrders();
+    setSelectedOrder(prev => prev?.id === orderId ? { ...prev, staff_notes: editStaffNotes || null } : prev);
+  }
+
+  async function saveTrackingCode(orderId: string) {
+    await supabase
+      .from('app_shop_orders')
+      .update({ tracking_code: editTrackingCode || null })
+      .eq('id', orderId);
+    await loadOrders();
+    setSelectedOrder(prev => prev?.id === orderId ? { ...prev, tracking_code: editTrackingCode || null } : prev);
+  }
+
+  // ---- Delete ----
+
+  async function deleteOrder(orderId: string) {
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/orders/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setSelectedOrder(null);
+      await loadOrders();
+    } catch (err: any) {
+      alert(`Failed to delete: ${err.message}`);
+    }
+    setDeleting(false);
+  }
+
+  async function deleteAllArchived() {
+    const ids = orders.filter(o => ARCHIVED_STATUSES.includes(o.status)).map(o => o.id);
+    if (ids.length === 0) return;
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/orders/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setSelectedOrder(null);
+      await loadOrders();
+    } catch (err: any) {
+      alert(`Failed to delete: ${err.message}`);
+    }
+    setDeleting(false);
+  }
+
+  // ---- Filtering ----
+
   const filteredOrders = orders.filter(order => {
-    if (filter === 'all') return true;
-    return order.status === filter;
+    if (filter === 'active' && ARCHIVED_STATUSES.includes(order.status)) return false;
+    if (filter === 'archived' && !ARCHIVED_STATUSES.includes(order.status)) return false;
+    if (filter !== 'active' && filter !== 'archived' && order.status !== filter) return false;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return (
+        order.order_number.toLowerCase().includes(q) ||
+        (order.email && order.email.toLowerCase().includes(q)) ||
+        (order.shipping_address?.name && order.shipping_address.name.toLowerCase().includes(q))
+      );
+    }
+    return true;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'shipped': return 'bg-blue-100 text-blue-800';
-      case 'delivered': return 'bg-purple-100 text-purple-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const archivedCount = orders.filter(o => ARCHIVED_STATUSES.includes(o.status)).length;
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'pending': return 'Pending';
-      case 'paid': return 'Paid';
-      case 'shipped': return 'Shipped';
-      case 'delivered': return 'Delivered';
-      case 'cancelled': return 'Cancelled';
-      default: return status;
-    }
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-CA', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  // ---- Loading / Auth ----
 
   if (loading) {
     return (
@@ -168,77 +402,80 @@ export default function AdminOrdersPage() {
     return (
       <div className="min-h-screen bg-grain flex items-center justify-center px-4">
         <div className="text-center">
-          <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-4">
-            Access Restricted
-          </h1>
-          <p className="font-mono text-[#1B2B27]/70 mb-6">
-            Please login as an administrator.
-          </p>
-          <Link href="/admin" className="btn-accent">
-            Go to Admin
-          </Link>
+          <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-4">Access Restricted</h1>
+          <p className="font-mono text-[#1B2B27]/70 mb-6">Please login as an administrator.</p>
+          <Link href="/admin" className="btn-accent">Go to Admin</Link>
         </div>
       </div>
     );
   }
 
+  // ---- RENDER ----
+
   return (
     <div className="min-h-screen bg-grain">
-      {/* Header */}
+      {/* ===== Header ===== */}
       <div className="sticky top-0 z-40 bg-[#1B2B27] border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link
-              href="/admin"
-              className="font-mono text-sm text-white/60 hover:text-white flex items-center gap-1"
-            >
-              ← Admin
-            </Link>
+            <Link href="/admin" className="font-mono text-sm text-white/60 hover:text-white">← Admin</Link>
             <span className="font-mono text-sm text-white/40">|</span>
-            <h1 className="font-mono text-sm font-medium text-white">
-              Orders ({orders.length})
-            </h1>
+            <h1 className="font-mono text-sm font-medium text-white">Orders ({filteredOrders.length})</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={loadOrders}
-              className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg border border-white/20 hover:border-white/40 transition-colors"
-            >
-              ↻ Refresh
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Search order #, email, name..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 font-mono text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/50 w-56"
+            />
+            <button onClick={loadOrders} className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg border border-white/20 hover:border-white/40">
+              ↻
             </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Filters */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {['all', 'pending', 'paid', 'shipped', 'delivered', 'cancelled'].map((status) => (
+        {/* ===== Filters ===== */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 items-center">
+          {['active', ...ACTIVE_STATUSES, 'archived'].map((s) => {
+            const count = s === 'active'
+              ? orders.filter(o => ACTIVE_STATUSES.includes(o.status)).length
+              : s === 'archived' ? archivedCount
+              : orders.filter(o => o.status === s).length;
+            return (
+              <button
+                key={s}
+                onClick={() => setFilter(s)}
+                className={`px-4 py-2 rounded-full font-mono text-xs whitespace-nowrap transition-colors ${
+                  filter === s ? 'bg-[#1B2B27] text-white' : 'bg-white/80 text-[#1B2B27]/70 hover:bg-white'
+                }`}
+              >
+                {s === 'active' ? 'Active' : s === 'archived' ? 'Archived' : sc(s).label}
+                <span className="ml-1 opacity-60">({count})</span>
+              </button>
+            );
+          })}
+          {filter === 'archived' && archivedCount > 0 && (
             <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-full font-mono text-xs whitespace-nowrap transition-colors ${
-                filter === status
-                  ? 'bg-[#1B2B27] text-white'
-                  : 'bg-white/80 text-[#1B2B27]/70 hover:bg-white'
-              }`}
+              onClick={() => { if (confirm(`Permanently delete all ${archivedCount} archived orders?`)) deleteAllArchived(); }}
+              disabled={deleting}
+              className="ml-auto px-4 py-2 rounded-full font-mono text-xs whitespace-nowrap bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
             >
-              {status === 'all' ? 'All' : getStatusLabel(status)}
-              {status !== 'all' && (
-                <span className="ml-1 opacity-60">
-                  ({orders.filter(o => o.status === status).length})
-                </span>
-              )}
+              {deleting ? 'Deleting...' : `Delete All Archived (${archivedCount})`}
             </button>
-          ))}
+          )}
         </div>
 
+        {/* ===== Order List ===== */}
         {filteredOrders.length === 0 ? (
           <div className="text-center py-12">
             <p className="font-mono text-[#1B2B27]/60">No orders found.</p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {filteredOrders.map((order) => (
               <div
                 key={order.id}
@@ -247,29 +484,29 @@ export default function AdminOrdersPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="font-mono text-sm font-bold text-[#1B2B27]">
-                        {order.order_number}
+                    <div className="flex items-center gap-3 mb-1 flex-wrap">
+                      <span className="font-mono text-sm font-bold text-[#1B2B27]">{order.order_number}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${sc(order.status).bg} ${sc(order.status).color}`}>
+                        {sc(order.status).label}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${getStatusColor(order.status)}`}>
-                        {getStatusLabel(order.status)}
-                      </span>
-                    </div>
-                    <div className="font-mono text-xs text-[#1B2B27]/60 space-y-1">
-                      <p>Created: {formatDate(order.created_at)}</p>
-                      {order.paid_at && <p>Paid: {formatDate(order.paid_at)}</p>}
-                      {order.shipping_address?.name && (
-                        <p>Customer: {order.shipping_address.name}</p>
+                      {order.customer_notes && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-pink-100 text-pink-700">Has notes</span>
+                      )}
+                      {order.tracking_code && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-600">Tracked</span>
                       )}
                     </div>
+                    <div className="font-mono text-xs text-[#1B2B27]/60 space-y-0.5">
+                      <p>{fmtDate(order.created_at)}</p>
+                      {order.shipping_address?.name && (
+                        <p className="font-medium text-[#1B2B27]/80">{order.shipping_address.name}</p>
+                      )}
+                      {order.email && <p>{order.email}</p>}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-mono text-lg font-bold text-[#1B2B27]">
-                      CA${order.total.toFixed(2)}
-                    </p>
-                    <p className="font-mono text-xs text-[#1B2B27]/60">
-                      {order.order_items?.length || 0} item(s)
-                    </p>
+                  <div className="text-right shrink-0">
+                    <p className="font-mono text-lg font-bold text-[#1B2B27]">{fmtMoney(order.total)}</p>
+                    <p className="font-mono text-xs text-[#1B2B27]/60">{itemCount(order)} item(s)</p>
                   </div>
                 </div>
               </div>
@@ -278,153 +515,336 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
-      {/* Order Detail Modal */}
+      {/* ============================================================ */}
+      {/* ORDER DETAIL MODAL — designed for warehouse/packing employee */}
+      {/* ============================================================ */}
       {selectedOrder && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          onClick={() => setSelectedOrder(null)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setSelectedOrder(null)}>
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+
+            {/* ---- HEADER ---- */}
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between rounded-t-2xl z-10">
               <div>
-                <h2 className="font-mono text-lg font-bold text-[#1B2B27]">
-                  {selectedOrder.order_number}
-                </h2>
-                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-mono mt-1 ${getStatusColor(selectedOrder.status)}`}>
-                  {getStatusLabel(selectedOrder.status)}
-                </span>
+                <h2 className="font-mono text-xl font-bold text-[#1B2B27]">{selectedOrder.order_number}</h2>
+                <p className="font-mono text-xs text-[#1B2B27]/50 mt-0.5">
+                  {selectedOrder.email || 'No email'} · {fmtDate(selectedOrder.created_at)}
+                </p>
               </div>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
-              >
+              <button onClick={() => setSelectedOrder(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-lg">
                 ✕
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-4 space-y-6">
-              {/* Status Actions */}
-              <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Update Status:</p>
-                <div className="flex flex-wrap gap-2">
-                  {['pending', 'paid', 'shipped', 'delivered', 'cancelled'].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => updateOrderStatus(selectedOrder.id, status)}
-                      disabled={selectedOrder.status === status}
-                      className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors ${
-                        selectedOrder.status === status
-                          ? 'bg-[#1B2B27] text-white'
-                          : 'bg-gray-100 text-[#1B2B27]/70 hover:bg-gray-200'
-                      }`}
-                    >
-                      {getStatusLabel(status)}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="p-4 space-y-5">
 
-              {/* Order Items */}
-              <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Order Items:</p>
-                <div className="bg-gray-50 rounded-xl p-3 space-y-3">
-                  {selectedOrder.order_items?.map((item) => (
-                    <div key={item.id} className="flex justify-between items-start">
-                      <div>
-                        <p className="font-mono text-sm text-[#1B2B27]">{item.product_name}</p>
-                        <p className="font-mono text-xs text-[#1B2B27]/60">
-                          {item.size && `Size: ${item.size}`}
-                          {item.size && item.color && ' | '}
-                          {item.color && `Color: ${item.color}`}
-                        </p>
-                        <p className="font-mono text-xs text-[#1B2B27]/60">
-                          Qty: {item.quantity} × CA${item.unit_price.toFixed(2)}
-                        </p>
-                      </div>
-                      <p className="font-mono text-sm font-medium text-[#1B2B27]">
-                        CA${item.total_price.toFixed(2)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Order Summary */}
-              <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Summary:</p>
-                <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-                  <div className="flex justify-between font-mono text-sm">
-                    <span className="text-[#1B2B27]/70">Subtotal</span>
-                    <span>CA${selectedOrder.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-mono text-sm">
-                    <span className="text-[#1B2B27]/70">Shipping</span>
-                    <span>CA${selectedOrder.shipping.toFixed(2)}</span>
-                  </div>
-                  {selectedOrder.tax > 0 && (
-                    <div className="flex justify-between font-mono text-sm">
-                      <span className="text-[#1B2B27]/70">Tax</span>
-                      <span>CA${selectedOrder.tax.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="border-t pt-2 flex justify-between font-mono text-lg font-bold">
-                    <span>Total</span>
-                    <span>CA${selectedOrder.total.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Shipping Address */}
-              {selectedOrder.shipping_address && (
-                <div>
-                  <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Shipping Address:</p>
-                  <div className="bg-gray-50 rounded-xl p-3 font-mono text-sm text-[#1B2B27]">
-                    <p className="font-medium">{selectedOrder.shipping_address.name}</p>
-                    <p>{selectedOrder.shipping_address.street}</p>
-                    {selectedOrder.shipping_address.apartment && (
-                      <p>{selectedOrder.shipping_address.apartment}</p>
-                    )}
-                    <p>
-                      {selectedOrder.shipping_address.city}, {selectedOrder.shipping_address.province}
-                    </p>
-                    <p>
-                      {selectedOrder.shipping_address.postal_code}, {selectedOrder.shipping_address.country}
-                    </p>
-                  </div>
+              {/* ---- 1. CUSTOMER INSTRUCTIONS ---- */}
+              {selectedOrder.customer_notes && (
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+                  <p className="font-mono text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">
+                    ⚠ Customer Instructions
+                  </p>
+                  <p className="font-mono text-sm text-[#1B2B27] leading-relaxed">
+                    {selectedOrder.customer_notes}
+                  </p>
                 </div>
               )}
 
-              {/* Stripe Info */}
+              {/* ---- 2. TIMELINE ---- */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <OrderTimeline order={selectedOrder} />
+              </div>
+
+              {/* ---- 3. SHIPPING LABEL ---- */}
+              {selectedOrder.shipping_address ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-5 bg-white">
+                  <p className="font-mono text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
+                    Ship To
+                  </p>
+                  <div className="font-mono text-base text-[#1B2B27] leading-relaxed">
+                    <p className="font-bold text-lg">{selectedOrder.shipping_address.name || '—'}</p>
+                    {selectedOrder.shipping_address.street && <p>{selectedOrder.shipping_address.street}</p>}
+                    {selectedOrder.shipping_address.apartment && <p>{selectedOrder.shipping_address.apartment}</p>}
+                    <p>
+                      {[selectedOrder.shipping_address.city, selectedOrder.shipping_address.province].filter(Boolean).join(', ')}
+                      {selectedOrder.shipping_address.postal_code && (
+                        <span className="ml-3 font-bold tracking-wider">{selectedOrder.shipping_address.postal_code}</span>
+                      )}
+                    </p>
+                    <p className="text-gray-500 text-sm mt-1">{selectedOrder.shipping_address.country || 'Canada'}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 bg-gray-50 text-center">
+                  <p className="font-mono text-sm text-gray-400">No shipping address (order placed before address tracking)</p>
+                </div>
+              )}
+
+              {/* ---- 4. PACKING LIST ---- */}
               <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Stripe Info:</p>
-                <div className="bg-gray-50 rounded-xl p-3 font-mono text-xs text-[#1B2B27]/70 space-y-1">
-                  {selectedOrder.stripe_session_id && (
-                    <p className="break-all">
-                      <span className="text-[#1B2B27]">Session:</span> {selectedOrder.stripe_session_id}
-                    </p>
-                  )}
-                  {selectedOrder.stripe_payment_intent_id && (
-                    <p className="break-all">
-                      <span className="text-[#1B2B27]">Payment Intent:</span> {selectedOrder.stripe_payment_intent_id}
-                    </p>
-                  )}
+                <p className="font-mono text-xs font-bold text-[#1B2B27]/60 uppercase tracking-wider mb-3">
+                  Packing List ({itemCount(selectedOrder)} item{itemCount(selectedOrder) !== 1 ? 's' : ''})
+                </p>
+
+                {selectedOrder.items.length === 0 ? (
+                  <div className="bg-gray-50 rounded-xl p-4 text-center">
+                    <p className="font-mono text-sm text-gray-400">No item details (order placed before tracking was added)</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedOrder.items.map((item, idx) => (
+                      <div key={idx} className="bg-gray-50 rounded-xl p-3 flex gap-4 items-center">
+                        {/* Image */}
+                        <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center shrink-0 overflow-hidden border border-gray-200">
+                          {item.image ? (
+                            <img src={item.image} alt={item.name || 'Product'} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-3xl">📦</span>
+                          )}
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-mono text-sm font-bold text-[#1B2B27]">{item.name || 'Product'}</p>
+
+                          {item.sku && (
+                            <code className="inline-block mt-1 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
+                              {item.sku}
+                            </code>
+                          )}
+
+                          <div className="flex gap-4 mt-1.5">
+                            {item.color && (
+                              <span className="font-mono text-xs text-[#1B2B27]/70">
+                                <span className="text-[#1B2B27]/40">Color:</span> <span className="font-medium">{item.color}</span>
+                              </span>
+                            )}
+                            {item.size && (
+                              <span className="font-mono text-xs text-[#1B2B27]/70">
+                                <span className="text-[#1B2B27]/40">Size:</span> <span className="font-medium">{item.size}</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {item.design && (
+                            <p className="font-mono text-xs text-[#1B2B27]/50 mt-1">Design: {item.design}</p>
+                          )}
+
+                          {item.price != null && item.price > 0 && (
+                            <p className="font-mono text-xs text-[#1B2B27]/50 mt-1">{fmtMoney(item.price)} each</p>
+                          )}
+                        </div>
+
+                        {/* Quantity — big and clear */}
+                        <div className="shrink-0 text-center px-3">
+                          <p className="font-mono text-2xl font-black text-[#1B2B27]">×{item.qty || 1}</p>
+                          <p className="font-mono text-[10px] text-[#1B2B27]/40 uppercase">qty</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ---- 5. ORDER SUMMARY ---- */}
+              <div className="bg-gray-50 rounded-xl p-4 font-mono text-sm">
+                <div className="flex justify-between mb-1">
+                  <span className="text-[#1B2B27]/60">Subtotal</span>
+                  <span>{fmtMoney(selectedOrder.total - selectedOrder.shipping_cost)}</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-[#1B2B27]/60">Shipping</span>
+                  <span className={selectedOrder.shipping_cost === 0 ? 'text-green-600 font-bold' : ''}>
+                    {selectedOrder.shipping_cost === 0 ? 'FREE' : fmtMoney(selectedOrder.shipping_cost)}
+                  </span>
+                </div>
+                <div className="border-t pt-2 flex justify-between text-base font-bold">
+                  <span>Total</span>
+                  <span>{fmtMoney(selectedOrder.total)}</span>
                 </div>
               </div>
 
-              {/* Dates */}
-              <div>
-                <p className="font-mono text-xs text-[#1B2B27]/60 mb-2">Dates:</p>
-                <div className="bg-gray-50 rounded-xl p-3 font-mono text-xs text-[#1B2B27]/70 space-y-1">
-                  <p>Created: {formatDate(selectedOrder.created_at)}</p>
-                  {selectedOrder.paid_at && <p>Paid: {formatDate(selectedOrder.paid_at)}</p>}
-                  {selectedOrder.cancelled_at && <p>Cancelled: {formatDate(selectedOrder.cancelled_at)}</p>}
-                </div>
+              {/* ---- 6. ACTIONS ---- */}
+              <div className="bg-white border-2 border-[#1B2B27]/10 rounded-xl p-4">
+                <p className="font-mono text-xs font-bold text-[#1B2B27]/60 uppercase tracking-wider mb-3">Next Step</p>
+
+                {selectedOrder.status === 'paid' && (
+                  <button
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'processing')}
+                    disabled={updatingStatus}
+                    className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-yellow-500 text-white hover:bg-yellow-600 disabled:opacity-50 transition-colors"
+                  >
+                    {updatingStatus ? 'Updating...' : 'Start Processing →'}
+                  </button>
+                )}
+
+                {selectedOrder.status === 'processing' && (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'ready_to_ship')}
+                      disabled={updatingStatus}
+                      className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-cyan-600 text-white hover:bg-cyan-700 disabled:opacity-50 transition-colors"
+                    >
+                      {updatingStatus ? 'Updating...' : 'Mark Ready to Ship →'}
+                    </button>
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'out_of_stock')}
+                      disabled={updatingStatus}
+                      className="w-full px-4 py-2.5 rounded-xl font-mono text-xs bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 disabled:opacity-50 transition-colors"
+                    >
+                      Out of Stock
+                    </button>
+                  </div>
+                )}
+
+                {selectedOrder.status === 'out_of_stock' && (
+                  <button
+                    onClick={() => updateOrderStatus(selectedOrder.id, 'processing')}
+                    disabled={updatingStatus}
+                    className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-yellow-500 text-white hover:bg-yellow-600 disabled:opacity-50 transition-colors"
+                  >
+                    {updatingStatus ? 'Updating...' : '← Back to Processing'}
+                  </button>
+                )}
+
+                {selectedOrder.status === 'ready_to_ship' && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1">Canada Post Tracking Code</label>
+                      <input
+                        type="text"
+                        placeholder="Enter tracking number..."
+                        value={editTrackingCode}
+                        onChange={e => setEditTrackingCode(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border-2 border-blue-200 font-mono text-sm focus:outline-none focus:border-blue-400 bg-blue-50/50"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!editTrackingCode.trim()) {
+                          alert('Please enter a tracking code before marking as shipped.');
+                          return;
+                        }
+                        updateOrderStatus(selectedOrder.id, 'shipped');
+                      }}
+                      disabled={updatingStatus}
+                      className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                      {updatingStatus ? 'Updating...' : 'Mark as Shipped →'}
+                    </button>
+                  </div>
+                )}
+
+                {selectedOrder.status === 'shipped' && (
+                  <div className="space-y-3">
+                    {selectedOrder.tracking_code && (
+                      <div className="flex items-center gap-3 bg-blue-50 rounded-xl p-3">
+                        <span className="font-mono text-xs text-blue-600">Tracking:</span>
+                        <code className="font-mono text-sm font-bold text-blue-800">{selectedOrder.tracking_code}</code>
+                        <a
+                          href={`https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${selectedOrder.tracking_code}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto font-mono text-xs text-blue-600 hover:underline"
+                        >
+                          Track →
+                        </a>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
+                      disabled={updatingStatus}
+                      className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                    >
+                      {updatingStatus ? 'Updating...' : 'Confirm Delivered ✓'}
+                    </button>
+                  </div>
+                )}
+
+                {selectedOrder.status === 'delivered' && (
+                  <div className="text-center py-2">
+                    <p className="font-mono text-sm text-purple-600 font-bold">Order complete</p>
+                  </div>
+                )}
+
+                {selectedOrder.status === 'cancelled' && (
+                  <div className="text-center py-2">
+                    <p className="font-mono text-sm text-red-600 font-bold">This order was cancelled</p>
+                  </div>
+                )}
+
+                {/* Cancel — always available for active orders */}
+                {!ARCHIVED_STATUSES.includes(selectedOrder.status) && (
+                  <button
+                    onClick={() => { if (confirm('Cancel this order?')) updateOrderStatus(selectedOrder.id, 'cancelled'); }}
+                    disabled={updatingStatus}
+                    className="w-full mt-2 px-4 py-2 rounded-xl font-mono text-xs text-red-500 hover:bg-red-50 border border-red-200 disabled:opacity-50 transition-colors"
+                  >
+                    Cancel Order
+                  </button>
+                )}
               </div>
+
+              {/* ---- 7. STAFF NOTES ---- */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="font-mono text-xs font-bold text-[#1B2B27]/40 uppercase tracking-wider mb-2">Staff Notes</p>
+                <textarea
+                  placeholder="Internal notes (stock check, packing details, issues...)"
+                  value={editStaffNotes}
+                  onChange={e => setEditStaffNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm focus:outline-none focus:border-gray-400 bg-white resize-none"
+                />
+                <button
+                  onClick={() => saveStaffNotes(selectedOrder.id)}
+                  className="mt-2 px-4 py-1.5 rounded-lg font-mono text-xs bg-gray-200 hover:bg-gray-300 text-[#1B2B27] transition-colors"
+                >
+                  Save Notes
+                </button>
+              </div>
+
+              {/* ---- Tracking (standalone, for shipped orders that have one) ---- */}
+              {selectedOrder.status !== 'ready_to_ship' && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="font-mono text-xs font-bold text-[#1B2B27]/40 uppercase tracking-wider mb-2">Tracking Code</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Canada Post tracking number..."
+                      value={editTrackingCode}
+                      onChange={e => setEditTrackingCode(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm focus:outline-none focus:border-gray-400 bg-white"
+                    />
+                    <button
+                      onClick={() => saveTrackingCode(selectedOrder.id)}
+                      className="px-4 py-2 rounded-lg font-mono text-xs bg-gray-200 hover:bg-gray-300 text-[#1B2B27] transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                  {selectedOrder.tracking_code && (
+                    <a
+                      href={`https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${selectedOrder.tracking_code}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-2 font-mono text-xs text-blue-600 hover:underline"
+                    >
+                      Track on Canada Post →
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* ---- 8. DANGER ZONE ---- */}
+              <div className="pt-2">
+                <button
+                  onClick={() => { if (confirm(`Permanently delete order ${selectedOrder.order_number}? This cannot be undone.`)) deleteOrder(selectedOrder.id); }}
+                  disabled={deleting}
+                  className="w-full px-4 py-2.5 rounded-xl font-mono text-xs text-red-400 hover:text-red-600 hover:bg-red-50 border border-red-100 disabled:opacity-50 transition-colors"
+                >
+                  {deleting ? 'Deleting...' : 'Delete This Order Permanently'}
+                </button>
+              </div>
+
             </div>
           </div>
         </div>

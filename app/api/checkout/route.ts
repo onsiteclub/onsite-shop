@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import {
   STRIPE_PRODUCTS,
-  SHIPPING_OPTIONS,
-  FREE_SHIPPING_OPTION,
   FREE_SHIPPING_THRESHOLD,
+  PROVINCE_SHIPPING,
   type ProductKey,
 } from '@/lib/stripe-config';
 
@@ -48,14 +47,18 @@ export async function POST(req: NextRequest) {
       apiVersion: '2025-12-15.clover',
     });
 
-    const { items } = await req.json();
+    const { items, shipping_address, customer_notes } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
     }
 
+    if (!shipping_address?.province || !shipping_address?.name || !shipping_address?.street || !shipping_address?.city || !shipping_address?.postal_code) {
+      return NextResponse.json({ error: 'Shipping address is required' }, { status: 400 });
+    }
+
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-    const items_detail: Array<{ sku: string; name: string; design: string; color: string; size: string; qty: number }> = [];
+    const items_detail: Array<{ sku: string; name: string; design: string; color: string; size: string; qty: number; price: number; image: string | null }> = [];
     let subtotal = 0;
 
     for (const item of items) {
@@ -80,17 +83,21 @@ export async function POST(req: NextRequest) {
         color: item.color,
         size: item.size,
         qty: item.quantity,
+        price: item.price || resolved.price,
+        image: item.image || null,
       });
 
-      // Use trusted price from STRIPE_PRODUCTS (cents), not from client
       subtotal += resolved.price * item.quantity;
     }
 
-    // Shipping options (free shipping if above threshold)
-    // Stripe allows max 5 shipping options
-    const shipping_options = subtotal >= FREE_SHIPPING_THRESHOLD
-      ? [FREE_SHIPPING_OPTION, ...SHIPPING_OPTIONS.slice(0, 4)]
-      : [...SHIPPING_OPTIONS];
+    // Calculate shipping from province (server-side, not user-selectable)
+    const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+    const provinceData = PROVINCE_SHIPPING[shipping_address.province];
+    const shippingAmount = isFreeShipping ? 0 : (provinceData?.cost ?? 1499);
+    const shippingRegion = provinceData?.region ?? 'Canada';
+    const shippingLabel = isFreeShipping
+      ? 'Free Shipping (orders over $50)'
+      : `Shipping — ${shippingRegion}`;
 
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'http://localhost:3001';
 
@@ -98,12 +105,31 @@ export async function POST(req: NextRequest) {
       payment_method_types: ['card'],
       mode: 'payment',
       line_items,
-      shipping_address_collection: {
-        allowed_countries: ['CA'],
-      },
-      shipping_options,
+      // Single pre-calculated shipping option (no user choice)
+      shipping_options: [{
+        shipping_rate_data: {
+          type: 'fixed_amount',
+          fixed_amount: { amount: shippingAmount, currency: 'cad' },
+          display_name: shippingLabel,
+        },
+      }],
       metadata: {
         items_detail: JSON.stringify(items_detail),
+        shipping_address: JSON.stringify(shipping_address),
+        ...(customer_notes ? { customer_notes } : {}),
+      },
+      payment_intent_data: {
+        shipping: {
+          name: shipping_address.name,
+          address: {
+            line1: shipping_address.street,
+            line2: shipping_address.apartment || undefined,
+            city: shipping_address.city,
+            state: shipping_address.province,
+            postal_code: shipping_address.postal_code,
+            country: shipping_address.country || 'CA',
+          },
+        },
       },
       success_url: `${shopUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${shopUrl}/cart`,
