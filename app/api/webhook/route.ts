@@ -72,6 +72,9 @@ export async function POST(req: NextRequest) {
       const orderNumber = `OS-${Date.now().toString(36).toUpperCase()}`;
 
       // A) Save order to Supabase
+      // NOTE: subtotal/shipping/tax are legacy columns from the old schema
+      // that have NOT NULL constraints. We populate them to avoid INSERT failures.
+      const subtotalCents = amountTotal - shippingCost;
       const { error: orderError } = await supabase
         .from('app_shop_orders')
         .insert({
@@ -82,6 +85,8 @@ export async function POST(req: NextRequest) {
           shipping_address: shippingAddress,
           customer_notes: customerNotes,
           total: amountTotal,
+          subtotal: subtotalCents,
+          shipping: shippingCost,
           shipping_cost: shippingCost,
           stripe_session_id: session.id,
           created_at: new Date().toISOString(),

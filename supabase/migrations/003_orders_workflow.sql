@@ -119,14 +119,29 @@ CREATE POLICY "shop_orders_service_role" ON app_shop_orders
   USING (auth.role() = 'service_role');
 
 -- ============================================
--- 5. MIGRATE LEGACY DATA
+-- 5. FIX LEGACY CONSTRAINTS
+-- ============================================
+-- The table may have been created from the old `orders` schema which has
+-- NOT NULL constraints on columns the webhook doesn't populate (subtotal,
+-- user_id, etc.). Drop those constraints so the webhook INSERT works.
+
+ALTER TABLE app_shop_orders ALTER COLUMN subtotal DROP NOT NULL;
+ALTER TABLE app_shop_orders ALTER COLUMN subtotal SET DEFAULT 0;
+ALTER TABLE app_shop_orders ALTER COLUMN user_id DROP NOT NULL;
+ALTER TABLE app_shop_orders ALTER COLUMN shipping DROP NOT NULL;
+ALTER TABLE app_shop_orders ALTER COLUMN shipping SET DEFAULT 0;
+ALTER TABLE app_shop_orders ALTER COLUMN tax DROP NOT NULL;
+ALTER TABLE app_shop_orders ALTER COLUMN tax SET DEFAULT 0;
+ALTER TABLE app_shop_orders ALTER COLUMN total DROP NOT NULL;
+ALTER TABLE app_shop_orders ALTER COLUMN total SET DEFAULT 0;
+
+-- ============================================
+-- 6. MIGRATE LEGACY DATA
 -- ============================================
 -- Fix old orders stuck on 'pending' (legacy default from orders table).
--- The webhook now writes 'paid'. Map 'pending' → 'paid' so the
--- fulfillment workflow buttons appear correctly.
 UPDATE app_shop_orders SET status = 'paid' WHERE status = 'pending';
 
--- Ensure items is never null (some old rows may have null)
+-- Ensure items is never null
 UPDATE app_shop_orders SET items = '[]' WHERE items IS NULL;
 
 -- Ensure total/shipping_cost are never null
