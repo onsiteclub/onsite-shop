@@ -44,10 +44,8 @@ export async function POST(req: NextRequest) {
 
   if (email) {
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'https://shop.onsiteclub.ca'
-    const fromEmail = process.env.SHOP_ADMIN_EMAIL || 'dev@onsiteclub.ca'
-
     const { error: emailError } = await resend.emails.send({
-      from: fromEmail,
+      from: 'OnSite Club <orders@onsiteclub.ca>',
       to: email,
       subject: 'Your OnSite Club promo code — grab anything for $0.50',
       html: `
