@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 
 function StarRating({
@@ -32,8 +32,7 @@ export default function ReviewPage({
 }: {
   params: Promise<{ orderNumber: string }>
 }) {
-  const [orderNumber, setOrderNumber] = useState('')
-  const [products, setProducts] = useState<string[]>([])
+  const { orderNumber } = use(params)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [alreadyReviewed, setAlreadyReviewed] = useState(false)
@@ -47,26 +46,13 @@ export default function ReviewPage({
   const [error, setError] = useState('')
 
   useEffect(() => {
-    params.then((p) => {
-      setOrderNumber(p.orderNumber)
-    })
-  }, [params])
-
-  useEffect(() => {
-    if (!orderNumber) return
-
-    // Verify order exists by trying to submit an empty check
-    // We'll use a simple fetch to validate
-    fetch('/api/reviews', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_number: orderNumber, rating: 0 }),
-    })
+    // Verify order exists and check if already reviewed
+    fetch(`/api/reviews/check?order_number=${encodeURIComponent(orderNumber)}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.error === 'Order not found') {
+        if (data.notFound) {
           setNotFound(true)
-        } else if (data.error === 'A review has already been submitted for this order') {
+        } else if (data.alreadyReviewed) {
           setAlreadyReviewed(true)
         }
         setLoading(false)
