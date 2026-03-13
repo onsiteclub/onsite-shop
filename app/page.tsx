@@ -1026,7 +1026,7 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
         price_id: priceId,
         category: p.category?.slug || 'mens',
         product_type: p.product_type || skuType || '',
-        image: p.primary_image || p.images?.[0] || '/products/placeholder.webp',
+        image: p.primary_image || p.images?.[0] || '',
         images: p.images || [],
         description: p.description || '',
         sizes: p.sizes || [],
