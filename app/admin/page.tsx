@@ -161,6 +161,10 @@ export default function AdminPage() {
   // Product type tab filter
   const [activeProductTab, setActiveProductTab] = useState<string>('all');
 
+  // Reviews moderation
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+
   const supabase = createClient();
 
   // Check auth and admin status
@@ -208,6 +212,12 @@ export default function AdminPage() {
       const unpublished = prods.some((p: Product) => !p.is_published);
       setHasUnpublishedChanges(unpublished);
     }
+
+    const { data: revs } = await supabase
+      .from('app_shop_reviews')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (revs) setReviews(revs);
   }
 
   async function handlePublishAll() {
@@ -226,6 +236,29 @@ export default function AdminPage() {
       showToast('Error publishing: ' + error.message, 'error');
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function handleReviewModerate(reviewId: string, action: 'approve' | 'reject') {
+    try {
+      const update: Record<string, any> = {
+        status: action === 'approve' ? 'approved' : 'rejected',
+      };
+      if (action === 'approve') {
+        update.approved_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('app_shop_reviews')
+        .update(update)
+        .eq('id', reviewId);
+
+      if (error) throw error;
+
+      showToast(`Review ${action === 'approve' ? 'approved' : 'rejected'}`, 'success');
+      await loadData();
+    } catch {
+      showToast('Failed to moderate review', 'error');
     }
   }
 
@@ -581,6 +614,21 @@ export default function AdminPage() {
             >
               Orders
             </Link>
+            <button
+              onClick={() => setActiveProductTab(activeProductTab === 'reviews' ? 'all' : 'reviews')}
+              className={`font-mono text-sm py-2 px-4 rounded-xl transition-colors relative ${
+                activeProductTab === 'reviews'
+                  ? 'bg-[#B8860B] text-[#1B2B27] font-bold'
+                  : 'bg-[#1B2B27] hover:bg-[#2a3f39] text-white'
+              }`}
+            >
+              Reviews
+              {reviews.filter(r => r.status === 'pending').length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {reviews.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </button>
             {hasUnpublishedChanges && (
               <button
                 onClick={handlePublishAll}
@@ -598,6 +646,7 @@ export default function AdminPage() {
         </div>
 
         {/* Categories management */}
+        {activeProductTab !== 'reviews' && (
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <h2 className="font-mono text-sm font-medium text-[#1B2B27]/60">Categories</h2>
@@ -646,7 +695,10 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+        )}
 
+        {activeProductTab !== 'reviews' && (
+        <>
         {/* Add product button */}
         <button
           onClick={() => setEditingProduct({
@@ -701,8 +753,105 @@ export default function AdminPage() {
             );
           })}
         </div>
+        </>
+        )}
+
+        {/* Reviews moderation panel */}
+        {activeProductTab === 'reviews' && (
+          <div>
+            <div className="flex gap-2 mb-6">
+              {(['all', 'pending', 'approved', 'rejected'] as const).map(f => {
+                const count = f === 'all' ? reviews.length : reviews.filter(r => r.status === f).length;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setReviewFilter(f)}
+                    className={`font-mono text-xs py-2 px-4 rounded-lg transition-all capitalize ${
+                      reviewFilter === f
+                        ? 'bg-[#1B2B27] text-white font-bold'
+                        : 'bg-white/70 text-[#1B2B27]/60 hover:bg-white'
+                    }`}
+                  >
+                    {f} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {reviews.filter(r => reviewFilter === 'all' || r.status === reviewFilter).length === 0 && (
+              <p className="font-mono text-sm text-[#1B2B27]/40 text-center py-12">No reviews found</p>
+            )}
+
+            <div className="space-y-4">
+              {reviews
+                .filter(r => reviewFilter === 'all' || r.status === reviewFilter)
+                .map(review => (
+                  <div key={review.id} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="text-[#B8860B] text-sm tracking-wider">
+                            {'★'.repeat(review.rating)}
+                            <span className="text-[#D3D1C7]">{'★'.repeat(5 - review.rating)}</span>
+                          </span>
+                          <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            review.status === 'approved' ? 'bg-green-100 text-green-700'
+                              : review.status === 'rejected' ? 'bg-red-100 text-red-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {review.status}
+                          </span>
+                        </div>
+
+                        {review.title && (
+                          <h3 className="font-mono text-sm font-bold text-[#1B2B27] mb-1">{review.title}</h3>
+                        )}
+
+                        {review.comment && (
+                          <p className="font-mono text-xs text-[#1B2B27]/70 leading-relaxed mb-2">{review.comment}</p>
+                        )}
+
+                        <p className="font-mono text-[10px] text-[#6B7280]">
+                          {review.customer_name || 'Anonymous'} • Order {review.order_number} •{' '}
+                          {new Date(review.created_at).toLocaleDateString('en-CA')}
+                        </p>
+
+                        {review.product_names?.length > 0 && (
+                          <div className="flex gap-1 mt-2 flex-wrap">
+                            {review.product_names.map((name: string, i: number) => (
+                              <span key={i} className="font-mono text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full">
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {review.status === 'pending' && (
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                        <button
+                          onClick={() => handleReviewModerate(review.id, 'approve')}
+                          className="flex-1 font-mono text-xs py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReviewModerate(review.id, 'reject')}
+                          className="flex-1 font-mono text-xs py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* Products grid */}
+        {activeProductTab !== 'reviews' && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {products.filter(p => activeProductTab === 'all' || p.product_type === activeProductTab).map((product) => (
             <div
@@ -793,6 +942,7 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
+        )}
       </div>
     </div>
   );

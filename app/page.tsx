@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useCartStore } from '@/lib/store/cart';
 import { createClient } from '@/lib/supabase/client';
 import { STRIPE_PRODUCTS } from '@/lib/stripe-config';
+import { ReviewsSection } from '@/components/ReviewsSection';
 
 // ============================================================================
 // LAYOUT SYSTEM - OnSite Shop (Uniform Grid)
@@ -1477,6 +1478,9 @@ export default function ShopPage() {
           </>
         )}
       </div>
+
+      {/* Reviews */}
+      {activeView === 'all' && <ReviewsSection />}
 
       {/* Product Modal */}
       {selectedProduct && (

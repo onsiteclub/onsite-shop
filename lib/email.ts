@@ -225,6 +225,11 @@ function buildCustomerEmailHtml(order: OrderEmailData): string {
       <a href="https://shop.onsiteclub.ca" style="display: inline-block; background: #1B2B27; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500;">
         Continue Shopping
       </a>
+      <div style="margin-top: 16px;">
+        <a href="https://shop.onsiteclub.ca/review/${order.orderNumber}" style="display: inline-block; background: #B8860B; color: #1B2B27; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+          ★ Leave a Review
+        </a>
+      </div>
       <p style="color: #9CA3AF; font-size: 12px; margin-top: 24px;">
         OnSite Club — Construction Community in Canada
       </p>
