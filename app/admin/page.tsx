@@ -275,7 +275,10 @@ export default function AdminPage() {
     try {
       const productData = {
         name: product.name,
-        slug: product.slug || product.name?.toLowerCase().replace(/\s+/g, '-'),
+        slug: product.slug || product.name?.toLowerCase()
+          .replace(/[àáâãäå]/g, 'a').replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i')
+          .replace(/[òóôõö]/g, 'o').replace(/[ùúûü]/g, 'u').replace(/[ç]/g, 'c').replace(/[ñ]/g, 'n')
+          .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
         description: product.description,
         base_price: product.base_price,
         sku: product.sku || '',
@@ -814,9 +817,16 @@ function ProductForm({
   onUpload: (file: File) => Promise<string | null>;
   saving: boolean;
 }) {
+  const generateSlug = (name: string) =>
+    name.toLowerCase()
+      .replace(/[àáâãäå]/g, 'a').replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i')
+      .replace(/[òóôõö]/g, 'o').replace(/[ùúûü]/g, 'u').replace(/[ç]/g, 'c').replace(/[ñ]/g, 'n')
+      .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
   const [form, setForm] = useState({
     ...product,
     sku: product.sku || '',
+    slug: product.slug || '',
     stripe_price_id: product.stripe_price_id || '',
     product_type: product.product_type || '',
     color_images: product.color_images || {} as Record<string, string[]>,
@@ -964,7 +974,7 @@ function ProductForm({
   const [artType, setArtType] = useState(initialParts.artType);
   const [designNum, setDesignNum] = useState(initialParts.designNum);
 
-  // Build name & SKU automatically from selections
+  // Build name, SKU & slug automatically from selections
   const buildProductIdentity = (pType: string, aType: string, dNum: string) => {
     const pt = PRODUCT_TYPES[pType];
     const at = ART_TYPES[aType as keyof typeof ART_TYPES];
@@ -972,7 +982,8 @@ function ProductForm({
     const num = dNum.padStart(3, '0');
     const sku = `${pt.skuPrefix}-${at.code}${num}`;
     const name = `${pt.productName} — ${at.label} #${num}`;
-    return { sku, name };
+    const slug = generateSlug(name);
+    return { sku, name, slug };
   };
 
   // Apply a product type (sets price, stripe_price_id, sizes, description)
@@ -993,7 +1004,7 @@ function ProductForm({
       base_price: pt.base_price,
       sizes: pt.defaultSizes,
       description: pt.description,
-      ...(identity ? { sku: identity.sku, name: identity.name } : {}),
+      ...(identity ? { sku: identity.sku, name: identity.name, slug: identity.slug } : {}),
     });
   };
 
@@ -1002,7 +1013,7 @@ function ProductForm({
     setArtType(aType);
     const identity = buildProductIdentity(form.product_type, aType, designNum);
     if (identity) {
-      setForm({ ...form, sku: identity.sku, name: identity.name });
+      setForm({ ...form, sku: identity.sku, name: identity.name, slug: identity.slug });
     }
   };
 
@@ -1012,7 +1023,7 @@ function ProductForm({
     setDesignNum(clean);
     const identity = buildProductIdentity(form.product_type, artType, clean);
     if (identity) {
-      setForm({ ...form, sku: identity.sku, name: identity.name });
+      setForm({ ...form, sku: identity.sku, name: identity.name, slug: identity.slug });
     }
   };
 
@@ -1089,13 +1100,28 @@ function ProductForm({
         <input
           type="text"
           value={form.name || ''}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          onChange={(e) => setForm({ ...form, name: e.target.value, slug: generateSlug(e.target.value) })}
           className="input"
           placeholder="Select type + art + number above"
           required
         />
+      </div>
+
+      {/* URL Slug (auto-generated, editable) */}
+      <div>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">URL Slug</label>
+        <div className="flex items-center gap-0">
+          <span className="font-mono text-xs text-stone-400 bg-stone-100 px-3 py-3 rounded-l-xl border border-r-0 border-gray-200">/products/</span>
+          <input
+            type="text"
+            value={form.slug || ''}
+            onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+            className="input rounded-l-none flex-1"
+            placeholder="auto-generated-from-name"
+          />
+        </div>
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          Gerado automaticamente. Edite se quiser personalizar.
+          Auto-generated from name. Edit for a cleaner URL.
         </p>
       </div>
 
