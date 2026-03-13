@@ -29,13 +29,13 @@ export function applyPromoDiscount(
     }
   }
 
-  // Find cheapest item (by unit price) — that one goes to $0.10 (10 cents)
+  // Find cheapest item (by unit price) — that one goes to $0.50 (50 cents)
   const cheapestIndex = items.reduce(
     (minIdx, item, idx) => (item.price < items[minIdx].price ? idx : minIdx),
     0
   )
 
-  const discountAmount = items[cheapestIndex].price - 10 // 10 cents = $0.10
+  const discountAmount = items[cheapestIndex].price - 50 // 50 cents = $0.50
 
   return {
     subtotal,

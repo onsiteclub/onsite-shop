@@ -49,7 +49,7 @@ export default function CartPage() {
       (minIdx, item, idx) => (item.price < items[minIdx].price ? idx : minIdx),
       0
     );
-    discountAmount = Math.max(0, items[cheapestIndex].price - 10); // 10 cents = $0.10
+    discountAmount = Math.max(0, items[cheapestIndex].price - 50); // 50 cents = $0.50
   }
 
   const effectiveSubtotal = subtotal - discountAmount;

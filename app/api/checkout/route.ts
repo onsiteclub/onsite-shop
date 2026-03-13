@@ -82,13 +82,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // If this is the cheapest item and promo is active, override price to $0.10
+      // If this is the cheapest item and promo is active, override price to $0.50
       if (promo_active && i === cheapestIndex) {
         line_items.push({
           price_data: {
             currency: 'cad',
             product_data: { name: `${item.name} (PROMO)` },
-            unit_amount: 10, // $0.10 in cents
+            unit_amount: 50, // $0.50 in cents
           },
           quantity: item.quantity,
         });

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     valid: true,
     code: data.code,
     discount: {
-      oneItemPrice: 0.10,
+      oneItemPrice: 0.50,
       freeShipping: true,
     },
   })

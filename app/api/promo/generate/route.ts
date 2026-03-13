@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const { error: emailError } = await resend.emails.send({
       from: fromEmail,
       to: email,
-      subject: 'Your OnSite Club promo code — grab anything for $0.10',
+      subject: 'Your OnSite Club promo code — grab anything for $0.50',
       html: `
         <!DOCTYPE html>
         <html>
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
             <p style="color: #9FE1CB; font-size: 14px; margin-bottom: 32px;">Built for those who build</p>
             <p style="color: #ffffff; font-size: 16px; line-height: 1.6;">
               Here's your exclusive promo code. Use it at checkout to get
-              <strong style="color: #B8860B;">any one item for $0.10 CAD</strong> — plus free shipping on your entire order.
+              <strong style="color: #B8860B;">any one item for $0.50 CAD</strong> — plus free shipping on your entire order.
             </p>
             <div style="background: #B8860B; border-radius: 8px; padding: 20px; text-align: center; margin: 32px 0;">
               <span style="font-size: 28px; font-weight: 700; color: #1B2B27; letter-spacing: 4px;">${code}</span>

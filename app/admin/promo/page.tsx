@@ -108,7 +108,7 @@ export default function AdminPromoPage() {
             Generate Promo Code
           </h1>
           <p className="font-mono text-xs text-[#6B7280] mt-1">
-            Code gives 1 item for $0.10 CAD + free shipping. Single use.
+            Code gives 1 item for $0.50 CAD + free shipping. Single use.
           </p>
         </div>
 
