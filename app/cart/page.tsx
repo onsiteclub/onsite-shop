@@ -9,6 +9,8 @@ import {
 } from '@/lib/stripe-config';
 import { useState } from 'react';
 import Link from 'next/link';
+import { PromoCodeField } from '@/components/PromoCodeField';
+import { PreCheckoutSurvey } from '@/components/PreCheckoutSurvey';
 
 export default function CartPage() {
   const items = useCartStore((state) => state.items);
@@ -19,6 +21,7 @@ export default function CartPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSurvey, setShowSurvey] = useState(false);
 
   // Address form
   const [name, setName] = useState('');
@@ -29,14 +32,50 @@ export default function CartPage() {
   const [postalCode, setPostalCode] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
+  // Promo code
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discount: { oneItemPrice: number; freeShipping: boolean };
+  } | null>(null);
+
   const subtotal = getSubtotal();
-  const shippingCost = province ? getShippingCost(province, subtotal) : null;
-  const total = shippingCost !== null ? subtotal + shippingCost : null;
-  const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+
+  // Calculate discount if promo active
+  const promoActive = !!appliedPromo;
+  let discountAmount = 0;
+  let cheapestIndex = -1;
+  if (promoActive && items.length > 0) {
+    cheapestIndex = items.reduce(
+      (minIdx, item, idx) => (item.price < items[minIdx].price ? idx : minIdx),
+      0
+    );
+    discountAmount = Math.max(0, items[cheapestIndex].price - 10); // 10 cents = $0.10
+  }
+
+  const effectiveSubtotal = subtotal - discountAmount;
+  const shippingCost = promoActive
+    ? 0
+    : province ? getShippingCost(province, subtotal) : null;
+  const total = shippingCost !== null ? effectiveSubtotal + shippingCost : (promoActive ? effectiveSubtotal : null);
+  const isFreeShipping = promoActive || subtotal >= FREE_SHIPPING_THRESHOLD;
 
   const fmt = (cents: number) => `CA$${(cents / 100).toFixed(2)}`;
 
   const isAddressValid = name.trim() && street.trim() && city.trim() && province && postalCode.trim();
+
+  function handleProceedToPayment() {
+    if (!isAddressValid) {
+      setError('Please fill in all shipping fields.');
+      return;
+    }
+    setError(null);
+    setShowSurvey(true);
+  }
+
+  async function handleSurveyComplete() {
+    setShowSurvey(false);
+    await handleCheckout();
+  }
 
   async function handleCheckout() {
     if (!isAddressValid) {
@@ -74,6 +113,8 @@ export default function CartPage() {
             country: 'CA',
           },
           customer_notes: customerNotes.trim() || null,
+          promo_code: appliedPromo?.code || null,
+          promo_active: promoActive,
         }),
       });
 
@@ -218,6 +259,19 @@ export default function CartPage() {
               </div>
             </div>
 
+            {/* Promo Code */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
+              <PromoCodeField
+                onApply={(data) => {
+                  if (data?.valid) {
+                    setAppliedPromo({ code: data.code, discount: data.discount });
+                  } else {
+                    setAppliedPromo(null);
+                  }
+                }}
+              />
+            </div>
+
             {/* Order Summary */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
               <h2 className="font-mono font-bold text-stone-800 mb-4">Summary</h2>
@@ -227,9 +281,17 @@ export default function CartPage() {
                   <span className="text-stone-500">Subtotal</span>
                   <span className="text-stone-800">{fmt(subtotal)}</span>
                 </div>
+                {promoActive && discountAmount > 0 && (
+                  <div className="flex justify-between font-mono text-sm">
+                    <span className="text-green-600">Promo discount</span>
+                    <span className="text-green-600 font-bold">-{fmt(discountAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-mono text-sm">
                   <span className="text-stone-500">Shipping</span>
-                  {shippingCost !== null ? (
+                  {promoActive ? (
+                    <span className="text-green-600 font-bold">FREE</span>
+                  ) : shippingCost !== null ? (
                     <span className={shippingCost === 0 ? 'text-green-600 font-bold' : 'text-stone-800'}>
                       {shippingCost === 0 ? 'FREE' : fmt(shippingCost)}
                     </span>
@@ -259,7 +321,7 @@ export default function CartPage() {
               )}
 
               <button
-                onClick={handleCheckout}
+                onClick={handleProceedToPayment}
                 disabled={isLoading || items.length === 0}
                 className="btn-accent w-full disabled:opacity-50"
               >
@@ -331,6 +393,15 @@ export default function CartPage() {
             </button>
           </div>
         </div>
+
+        {/* Pre-checkout survey modal */}
+        {showSurvey && (
+          <PreCheckoutSurvey
+            onComplete={handleSurveyComplete}
+            promoUsed={promoActive}
+            cartValue={subtotal / 100}
+          />
+        )}
       </div>
     </div>
   );

@@ -98,7 +98,30 @@ export async function POST(req: NextRequest) {
         console.log(`[WEBHOOK] Order ${orderNumber} saved`);
       }
 
-      // B) Send email notifications
+      // B) Consume promo code if used
+      const promoCode = session.metadata?.promo_code;
+      if (promoCode) {
+        try {
+          const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'https://shop.onsiteclub.ca';
+          await fetch(`${shopUrl}/api/promo/consume`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-internal-secret': process.env.ADMIN_SECRET!,
+            },
+            body: JSON.stringify({
+              code: promoCode,
+              orderId: session.id,
+              ip: req.headers.get('x-forwarded-for') ?? 'unknown',
+            }),
+          });
+          console.log(`[WEBHOOK] Promo code ${promoCode} consumed for order ${orderNumber}`);
+        } catch (promoErr) {
+          console.error('[WEBHOOK] Promo consume error:', promoErr);
+        }
+      }
+
+      // C) Send email notifications
       const lineItemNames = session.line_items?.data.map((li: any) => {
         const product = li.price?.product;
         return product?.name || li.description || 'Product';

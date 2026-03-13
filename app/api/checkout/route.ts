@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       apiVersion: '2025-12-15.clover',
     });
 
-    const { items, shipping_address, customer_notes } = await req.json();
+    const { items, shipping_address, customer_notes, promo_code, promo_active } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
@@ -61,7 +61,18 @@ export async function POST(req: NextRequest) {
     const items_detail: Array<{ sku: string; name: string; design: string; color: string; size: string; qty: number; price: number; image: string | null }> = [];
     let subtotal = 0;
 
-    for (const item of items) {
+    // If promo active, find the cheapest item index
+    let cheapestIndex = -1;
+    if (promo_active && items.length > 0) {
+      cheapestIndex = items.reduce(
+        (minIdx: number, item: any, idx: number) =>
+          (item.price < items[minIdx].price ? idx : minIdx),
+        0
+      );
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       const resolved = resolveProduct(item.product_key, item.price_id);
 
       if (!resolved) {
@@ -71,10 +82,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      line_items.push({
-        price: resolved.priceId,
-        quantity: item.quantity,
-      });
+      // If this is the cheapest item and promo is active, override price to $0.10
+      if (promo_active && i === cheapestIndex) {
+        line_items.push({
+          price_data: {
+            currency: 'cad',
+            product_data: { name: `${item.name} (PROMO)` },
+            unit_amount: 10, // $0.10 in cents
+          },
+          quantity: item.quantity,
+        });
+      } else {
+        line_items.push({
+          price: resolved.priceId,
+          quantity: item.quantity,
+        });
+      }
 
       items_detail.push({
         sku: item.sku || item.product_key,
@@ -91,13 +114,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate shipping from province (server-side, not user-selectable)
-    const isFreeShipping = subtotal >= FREE_SHIPPING_THRESHOLD;
+    const isFreeShipping = promo_active || subtotal >= FREE_SHIPPING_THRESHOLD;
     const provinceData = PROVINCE_SHIPPING[shipping_address.province];
     const shippingAmount = isFreeShipping ? 0 : (provinceData?.cost ?? 1499);
     const shippingRegion = provinceData?.region ?? 'Canada';
-    const shippingLabel = isFreeShipping
-      ? 'Free Shipping (orders over $50)'
-      : `Shipping — ${shippingRegion}`;
+    const shippingLabel = promo_active
+      ? 'Free Shipping (promo)'
+      : isFreeShipping
+        ? 'Free Shipping (orders over $50)'
+        : `Shipping — ${shippingRegion}`;
 
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'http://localhost:3001';
 
@@ -117,6 +142,7 @@ export async function POST(req: NextRequest) {
         items_detail: JSON.stringify(items_detail),
         shipping_address: JSON.stringify(shipping_address),
         ...(customer_notes ? { customer_notes } : {}),
+        ...(promo_code ? { promo_code } : {}),
       },
       payment_intent_data: {
         shipping: {
