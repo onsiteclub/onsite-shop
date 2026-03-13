@@ -1056,6 +1056,8 @@ function ProductForm({
 
     if (url) {
       const selectedColors = form.colors || [];
+      // Replace primary_image if empty or pointing to a broken placeholder
+      const needsPrimary = !form.primary_image || form.primary_image.includes('placeholder');
 
       if (selectedColors.length > 0 && activeColorTab) {
         const updatedCI = { ...(form.color_images || {}) };
@@ -1063,13 +1065,13 @@ function ProductForm({
         setForm({
           ...form,
           color_images: updatedCI,
-          primary_image: form.primary_image || url,
+          primary_image: needsPrimary ? url : form.primary_image,
         });
       } else {
         setForm({
           ...form,
           images: [...(form.images || []), url],
-          primary_image: form.primary_image || url,
+          primary_image: needsPrimary ? url : form.primary_image,
         });
       }
     }
