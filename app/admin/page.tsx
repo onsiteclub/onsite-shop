@@ -413,25 +413,55 @@ export default function AdminPage() {
     }
   }
 
+  function resizeImageToSquare(file: File, maxSize = 2000): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(Math.max(img.width, img.height), maxSize);
+        const canvas = document.createElement('canvas');
+        canvas.width = side;
+        canvas.height = side;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, side, side);
+        const scale = Math.min(side / img.width, side / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (side - w) / 2, (side - h) / 2, w, h);
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
+          'image/jpeg',
+          0.9
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   async function handleImageUpload(file: File): Promise<string | null> {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    try {
+      const resized = await resizeImageToSquare(file);
+      const fileName = `${Date.now()}.jpg`;
 
-    const { error } = await supabase.storage
-      .from('products')
-      .upload(filePath, file);
+      const { error } = await supabase.storage
+        .from('products')
+        .upload(fileName, resized, { contentType: 'image/jpeg' });
 
-    if (error) {
-      alert('Upload error: ' + error.message);
+      if (error) {
+        alert('Upload error: ' + error.message);
+        return null;
+      }
+
+      const { data } = supabase.storage
+        .from('products')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    } catch (err: any) {
+      alert('Resize error: ' + err.message);
       return null;
     }
-
-    const { data } = supabase.storage
-      .from('products')
-      .getPublicUrl(filePath);
-
-    return data.publicUrl;
   }
 
   // Loading state
