@@ -1057,6 +1057,7 @@ const SHOP_CATEGORIES = [
   { key: 'cotton-tee', label: 'Cotton Tees' },
   { key: 'hoodie', label: 'Hoodies' },
   { key: 'sport-tee', label: 'Sport Tees' },
+  { key: 'cap', label: 'Caps' },
   { key: 'sticker-kit', label: 'Stickers' },
 ];
 
@@ -1070,17 +1071,78 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
+// Hero Cards — 5 preview cards below header, one per category
+function HeroCards({
+  productsByCategory,
+}: {
+  productsByCategory: Record<string, Product[]>;
+}) {
+  const heroItems = useMemo(() => {
+    return SHOP_CATEGORIES.map(cat => {
+      const catProducts = productsByCategory[cat.key] || [];
+      const randomProduct = catProducts.length > 0
+        ? catProducts[Math.floor(Math.random() * catProducts.length)]
+        : null;
+      return { ...cat, product: randomProduct };
+    });
+  }, [productsByCategory]);
+
+  const handleClick = (key: string) => {
+    const el = document.getElementById(`row-${key}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  return (
+    <div className="flex justify-center gap-3 md:gap-5 px-4 mb-8 md:mb-12">
+      {heroItems.map(item => (
+        <button
+          key={item.key}
+          onClick={() => handleClick(item.key)}
+          className="group flex flex-col items-center cursor-pointer transition-transform duration-200 hover:scale-105"
+        >
+          <div
+            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl overflow-hidden bg-white/80 shadow-md hover:shadow-lg transition-shadow duration-200"
+            style={{
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)',
+            }}
+          >
+            {item.product?.image ? (
+              <img
+                src={item.product.image}
+                alt={item.label}
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-2xl text-gray-300">
+                📦
+              </div>
+            )}
+          </div>
+          <span className="font-mono text-[8px] sm:text-[9px] md:text-[10px] text-[#1B2B27]/50 group-hover:text-[#1B2B27]/80 tracking-wider uppercase mt-1.5 transition-colors">
+            {item.label}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // Category Carousel Component — horizontal scroll with arrow navigation
 function CategoryCarousel({
   title,
   products,
   onProductClick,
   onHoverChange,
+  id,
+  isActive = false,
 }: {
   title: string;
   products: Product[];
   onProductClick: (product: Product) => void;
   onHoverChange: (isHovering: boolean) => void;
+  id?: string;
+  isActive?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -1116,7 +1178,14 @@ function CategoryCarousel({
   if (products.length === 0) return null;
 
   return (
-    <div className="mb-10 md:mb-14">
+    <div
+      id={id}
+      className="mb-10 md:mb-14 transition-transform duration-500 ease-out"
+      style={{
+        transform: isActive ? 'scale(1.05)' : 'scale(1)',
+        transformOrigin: 'center top',
+      }}
+    >
       {/* Category header */}
       <h2 className="font-mono text-sm md:text-base text-[#1B2B27]/70 tracking-[0.25em] uppercase mb-4 md:mb-6 px-2">
         {title}
@@ -1209,6 +1278,39 @@ export default function ShopPage() {
   // Members view fallback
   const membersFromDb = products.filter(p => p.category === 'members');
   const membersProducts = membersFromDb.length > 0 ? membersFromDb : MEMBERS_MOCKUPS;
+
+  // Active category row — scroll-based focus
+  const [activeCategoryKey, setActiveCategoryKey] = useState<string>(SHOP_CATEGORIES[0]?.key || '');
+
+  useEffect(() => {
+    if (activeView !== 'all') return;
+
+    const observers: IntersectionObserver[] = [];
+    // Small delay to let DOM render
+    const timer = setTimeout(() => {
+      SHOP_CATEGORIES.forEach(cat => {
+        const el = document.getElementById(`row-${cat.key}`);
+        if (!el) return;
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting && entry.intersectionRatio >= 0.4) {
+                setActiveCategoryKey(cat.key);
+              }
+            });
+          },
+          { threshold: [0.4, 0.6], rootMargin: '-10% 0px -30% 0px' }
+        );
+        observer.observe(el);
+        observers.push(observer);
+      });
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+      observers.forEach(obs => obs.disconnect());
+    };
+  }, [activeView, products]);
 
   // Modal opening handler with focus ritual
   const handleProductClick = (product: Product) => {
@@ -1331,7 +1433,7 @@ export default function ShopPage() {
         </div>
       </header>
 
-      {/* Product Rows — one carousel per category */}
+      {/* Hero Cards + Product Rows */}
       <div
         className="relative z-10 max-w-7xl mx-auto pt-24 md:pt-28 px-4 md:px-6 pb-12"
         style={{
@@ -1352,19 +1454,27 @@ export default function ShopPage() {
             ))}
           </div>
         ) : (
-          SHOP_CATEGORIES.map(cat => {
-            const catProducts = shuffledByCategory[cat.key] || [];
-            if (catProducts.length === 0) return null;
-            return (
-              <CategoryCarousel
-                key={cat.key}
-                title={cat.label}
-                products={catProducts}
-                onProductClick={handleProductClick}
-                onHoverChange={setIsHoveringProduct}
-              />
-            );
-          })
+          <>
+            {/* Hero Cards — 5 category previews */}
+            <HeroCards productsByCategory={shuffledByCategory} />
+
+            {/* Category Rows */}
+            {SHOP_CATEGORIES.map(cat => {
+              const catProducts = shuffledByCategory[cat.key] || [];
+              if (catProducts.length === 0) return null;
+              return (
+                <CategoryCarousel
+                  key={cat.key}
+                  id={`row-${cat.key}`}
+                  title={cat.label}
+                  products={catProducts}
+                  onProductClick={handleProductClick}
+                  onHoverChange={setIsHoveringProduct}
+                  isActive={activeCategoryKey === cat.key}
+                />
+              );
+            })}
+          </>
         )}
       </div>
 
