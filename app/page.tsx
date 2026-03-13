@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useCartStore } from '@/lib/store/cart';
 import { createClient } from '@/lib/supabase/client';
 import { STRIPE_PRODUCTS } from '@/lib/stripe-config';
@@ -370,6 +370,7 @@ interface Product {
   price: number;         // dollars (for display)
   price_id: string;      // Stripe Price ID
   category: string;
+  product_type: string;  // cotton-tee | sport-tee | hoodie | cap | sticker-kit
   image: string;
   images: string[];
   description: string;
@@ -966,14 +967,8 @@ function UniformProductCard({
         )}
       </div>
 
-      {/* Floating text */}
+      {/* Price only */}
       <div className="text-center mt-2">
-        <p
-          className="font-mono text-xs drop-shadow-sm transition-colors duration-200"
-          style={{ color: isHovered ? 'rgba(27, 43, 39, 1)' : 'rgba(27, 43, 39, 0.8)' }}
-        >
-          {product.name}
-        </p>
         <p
           className="font-mono text-xs font-bold drop-shadow-sm tracking-wider uppercase transition-all duration-200"
           style={{
@@ -1029,6 +1024,7 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
         price: p.base_price ?? (typeMatch?.price || skuPrefixMatch?.price || 0) / 100,
         price_id: priceId,
         category: p.category?.slug || 'mens',
+        product_type: p.product_type || skuType || '',
         image: p.primary_image || p.images?.[0] || '/products/placeholder.webp',
         images: p.images || [],
         description: p.description || '',
@@ -1045,13 +1041,139 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
 
 // Members mockup products (coming soon placeholders)
 const MEMBERS_MOCKUPS: Product[] = [
-  { product_key: 'members-exclusive-tee', name: 'Members Exclusive Tee', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'Exclusive tee for OnSite Club members', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-premium-hoodie', name: 'Premium Hoodie', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'Premium hoodie for members only', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-limited-cap', name: 'Limited Edition Cap', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'Limited run cap for club members', sizes: ['One Size'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-crew-jacket', name: 'Crew Jacket', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'On-site crew jacket', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-safety-vest', name: 'Safety Vest', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'High-vis safety vest with OnSite branding', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-work-pants', name: 'Work Pants', price: 0, price_id: '', category: 'members', image: '', images: [], description: 'Durable work pants for the job site', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-exclusive-tee', name: 'Members Exclusive Tee', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'Exclusive tee for OnSite Club members', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-premium-hoodie', name: 'Premium Hoodie', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'Premium hoodie for members only', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-limited-cap', name: 'Limited Edition Cap', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'Limited run cap for club members', sizes: ['One Size'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-crew-jacket', name: 'Crew Jacket', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'On-site crew jacket', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-safety-vest', name: 'Safety Vest', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'High-vis safety vest with OnSite branding', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-work-pants', name: 'Work Pants', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'Durable work pants for the job site', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
 ];
+
+// ============================================================================
+// SHOP CATEGORIES — row order & display labels
+// ============================================================================
+
+const SHOP_CATEGORIES = [
+  { key: 'cotton-tee', label: 'Cotton Tees' },
+  { key: 'hoodie', label: 'Hoodies' },
+  { key: 'sport-tee', label: 'Sport Tees' },
+  { key: 'sticker-kit', label: 'Stickers' },
+];
+
+// Fisher-Yates shuffle — randomize product order per category
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Category Carousel Component — horizontal scroll with arrow navigation
+function CategoryCarousel({
+  title,
+  products,
+  onProductClick,
+  onHoverChange,
+}: {
+  title: string;
+  products: Product[];
+  onProductClick: (product: Product) => void;
+  onHoverChange: (isHovering: boolean) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollButtons();
+    el.addEventListener('scroll', updateScrollButtons, { passive: true });
+    window.addEventListener('resize', updateScrollButtons);
+    return () => {
+      el.removeEventListener('scroll', updateScrollButtons);
+      window.removeEventListener('resize', updateScrollButtons);
+    };
+  }, [updateScrollButtons, products]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardWidth = window.innerWidth < 640 ? 200 : 240;
+    const scrollAmount = cardWidth * 3;
+    el.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+  };
+
+  if (products.length === 0) return null;
+
+  return (
+    <div className="mb-10 md:mb-14">
+      {/* Category header */}
+      <h2 className="font-mono text-sm md:text-base text-[#1B2B27]/70 tracking-[0.25em] uppercase mb-4 md:mb-6 px-2">
+        {title}
+      </h2>
+
+      {/* Carousel wrapper */}
+      <div className="relative group">
+        {/* Left arrow */}
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/90 hover:bg-white shadow-lg transition-all cursor-pointer"
+            style={{ transform: 'translate(-30%, -50%)' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2B27" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        )}
+
+        {/* Right arrow */}
+        {canScrollRight && (
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/90 hover:bg-white shadow-lg transition-all cursor-pointer"
+            style={{ transform: 'translate(30%, -50%)' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2B27" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
+
+        {/* Scrollable container */}
+        <div
+          ref={scrollRef}
+          className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide px-2 pb-4"
+          style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+        >
+          {products.map((product, i) => (
+            <div
+              key={`${product.product_key}-${i}`}
+              className="flex-shrink-0 w-[180px] sm:w-[200px] md:w-[220px] lg:w-[240px]"
+              style={{ scrollSnapAlign: 'start' }}
+            >
+              <UniformProductCard
+                product={product}
+                onClick={() => onProductClick(product)}
+                onHoverChange={onHoverChange}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Main Page Component
 export default function ShopPage() {
@@ -1069,18 +1191,24 @@ export default function ShopPage() {
     loadProductsFromSupabase().then(setProducts);
   }, []);
 
-  // Get display products: filter by view, then repeat to fill 12 slots
-  const membersFromDb = products.filter(p => p.category === 'members');
-  const filteredProducts = activeView === 'members'
-    ? (membersFromDb.length > 0 ? membersFromDb : MEMBERS_MOCKUPS)
-    : products.filter(p => p.category !== 'members');
-
-  const displayProducts: Product[] = [];
-  if (filteredProducts.length > 0) {
-    for (let i = 0; i < 12; i++) {
-      displayProducts.push(filteredProducts[i % filteredProducts.length]);
+  // Group products by product_type and shuffle each group
+  const shuffledByCategory = useMemo(() => {
+    const grouped: Record<string, Product[]> = {};
+    for (const p of products.filter(p => p.category !== 'members')) {
+      const type = p.product_type || '';
+      if (!type) continue;
+      if (!grouped[type]) grouped[type] = [];
+      grouped[type].push(p);
     }
-  }
+    for (const key of Object.keys(grouped)) {
+      grouped[key] = shuffleArray(grouped[key]);
+    }
+    return grouped;
+  }, [products]);
+
+  // Members view fallback
+  const membersFromDb = products.filter(p => p.category === 'members');
+  const membersProducts = membersFromDb.length > 0 ? membersFromDb : MEMBERS_MOCKUPS;
 
   // Modal opening handler with focus ritual
   const handleProductClick = (product: Product) => {
@@ -1203,25 +1331,41 @@ export default function ShopPage() {
         </div>
       </header>
 
-      {/* Product Grid - Uniform cards */}
+      {/* Product Rows — one carousel per category */}
       <div
-        className="relative z-10 max-w-6xl mx-auto pt-24 md:pt-28 px-6 pb-12"
+        className="relative z-10 max-w-7xl mx-auto pt-24 md:pt-28 px-4 md:px-6 pb-12"
         style={{
           opacity: isModalOpening ? 0.95 : 1,
           transform: isModalOpening ? 'scale(0.995)' : 'scale(1)',
           transition: 'all 200ms',
         }}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-6">
-          {displayProducts.map((product, i) => (
-            <UniformProductCard
-              key={`product-${product.product_key}-${i}`}
-              product={product}
-              onClick={() => handleProductClick(product)}
-              onHoverChange={setIsHoveringProduct}
-            />
-          ))}
-        </div>
+        {activeView === 'members' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-6">
+            {membersProducts.map((product, i) => (
+              <UniformProductCard
+                key={`member-${product.product_key}-${i}`}
+                product={product}
+                onClick={() => handleProductClick(product)}
+                onHoverChange={setIsHoveringProduct}
+              />
+            ))}
+          </div>
+        ) : (
+          SHOP_CATEGORIES.map(cat => {
+            const catProducts = shuffledByCategory[cat.key] || [];
+            if (catProducts.length === 0) return null;
+            return (
+              <CategoryCarousel
+                key={cat.key}
+                title={cat.label}
+                products={catProducts}
+                onProductClick={handleProductClick}
+                onHoverChange={setIsHoveringProduct}
+              />
+            );
+          })
+        )}
       </div>
 
       {/* Product Modal */}
