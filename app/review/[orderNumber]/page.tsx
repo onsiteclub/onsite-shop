@@ -18,7 +18,7 @@ function StarRating({
           key={star}
           type="button"
           onClick={() => onChange(star)}
-          className="text-3xl transition-transform hover:scale-110"
+          className="text-3xl transition-transform hover:scale-110 cursor-pointer"
           style={{ color: star <= value ? '#B8860B' : '#D3D1C7' }}
         >
           ★
