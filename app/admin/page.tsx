@@ -81,24 +81,24 @@ const PRODUCT_TYPES: Record<string, {
 };
 
 // ============================================
-// ART TYPES (tipo de arte/estampa)
+// ART TYPES (art style / print type)
 // ============================================
 
 const ART_TYPES: Record<string, { label: string; code: string; description: string }> = {
   phrase: {
-    label: 'Frase',
+    label: 'Phrase',
     code: 'FR',
-    description: 'Arte escrita — frase impressa na camiseta',
+    description: 'Text-based art — phrase printed on the shirt',
   },
   drawing: {
-    label: 'Desenho',
+    label: 'Drawing',
     code: 'DW',
-    description: 'Arte grafica — estampa/ilustracao',
+    description: 'Graphic art — illustration / print design',
   },
   mixed: {
     label: 'Mix / Vintage',
     code: 'MX',
-    description: 'Mistura de frase + desenho, estilo autoral/vintage',
+    description: 'Mix of phrase + drawing, authorial/vintage style',
   },
 };
 
@@ -1022,7 +1022,7 @@ function ProductForm({
     <form onSubmit={handleSubmit} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 space-y-6">
       {/* 1. Product Type — determines price & Stripe Price ID */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">1. Tipo do Produto</label>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">1. Product Type</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {Object.entries(PRODUCT_TYPES).map(([key, pt]) => (
             <button
@@ -1041,9 +1041,9 @@ function ProductForm({
         </div>
       </div>
 
-      {/* 2. Art Type — Frase / Desenho / Mix */}
+      {/* 2. Art Type — Phrase / Drawing / Mix */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Tipo de Arte</label>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Art Type</label>
         <div className="grid grid-cols-3 gap-2">
           {Object.entries(ART_TYPES).map(([key, at]) => (
             <button
@@ -1062,13 +1062,13 @@ function ProductForm({
           ))}
         </div>
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          FR = Frase &middot; DW = Desenho &middot; MX = Mix/Vintage
+          FR = Phrase &middot; DW = Drawing &middot; MX = Mix/Vintage
         </p>
       </div>
 
       {/* 3. Design Number */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">3. Numero do Design</label>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">3. Design Number</label>
         <input
           type="text"
           value={designNum}
@@ -1079,19 +1079,19 @@ function ProductForm({
           style={{ maxWidth: 120 }}
         />
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          Numero unico da arte (001-999). Mesmo numero = mesmo design em produtos diferentes.
+          Unique art number (001-999). Same number = same design across different products.
         </p>
       </div>
 
       {/* Auto-generated Name (editable) */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Nome do Produto</label>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Name</label>
         <input
           type="text"
           value={form.name || ''}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           className="input"
-          placeholder="Selecione tipo + arte + numero acima"
+          placeholder="Select type + art + number above"
           required
         />
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
@@ -1189,7 +1189,7 @@ function ProductForm({
           <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
             Auto: {form.product_type && artType && designNum
               ? `${PRODUCT_TYPES[form.product_type]?.skuPrefix}-${ART_TYPES[artType as keyof typeof ART_TYPES]?.code}${designNum.padStart(3, '0')}`
-              : 'Selecione tipo + arte + numero'}
+              : 'Select type + art + number'}
           </p>
         </div>
         <div>
