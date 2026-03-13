@@ -1089,7 +1089,7 @@ function HeroCards({
 
   const handleClick = (key: string) => {
     const el = document.getElementById(`row-${key}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   return (
@@ -1182,7 +1182,7 @@ function CategoryCarousel({
       id={id}
       className="mb-10 md:mb-14 transition-transform duration-500 ease-out"
       style={{
-        transform: isActive ? 'scale(1.05)' : 'scale(1)',
+        transform: isActive ? 'scale(1.15)' : 'scale(1)',
         transformOrigin: 'center top',
       }}
     >
