@@ -158,6 +158,9 @@ export default function AdminPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showCategoryForm, setShowCategoryForm] = useState(false);
 
+  // Product type tab filter
+  const [activeProductTab, setActiveProductTab] = useState<string>('all');
+
   const supabase = createClient();
 
   // Check auth and admin status
@@ -667,9 +670,38 @@ export default function AdminPage() {
           + Add Product
         </button>
 
+        {/* Product type tabs */}
+        <div className="flex gap-1 mb-6 overflow-x-auto scrollbar-hide">
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'cotton-tee', label: 'Cotton Tees' },
+            { key: 'hoodie', label: 'Hoodies' },
+            { key: 'sport-tee', label: 'Sport Tees' },
+            { key: 'cap', label: 'Caps' },
+            { key: 'sticker-kit', label: 'Stickers' },
+          ].map(tab => {
+            const count = tab.key === 'all'
+              ? products.length
+              : products.filter(p => p.product_type === tab.key).length;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveProductTab(tab.key)}
+                className={`font-mono text-xs py-2 px-4 rounded-lg transition-all whitespace-nowrap ${
+                  activeProductTab === tab.key
+                    ? 'bg-[#1B2B27] text-white font-bold'
+                    : 'bg-white/70 text-[#1B2B27]/60 hover:bg-white hover:text-[#1B2B27]'
+                }`}
+              >
+                {tab.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+
         {/* Products grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product) => (
+          {products.filter(p => activeProductTab === 'all' || p.product_type === activeProductTab).map((product) => (
             <div
               key={product.id}
               className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 ${
