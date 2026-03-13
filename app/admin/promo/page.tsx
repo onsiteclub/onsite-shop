@@ -14,6 +14,7 @@ export default function AdminPromoPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ code: string } | null>(null)
   const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
 
   function handleAuth() {
     if (secret.length < 4) {
@@ -200,6 +201,26 @@ export default function AdminPromoPage() {
               <span className="font-mono text-2xl font-bold text-[#B8860B] tracking-[4px]">
                 {result.code}
               </span>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(result.code)
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }}
+                className="flex-1 font-mono text-xs font-bold py-2.5 rounded-xl bg-[#1B2B27] text-white hover:bg-[#2a3f39] transition-colors"
+              >
+                {copied ? 'Copied!' : 'Copy Code'}
+              </button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(result.code)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 font-mono text-xs font-bold py-2.5 rounded-xl bg-[#25D366] text-white text-center hover:bg-[#1da851] transition-colors"
+              >
+                WhatsApp
+              </a>
             </div>
             {email && (
               <p className="font-mono text-xs text-green-700 mt-2">

@@ -6,8 +6,32 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// GET — fetch approved reviews (public)
-export async function GET() {
+const ALLOWED_ORIGINS = [
+  'https://onsiteclub.ca',
+  'https://www.onsiteclub.ca',
+]
+
+function corsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  }
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+  return headers
+}
+
+// OPTIONS — CORS preflight
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get('origin')
+  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) })
+}
+
+// GET — fetch approved reviews (public, CORS enabled for onsiteclub.ca)
+export async function GET(req: NextRequest) {
+  const origin = req.headers.get('origin')
+
   const { data, error } = await supabase
     .from('app_shop_reviews')
     .select('id, customer_name, rating, title, comment, product_names, created_at')
@@ -16,10 +40,10 @@ export async function GET() {
     .limit(20)
 
   if (error) {
-    return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500, headers: corsHeaders(origin) })
   }
 
-  return NextResponse.json({ reviews: data })
+  return NextResponse.json({ reviews: data }, { headers: corsHeaders(origin) })
 }
 
 // POST — submit a new review (public)

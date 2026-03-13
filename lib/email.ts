@@ -43,7 +43,7 @@ function getResend() {
   return new Resend(key);
 }
 
-const FROM_EMAIL = 'OnSite Shop <orders@onsiteclub.ca>';
+const FROM_EMAIL = 'OnSite Club <contact@onsiteclub.ca>';
 
 // ============================================
 // SEND FUNCTIONS

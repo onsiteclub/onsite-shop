@@ -163,7 +163,7 @@ function SuccessContent() {
 
         {/* Footer */}
         <p className="text-center font-mono text-xs text-[#1B2B27]/40 mt-8">
-          Questions? Contact us at dev@onsiteclub.ca
+          Questions? Contact us at contact@onsiteclub.ca
         </p>
       </div>
     </div>
