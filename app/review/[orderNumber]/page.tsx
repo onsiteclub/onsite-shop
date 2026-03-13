@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
 function StarRating({
@@ -27,12 +28,8 @@ function StarRating({
   )
 }
 
-export default function ReviewPage({
-  params,
-}: {
-  params: Promise<{ orderNumber: string }>
-}) {
-  const { orderNumber } = use(params)
+export default function ReviewPage() {
+  const { orderNumber } = useParams<{ orderNumber: string }>()
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [alreadyReviewed, setAlreadyReviewed] = useState(false)
