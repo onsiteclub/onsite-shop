@@ -382,6 +382,22 @@ interface Product {
   isVideo?: boolean;
 }
 
+// Strip technical codes from product names (e.g. "OnSite DryBlend Tee — Frase #016" → "OnSite DryBlend Tee")
+function cleanProductName(name: string): string {
+  return name.replace(/\s*[—–-]\s*(Frase|Design|Style|Code|Ref|SKU)\s*#?\d+.*/i, '').trim();
+}
+
+// Short commercial tagline by product type
+function getProductTagline(product: Product): string {
+  const type = product.product_type;
+  if (type === 'cotton-tee') return 'Premium cotton. Job-site tough, street-ready style.';
+  if (type === 'sport-tee') return 'Moisture-wicking performance for those who never stop.';
+  if (type === 'hoodie') return 'Warm, durable, and built for the crew.';
+  if (type === 'cap') return 'One size fits all. Rep the crew everywhere.';
+  if (type === 'sticker-kit') return 'Stick it on your hardhat, toolbox, or truck.';
+  return 'Built for those who build.';
+}
+
 // Product Modal Component with focus ritual transitions + draggable image
 function ProductModal({
   product,
@@ -686,19 +702,32 @@ function ProductModal({
 
           {/* Product info section */}
           <div className="md:w-2/5 p-3 md:p-6 md:pl-2 flex flex-col h-[50%] md:h-full overflow-y-auto">
-            <div className="flex items-start justify-between md:block mb-2 md:mb-0">
+            <div className="flex items-start justify-between md:block mb-1 md:mb-0">
               <h2 className="font-mono text-base md:text-xl font-bold text-[#1B2B27] md:mb-1">
-                {product.name}
+                {cleanProductName(product.name)}
               </h2>
-              <p className="font-mono text-xs md:text-sm text-[#B8860B] font-bold tracking-wider uppercase md:mb-2">
+              <p className="font-mono text-xs md:text-sm text-[#B8860B] font-bold tracking-wider uppercase md:mb-1">
                 {product.category === 'members' ? 'COMING SOON' : `CA$${product.price.toFixed(2)}`}
               </p>
             </div>
 
-            {/* Description - hidden on mobile to save space */}
-            <p className="hidden md:block text-[#6B7280] mb-4 leading-snug text-xs">
-              {product.description}
+            {/* Commercial tagline */}
+            <p className="font-mono text-[11px] md:text-xs text-[#6B7280] mb-3 leading-snug">
+              {getProductTagline(product)}
             </p>
+
+            {/* Technical details - expandable */}
+            {product.description && (
+              <details className="mb-3 group">
+                <summary className="font-mono text-[10px] md:text-xs text-[#1B2B27]/60 uppercase tracking-wider cursor-pointer hover:text-[#1B2B27] transition-colors list-none flex items-center gap-1">
+                  <span className="text-[8px] group-open:rotate-90 transition-transform">&#9654;</span>
+                  Details
+                </summary>
+                <p className="text-[#6B7280] mt-1.5 leading-snug text-[10px] md:text-xs">
+                  {product.description}
+                </p>
+              </details>
+            )}
 
             {/* Size and Color selectors in a row on mobile */}
             <div className="flex gap-3 md:block mb-2 md:mb-0">
@@ -730,20 +759,31 @@ function ProductModal({
                   <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">
                     Color
                   </p>
-                  <div className="flex flex-wrap gap-1 md:gap-1.5">
-                    {product.colors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => setSelectedColor(color)}
-                        className={`px-2 md:px-2.5 py-0.5 md:py-1 rounded-md font-mono text-[10px] md:text-xs transition-all ${
-                          selectedColor === color
-                            ? 'bg-[#1B2B27] text-white'
-                            : 'bg-white text-[#1B2B27] hover:bg-gray-100'
-                        }`}
-                      >
-                        {color}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap gap-1.5 md:gap-2">
+                    {product.colors.map((color) => {
+                      const colorImg = product.color_images?.[color]?.[0];
+                      return (
+                        <button
+                          key={color}
+                          onClick={() => setSelectedColor(color)}
+                          title={color}
+                          className={`rounded-lg overflow-hidden transition-all ${
+                            selectedColor === color
+                              ? 'ring-2 ring-[#1B2B27] ring-offset-1'
+                              : 'ring-1 ring-gray-200 hover:ring-gray-400'
+                          }`}
+                          style={{ width: 36, height: 36 }}
+                        >
+                          {colorImg ? (
+                            <img src={colorImg} alt={color} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="w-full h-full flex items-center justify-center bg-white font-mono text-[8px] text-[#1B2B27]">
+                              {color.slice(0, 3)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
