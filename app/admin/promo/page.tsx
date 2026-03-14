@@ -62,7 +62,6 @@ export default function AdminPromoPage() {
 
       setResult(data)
       setEmail('')
-      setPhone('')
       setNotes('')
     } catch {
       setError('Network error')
