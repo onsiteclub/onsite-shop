@@ -251,7 +251,17 @@ export default function AdminPromoPage() {
                 {copied ? 'Copied!' : 'Copy Code'}
               </button>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(result.code)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(
+                  `🎉 You got an *OnSite Club* code!\n\n` +
+                  `Use code *${result.code}* at checkout` +
+                  (discountType === 'item_050'
+                    ? ' to get any item for just $0.50 CAD'
+                    : ` for ${discountType.replace('percent_', '')}% off your order`) +
+                  ` + free shipping.\n\n` +
+                  `⏳ Limited time — don't miss out!\n\n` +
+                  `🛒 shop.onsiteclub.ca\n` +
+                  `_Built for those who build._`
+                )}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 font-mono text-xs font-bold py-2.5 rounded-xl bg-[#25D366] text-white text-center hover:bg-[#1da851] transition-colors"
