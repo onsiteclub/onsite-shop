@@ -6,6 +6,8 @@ export default function AdminPromoPage() {
   const [authed, setAuthed] = useState(false)
   const [secret, setSecret] = useState('')
   const [authError, setAuthError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [authLoading, setAuthLoading] = useState(false)
 
   const [email, setEmail] = useState('')
   const [discountType, setDiscountType] = useState('item_050')
@@ -17,13 +19,33 @@ export default function AdminPromoPage() {
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
 
-  function handleAuth() {
+  async function handleAuth() {
     if (secret.length < 4) {
       setAuthError('Enter the admin password')
       return
     }
-    sessionStorage.setItem('admin_secret', secret)
-    setAuthed(true)
+    setAuthLoading(true)
+    setAuthError('')
+    try {
+      const res = await fetch('/api/promo/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-secret': secret,
+        },
+        body: JSON.stringify({}),
+      })
+      if (res.status === 401) {
+        setAuthError('Wrong password')
+        setAuthLoading(false)
+        return
+      }
+      sessionStorage.setItem('admin_secret', secret)
+      setAuthed(true)
+    } catch {
+      setAuthError('Connection error')
+    }
+    setAuthLoading(false)
   }
 
   async function handleGenerate() {
@@ -78,22 +100,32 @@ export default function AdminPromoPage() {
           <h1 className="font-mono text-xl font-bold text-[#1B2B27] mb-6">
             OnSite Admin
           </h1>
-          <input
-            type="password"
-            placeholder="Admin password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-            className="input mb-3"
-          />
+          <div className="relative mb-3">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Admin password"
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+              className="input w-full pr-12"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-xs text-gray-400 hover:text-gray-600"
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
           {authError && (
             <p className="font-mono text-xs text-red-500 mb-3">{authError}</p>
           )}
           <button
             onClick={handleAuth}
-            className="w-full py-3 bg-[#1B2B27] text-[#B8860B] rounded-xl font-mono font-bold text-sm uppercase tracking-wider hover:bg-[#2a3f39] transition-colors"
+            disabled={authLoading}
+            className="w-full py-3 bg-[#1B2B27] text-[#B8860B] rounded-xl font-mono font-bold text-sm uppercase tracking-wider hover:bg-[#2a3f39] transition-colors disabled:opacity-50"
           >
-            Enter
+            {authLoading ? 'Verifying...' : 'Enter'}
           </button>
         </div>
       </div>
