@@ -1198,24 +1198,52 @@ function ProductForm({
         </div>
       </div>
 
-      {/* 2. Product Number (sequential) */}
+      {/* 2. Design — visual picker */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Product Number</label>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-stone-400">OSC</span>
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Design</label>
+        <div className="grid grid-cols-5 sm:grid-cols-7 gap-2 max-h-[280px] overflow-y-auto p-1">
+          {Array.from({ length: 21 }, (_, i) => {
+            const num = String(i + 1).padStart(3, '0');
+            const isSelected = productNum === num;
+            return (
+              <button
+                key={num}
+                type="button"
+                onClick={() => applyProductNum(num)}
+                className={`relative rounded-lg border-2 overflow-hidden transition-all aspect-square ${
+                  isSelected
+                    ? 'border-[#B8860B] ring-2 ring-[#B8860B] ring-offset-1'
+                    : 'border-stone-200 hover:border-stone-400'
+                }`}
+              >
+                <img
+                  src={`/designs/OSC${num}.jpg`}
+                  alt={`Design OSC${num}`}
+                  className="w-full h-full object-contain bg-white"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+                <span className={`absolute bottom-0 inset-x-0 text-center font-mono text-[8px] py-0.5 ${
+                  isSelected ? 'bg-[#B8860B] text-white' : 'bg-black/50 text-white'
+                }`}>
+                  {num}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="font-mono text-xs text-stone-400">Or type:</span>
+          <span className="font-mono text-xs text-stone-400">OSC</span>
           <input
             type="text"
             value={productNum}
             onChange={(e) => applyProductNum(e.target.value)}
-            className="input font-mono text-lg tracking-widest text-center"
-            placeholder="001"
+            className="input font-mono text-sm tracking-widest text-center"
+            placeholder="022"
             maxLength={3}
-            style={{ maxWidth: 120 }}
+            style={{ maxWidth: 80 }}
           />
         </div>
-        <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          Sequential number (001-999). Each product gets a unique number.
-        </p>
       </div>
 
       {/* Product Name (editable) */}
