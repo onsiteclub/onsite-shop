@@ -38,7 +38,10 @@ export function PromoCodeField({ onApply }: Props) {
 
       if (data.valid) {
         setStatus('valid')
-        setMessage('Code applied! Your cheapest item goes to $0.50 CAD + free shipping.')
+        const discountMsg = data.discountType === 'item_050'
+          ? 'Your cheapest item goes to $0.50 CAD'
+          : `${data.discount.percent}% off your order`
+        setMessage(`Code applied! ${discountMsg} + free shipping.`)
         onApply(data)
       } else {
         setStatus('invalid')

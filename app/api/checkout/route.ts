@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       apiVersion: '2025-12-15.clover',
     });
 
-    const { items, shipping_address, customer_notes, promo_code, promo_active } = await req.json();
+    const { items, shipping_address, customer_notes, promo_code, promo_active, promo_discount_type } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
@@ -61,9 +61,13 @@ export async function POST(req: NextRequest) {
     const items_detail: Array<{ sku: string; name: string; design: string; color: string; size: string; qty: number; price: number; image: string | null }> = [];
     let subtotal = 0;
 
-    // If promo active, find the cheapest item index
+    const discountType = promo_discount_type || 'item_050';
+    const isPercentDiscount = promo_active && discountType.startsWith('percent_');
+    const percentOff = isPercentDiscount ? parseInt(discountType.replace('percent_', '')) : 0;
+
+    // If promo active with item_050, find the cheapest item index
     let cheapestIndex = -1;
-    if (promo_active && items.length > 0) {
+    if (promo_active && !isPercentDiscount && items.length > 0) {
       cheapestIndex = items.reduce(
         (minIdx: number, item: any, idx: number) =>
           (item.price < items[minIdx].price ? idx : minIdx),
@@ -82,8 +86,21 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // If this is the cheapest item and promo is active, override price to $0.50
-      if (promo_active && i === cheapestIndex) {
+      if (isPercentDiscount) {
+        // Percentage discount: apply to each item
+        const originalAmount = item.price || resolved.price;
+        const discounted = Math.round(originalAmount * (100 - percentOff) / 100);
+        const safeAmount = Math.max(discounted, 1); // at least 1 cent per item
+        line_items.push({
+          price_data: {
+            currency: 'cad',
+            product_data: { name: `${item.name} (${percentOff}% OFF)` },
+            unit_amount: safeAmount,
+          },
+          quantity: item.quantity,
+        });
+      } else if (promo_active && i === cheapestIndex) {
+        // item_050: cheapest item goes to $0.50
         line_items.push({
           price_data: {
             currency: 'cad',

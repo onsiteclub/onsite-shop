@@ -8,7 +8,8 @@ export default function AdminPromoPage() {
   const [authError, setAuthError] = useState('')
 
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
+  const [discountType, setDiscountType] = useState('item_050')
+
   const [notes, setNotes] = useState('')
   const [expiresInDays, setExpiresInDays] = useState(30)
   const [loading, setLoading] = useState(false)
@@ -41,7 +42,7 @@ export default function AdminPromoPage() {
         },
         body: JSON.stringify({
           email: email || undefined,
-          phone: phone || undefined,
+          discountType,
           notes: notes || undefined,
           expiresInDays,
         }),
@@ -109,7 +110,7 @@ export default function AdminPromoPage() {
             Generate Promo Code
           </h1>
           <p className="font-mono text-xs text-[#6B7280] mt-1">
-            Code gives 1 item for $0.50 CAD + free shipping. Single use.
+            Generate a single-use code with free shipping.
           </p>
         </div>
 
@@ -128,18 +129,23 @@ export default function AdminPromoPage() {
             />
           </div>
 
-          {/* Phone */}
+          {/* Discount Type */}
           <div className="mb-4">
             <label className="block font-mono text-xs text-[#1B2B27] mb-1.5 uppercase tracking-wider">
-              Phone <span className="text-gray-400">(optional)</span>
+              Discount
             </label>
-            <input
-              type="tel"
-              placeholder="+1 613 000 0000"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+            <select
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value)}
               className="input"
-            />
+            >
+              <option value="item_050">1 item for $0.50</option>
+              <option value="percent_10">10% off</option>
+              <option value="percent_15">15% off</option>
+              <option value="percent_20">20% off</option>
+              <option value="percent_25">25% off</option>
+              <option value="percent_50">50% off</option>
+            </select>
           </div>
 
           {/* Notes */}
@@ -180,9 +186,9 @@ export default function AdminPromoPage() {
 
           <button
             onClick={handleGenerate}
-            disabled={loading || (!email && !phone)}
+            disabled={loading || !email}
             className={`w-full py-3 rounded-xl font-mono font-bold text-sm uppercase tracking-wider transition-colors ${
-              loading || (!email && !phone)
+              loading || !email
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 : 'bg-[#1B2B27] text-[#B8860B] hover:bg-[#2a3f39] cursor-pointer'
             }`}

@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { email, phone, notes, expiresInDays } = body
+  const { email, notes, expiresInDays, discountType } = body
 
-  if (!email && !phone) {
-    return NextResponse.json({ error: 'Email or phone required' }, { status: 400 })
+  if (!email) {
+    return NextResponse.json({ error: 'Email is required' }, { status: 400 })
   }
 
   const code = generatePromoCode()
@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
   const { error: dbError } = await supabase.from('promo_codes').insert({
     code,
     email: email ?? null,
-    phone: phone ?? null,
     notes: notes ?? null,
+    discount_type: discountType || 'item_050',
     expires_at: expiresAt,
   })
 
@@ -41,6 +41,11 @@ export async function POST(req: NextRequest) {
     console.error('[promo/generate] DB error:', dbError)
     return NextResponse.json({ error: 'Database error' }, { status: 500 })
   }
+
+  const dt = discountType || 'item_050'
+  const discountLabel = dt === 'item_050'
+    ? 'any one item for $0.50 CAD'
+    : `${dt.replace('percent_', '')}% off your order`
 
   if (email) {
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'https://shop.onsiteclub.ca'
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
           </div>
           <div style="max-width: 480px; margin: 0 auto; background: #1B2B27; border-radius: 12px; padding: 40px;">
             <p style="color: #ffffff; font-size: 16px; line-height: 1.6;">
-              Here is your personal code. Enter it at checkout to unlock your special pricing with free shipping.
+              Here is your personal code. Enter it at checkout to get <strong style="color: #B8860B;">${discountLabel}</strong> with free shipping.
             </p>
             <div style="background: #B8860B; border-radius: 8px; padding: 20px; text-align: center; margin: 32px 0;">
               <span style="font-size: 28px; font-weight: 700; color: #1B2B27; letter-spacing: 4px;">${code}</span>

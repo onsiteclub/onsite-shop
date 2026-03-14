@@ -35,21 +35,31 @@ export default function CartPage() {
   // Promo code
   const [appliedPromo, setAppliedPromo] = useState<{
     code: string;
-    discount: { oneItemPrice: number; freeShipping: boolean };
+    discountType?: string;
+    discount: { type?: string; percent?: number; freeShipping: boolean };
   } | null>(null);
 
   const subtotal = getSubtotal();
 
   // Calculate discount if promo active
   const promoActive = !!appliedPromo;
+  const promoDiscountType = appliedPromo?.discountType || 'item_050';
   let discountAmount = 0;
   let cheapestIndex = -1;
   if (promoActive && items.length > 0) {
-    cheapestIndex = items.reduce(
-      (minIdx, item, idx) => (item.price < items[minIdx].price ? idx : minIdx),
-      0
-    );
-    discountAmount = Math.max(0, items[cheapestIndex].price - 50); // 50 cents = $0.50
+    if (promoDiscountType.startsWith('percent_')) {
+      const percent = parseInt(promoDiscountType.replace('percent_', ''));
+      discountAmount = Math.round(subtotal * percent / 100);
+      // Ensure at least 50 cents remains (Stripe minimum)
+      if (subtotal - discountAmount < 50) discountAmount = subtotal - 50;
+      discountAmount = Math.max(0, discountAmount);
+    } else {
+      cheapestIndex = items.reduce(
+        (minIdx, item, idx) => (item.price < items[minIdx].price ? idx : minIdx),
+        0
+      );
+      discountAmount = Math.max(0, items[cheapestIndex].price - 50);
+    }
   }
 
   const effectiveSubtotal = subtotal - discountAmount;
@@ -115,6 +125,7 @@ export default function CartPage() {
           customer_notes: customerNotes.trim() || null,
           promo_code: appliedPromo?.code || null,
           promo_active: promoActive,
+          promo_discount_type: promoDiscountType,
         }),
       });
 

@@ -31,12 +31,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ valid: false, error: 'Code expired' })
   }
 
+  const discountType = data.discount_type || 'item_050'
+
   return NextResponse.json({
     valid: true,
     code: data.code,
-    discount: {
-      oneItemPrice: 0.50,
-      freeShipping: true,
-    },
+    discountType,
+    discount: discountType === 'item_050'
+      ? { type: 'item_050', freeShipping: true }
+      : { type: 'percent', percent: parseInt(discountType.replace('percent_', '')), freeShipping: true },
   })
 }
