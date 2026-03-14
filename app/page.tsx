@@ -880,6 +880,7 @@ function UniformProductCard({
   };
 
   const clickedRef = useRef(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const handleMouseDown = () => setIsPressed(true);
   const handleMouseUp = () => {
     setIsPressed(false);
@@ -906,14 +907,25 @@ function UniformProductCard({
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
-      onTouchStart={() => onHoverChange?.(true)}
-      onTouchEnd={() => {
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+        onHoverChange?.(true);
+      }}
+      onTouchEnd={(e) => {
         onHoverChange?.(false);
-        if (!clickedRef.current) {
+        const touch = e.changedTouches[0];
+        const start = touchStartRef.current;
+        if (!start) return;
+        const dx = Math.abs(touch.clientX - start.x);
+        const dy = Math.abs(touch.clientY - start.y);
+        // Only trigger click if finger barely moved (real tap, not scroll)
+        if (dx < 10 && dy < 10 && !clickedRef.current) {
           clickedRef.current = true;
           onClick();
           setTimeout(() => { clickedRef.current = false; }, 300);
         }
+        touchStartRef.current = null;
       }}
     >
       {/* Floating shadow layer */}
@@ -1223,14 +1235,14 @@ function CategoryCarousel({
         {/* Scrollable container */}
         <div
           ref={scrollRef}
-          className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide px-2 pb-4"
+          className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide px-[12vw] sm:px-2 pb-4"
           style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
         >
           {products.map((product, i) => (
             <div
               key={`${product.product_key}-${i}`}
-              className="flex-shrink-0 w-[180px] sm:w-[200px] md:w-[220px] lg:w-[240px]"
-              style={{ scrollSnapAlign: 'start' }}
+              className="flex-shrink-0 w-[75vw] sm:w-[200px] md:w-[220px] lg:w-[240px]"
+              style={{ scrollSnapAlign: 'center' }}
             >
               <UniformProductCard
                 product={product}

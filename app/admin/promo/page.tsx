@@ -27,13 +27,9 @@ export default function AdminPromoPage() {
     setAuthLoading(true)
     setAuthError('')
     try {
-      const res = await fetch('/api/promo/generate', {
+      const res = await fetch('/api/admin/verify', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-secret': secret,
-        },
-        body: JSON.stringify({}),
+        headers: { 'x-admin-secret': secret },
       })
       if (res.status === 401) {
         setAuthError('Wrong password')
