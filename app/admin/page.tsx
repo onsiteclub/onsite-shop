@@ -81,28 +81,6 @@ const PRODUCT_TYPES: Record<string, {
 };
 
 // ============================================
-// ART TYPES (art style / print type)
-// ============================================
-
-const ART_TYPES: Record<string, { label: string; code: string; description: string }> = {
-  phrase: {
-    label: 'Phrase',
-    code: 'FR',
-    description: 'Text-based art — phrase printed on the shirt',
-  },
-  drawing: {
-    label: 'Drawing',
-    code: 'DW',
-    description: 'Graphic art — illustration / print design',
-  },
-  mixed: {
-    label: 'Mix / Vintage',
-    code: 'MX',
-    description: 'Mix of phrase + drawing, authorial/vintage style',
-  },
-};
-
-// ============================================
 // TYPES
 // ============================================
 
@@ -1145,26 +1123,21 @@ function ProductForm({
     if (!seenUrls.has(url)) { allImageUrls.push(url); seenUrls.add(url); }
   });
 
-  // ---- Art type & design number state ----
-  // Parse existing SKU to extract art_type and design_number if editing
-  const parseSkuParts = (sku: string) => {
-    const match = sku.match(/^[A-Z]{3,4}-(FR|DW|MX)(\d{3})/);
-    if (match) return { artType: match[1] === 'FR' ? 'phrase' : match[1] === 'DW' ? 'drawing' : 'mixed', designNum: match[2] };
-    return { artType: '', designNum: '' };
+  // ---- Sequential product number ----
+  const parseOscNum = (sku: string) => {
+    const match = sku.match(/^OSC(\d{3})/);
+    return match ? match[1] : '';
   };
-  const initialParts = parseSkuParts(product.sku || '');
-  const [artType, setArtType] = useState(initialParts.artType);
-  const [designNum, setDesignNum] = useState(initialParts.designNum);
+  const [productNum, setProductNum] = useState(parseOscNum(product.sku || ''));
 
-  // Build name, SKU & slug automatically from selections
-  const buildProductIdentity = (pType: string, aType: string, dNum: string) => {
+  // Build name, SKU & slug automatically
+  const buildProductIdentity = (pType: string, num: string) => {
     const pt = PRODUCT_TYPES[pType];
-    const at = ART_TYPES[aType as keyof typeof ART_TYPES];
-    if (!pt || !at || !dNum) return null;
-    const num = dNum.padStart(3, '0');
-    const sku = `${pt.skuPrefix}-${at.code}${num}`;
-    const name = `${pt.productName} — ${at.label} #${num}`;
-    const slug = generateSlug(name);
+    if (!pt || !num) return null;
+    const padded = num.padStart(3, '0');
+    const sku = `OSC${padded}`;
+    const name = `${pt.productName}`;
+    const slug = generateSlug(`${name}-${padded}`);
     return { sku, name, slug };
   };
 
@@ -1177,7 +1150,7 @@ function ProductForm({
     const pt = PRODUCT_TYPES[typeKey];
     if (!pt) return;
 
-    const identity = buildProductIdentity(typeKey, artType, designNum);
+    const identity = buildProductIdentity(typeKey, productNum);
 
     setForm({
       ...form,
@@ -1190,20 +1163,11 @@ function ProductForm({
     });
   };
 
-  // Apply art type selection
-  const applyArtType = (aType: string) => {
-    setArtType(aType);
-    const identity = buildProductIdentity(form.product_type, aType, designNum);
-    if (identity) {
-      setForm({ ...form, sku: identity.sku, name: identity.name, slug: identity.slug });
-    }
-  };
-
-  // Apply design number
-  const applyDesignNum = (num: string) => {
+  // Apply product number
+  const applyProductNum = (num: string) => {
     const clean = num.replace(/\D/g, '').slice(0, 3);
-    setDesignNum(clean);
-    const identity = buildProductIdentity(form.product_type, artType, clean);
+    setProductNum(clean);
+    const identity = buildProductIdentity(form.product_type, clean);
     if (identity) {
       setForm({ ...form, sku: identity.sku, name: identity.name, slug: identity.slug });
     }
@@ -1234,49 +1198,27 @@ function ProductForm({
         </div>
       </div>
 
-      {/* 2. Art Type — Phrase / Drawing / Mix */}
+      {/* 2. Product Number (sequential) */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Art Type</label>
-        <div className="grid grid-cols-3 gap-2">
-          {Object.entries(ART_TYPES).map(([key, at]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => applyArtType(key)}
-              className={`font-mono text-xs py-3 px-3 rounded-lg border-2 transition-all text-center ${
-                artType === key
-                  ? 'border-amber-600 bg-amber-600 text-white font-bold'
-                  : 'border-stone-200 text-stone-500 hover:border-stone-300'
-              }`}
-            >
-              <span className="block text-sm">{at.label}</span>
-              <span className="block text-[10px] opacity-70 mt-0.5">{at.code}</span>
-            </button>
-          ))}
+        <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Product Number</label>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-sm text-stone-400">OSC</span>
+          <input
+            type="text"
+            value={productNum}
+            onChange={(e) => applyProductNum(e.target.value)}
+            className="input font-mono text-lg tracking-widest text-center"
+            placeholder="001"
+            maxLength={3}
+            style={{ maxWidth: 120 }}
+          />
         </div>
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          FR = Phrase &middot; DW = Drawing &middot; MX = Mix/Vintage
+          Sequential number (001-999). Each product gets a unique number.
         </p>
       </div>
 
-      {/* 3. Design Number */}
-      <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">3. Design Number</label>
-        <input
-          type="text"
-          value={designNum}
-          onChange={(e) => applyDesignNum(e.target.value)}
-          className="input font-mono text-lg tracking-widest text-center"
-          placeholder="001"
-          maxLength={3}
-          style={{ maxWidth: 120 }}
-        />
-        <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-          Unique art number (001-999). Same number = same design across different products.
-        </p>
-      </div>
-
-      {/* Auto-generated Name (editable) */}
+      {/* Product Name (editable) */}
       <div>
         <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Name</label>
         <input
@@ -1284,7 +1226,7 @@ function ProductForm({
           value={form.name || ''}
           onChange={(e) => setForm({ ...form, name: e.target.value, slug: generateSlug(e.target.value) })}
           className="input"
-          placeholder="Select type + art + number above"
+          placeholder="e.g. OnSite Cotton Tee"
           required
         />
       </div>
@@ -1391,13 +1333,13 @@ function ProductForm({
             value={form.sku || ''}
             onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase() })}
             className="input font-mono font-bold tracking-wider"
-            placeholder="CTEE-FR001"
+            placeholder="OSC001"
             required
           />
           <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
-            Auto: {form.product_type && artType && designNum
-              ? `${PRODUCT_TYPES[form.product_type]?.skuPrefix}-${ART_TYPES[artType as keyof typeof ART_TYPES]?.code}${designNum.padStart(3, '0')}`
-              : 'Select type + art + number'}
+            Auto: {productNum
+              ? `OSC${productNum.padStart(3, '0')}`
+              : 'Enter product number above'}
           </p>
         </div>
         <div>
