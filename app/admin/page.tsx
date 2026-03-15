@@ -14,8 +14,8 @@ const AVAILABLE_COLORS = [
   { name: 'Amber', hex: '#B8860B' },
   { name: 'Charcoal', hex: '#36454F' },
   { name: 'Light Grey', hex: '#D3D3D3' },
-  { name: 'Construction Green', hex: '#2D5A27' },
-  { name: 'Green', hex: '#228B22' },
+  { name: 'Construction Green', hex: '#CCFF00' },
+  { name: 'Green', hex: '#2D5A27' },
 ];
 
 const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
