@@ -1200,7 +1200,7 @@ function ProductForm({
     const pt = PRODUCT_TYPES[pType];
     if (!pt || !num) return null;
     const padded = num.padStart(3, '0');
-    const sku = `OSC${padded}`;
+    const sku = `OSC${padded}-${pt.skuPrefix}`;
     const name = `${pt.productName}`;
     const slug = generateSlug(`${name}-${padded}`);
     return { sku, name, slug };
