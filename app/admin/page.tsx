@@ -1198,6 +1198,27 @@ function ProductForm({
     }
   }
 
+  // Delete a design thumbnail via API
+  async function handleDesignDelete(num: string) {
+    if (!confirm(`Delete design OSC${num}?`)) return;
+    try {
+      const res = await fetch('/api/designs', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ num }),
+      });
+      if (res.ok) {
+        setDesignList(designList.filter((d) => d.num !== num));
+        if (productNum === num) setProductNum('');
+      } else {
+        const data = await res.json();
+        alert('Delete error: ' + (data.error || 'Unknown error'));
+      }
+    } catch {
+      alert('Network error');
+    }
+  }
+
   // Build name, SKU & slug automatically
   const buildProductIdentity = (pType: string, num: string) => {
     const pt = PRODUCT_TYPES[pType];
@@ -1326,28 +1347,34 @@ function ProductForm({
                 {designList.map((design) => {
                   const isSelected = productNum === design.num;
                   return (
-                    <button
-                      key={design.num}
-                      type="button"
-                      onClick={() => { applyProductNum(design.num); setShowDesignPicker(false); }}
-                      className={`relative rounded-xl border-2 overflow-hidden transition-all aspect-square ${
-                        isSelected
-                          ? 'border-[#B8860B] ring-2 ring-[#B8860B] ring-offset-1'
-                          : 'border-stone-200 hover:border-stone-400'
-                      }`}
-                    >
-                      <img
-                        src={design.url}
-                        alt={`Design OSC${design.num}`}
-                        className="w-full h-full object-contain bg-white"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                      <span className={`absolute bottom-0 inset-x-0 text-center font-mono text-[9px] font-bold py-0.5 ${
-                        isSelected ? 'bg-[#B8860B] text-white' : 'bg-stone-100 text-stone-600'
-                      }`}>
-                        OSC{design.num}
-                      </span>
-                    </button>
+                    <div key={design.num} className="relative group">
+                      <button
+                        type="button"
+                        onClick={() => { applyProductNum(design.num); setShowDesignPicker(false); }}
+                        className={`relative rounded-xl border-2 overflow-hidden transition-all aspect-square w-full ${
+                          isSelected
+                            ? 'border-[#B8860B] ring-2 ring-[#B8860B] ring-offset-1'
+                            : 'border-stone-200 hover:border-stone-400'
+                        }`}
+                      >
+                        <img
+                          src={design.url}
+                          alt={`Design OSC${design.num}`}
+                          className="w-full h-full object-contain bg-white"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        <span className={`absolute bottom-0 inset-x-0 text-center font-mono text-[9px] font-bold py-0.5 ${
+                          isSelected ? 'bg-[#B8860B] text-white' : 'bg-stone-100 text-stone-600'
+                        }`}>
+                          OSC{design.num}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDesignDelete(design.num); }}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                      >&times;</button>
+                    </div>
                   );
                 })}
                 {/* Add new design button */}

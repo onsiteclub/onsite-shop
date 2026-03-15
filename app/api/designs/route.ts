@@ -97,3 +97,49 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ num, url: urlData.publicUrl, name: fileName })
 }
+
+// DELETE — remove a design thumbnail (admin only via session)
+export async function DELETE(req: NextRequest) {
+  // Verify admin session
+  const cookieStore = cookies()
+  const authClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) { return cookieStore.get(name)?.value },
+        set() {},
+        remove() {},
+      },
+    }
+  )
+
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user?.email) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  }
+
+  const { data: admin } = await authClient
+    .from('admin_users')
+    .select('email')
+    .eq('email', user.email)
+    .single()
+
+  if (!admin) {
+    return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+  }
+
+  const { num } = await req.json()
+  if (!num) {
+    return NextResponse.json({ error: 'Missing design number' }, { status: 400 })
+  }
+
+  const fileName = `OSC${String(num).padStart(3, '0')}.jpg`
+  const { error } = await supabase.storage.from(BUCKET).remove([fileName])
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ deleted: fileName })
+}
