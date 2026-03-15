@@ -975,6 +975,8 @@ function ProductForm({
   onUpload: (file: File) => Promise<string | null>;
   saving: boolean;
 }) {
+  const supabase = createClient();
+
   const generateSlug = (name: string) =>
     name.toLowerCase()
       .replace(/[àáâãäå]/g, 'a').replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i')
@@ -1130,6 +1132,75 @@ function ProductForm({
   };
   const [productNum, setProductNum] = useState(parseOscNum(product.sku || ''));
   const [showDesignPicker, setShowDesignPicker] = useState(false);
+  const [designList, setDesignList] = useState<{ num: string; url: string }[]>([]);
+  const [designUploading, setDesignUploading] = useState(false);
+
+  // Fetch designs from Supabase Storage
+  useEffect(() => {
+    fetch('/api/designs')
+      .then((r) => r.json())
+      .then((data) => setDesignList(data.designs || []))
+      .catch(() => {});
+  }, []);
+
+  // Resize image to 150px thumbnail with white background
+  function resizeToThumbnail(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 150;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, size, size);
+        const scale = Math.min(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')),
+          'image/jpeg',
+          0.8
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  // Upload a new design thumbnail
+  async function handleDesignUpload(file: File) {
+    setDesignUploading(true);
+    try {
+      const blob = await resizeToThumbnail(file);
+      // Determine next number
+      const nums = designList.map((d) => parseInt(d.num, 10)).filter((n) => !isNaN(n));
+      const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+      const nextNum = String(next).padStart(3, '0');
+      const fileName = `OSC${nextNum}.jpg`;
+
+      const { error } = await supabase.storage
+        .from('designs')
+        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+      if (error) {
+        alert('Upload error: ' + error.message);
+        setDesignUploading(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from('designs').getPublicUrl(fileName);
+      const newDesign = { num: nextNum, url: urlData.publicUrl };
+      setDesignList([...designList, newDesign]);
+      applyProductNum(nextNum);
+      setDesignUploading(false);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+      setDesignUploading(false);
+    }
+  }
 
   // Build name, SKU & slug automatically
   const buildProductIdentity = (pType: string, num: string) => {
@@ -1208,9 +1279,9 @@ function ProductForm({
             onClick={() => setShowDesignPicker(true)}
             className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-stone-200 hover:border-[#B8860B] transition-all bg-white"
           >
-            {productNum ? (
+            {productNum && designList.find((d) => d.num === productNum.padStart(3, '0')) ? (
               <img
-                src={`/designs/OSC${productNum}.jpg`}
+                src={designList.find((d) => d.num === productNum.padStart(3, '0'))!.url}
                 alt={`OSC${productNum}`}
                 className="w-12 h-12 rounded-lg object-contain bg-white border border-stone-100"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -1256,14 +1327,13 @@ function ProductForm({
                 >&times;</button>
               </div>
               <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-                {Array.from({ length: 21 }, (_, i) => {
-                  const num = String(i + 1).padStart(3, '0');
-                  const isSelected = productNum === num;
+                {designList.map((design) => {
+                  const isSelected = productNum === design.num;
                   return (
                     <button
-                      key={num}
+                      key={design.num}
                       type="button"
-                      onClick={() => { applyProductNum(num); setShowDesignPicker(false); }}
+                      onClick={() => { applyProductNum(design.num); setShowDesignPicker(false); }}
                       className={`relative rounded-xl border-2 overflow-hidden transition-all aspect-square ${
                         isSelected
                           ? 'border-[#B8860B] ring-2 ring-[#B8860B] ring-offset-1'
@@ -1271,19 +1341,40 @@ function ProductForm({
                       }`}
                     >
                       <img
-                        src={`/designs/OSC${num}.jpg`}
-                        alt={`Design OSC${num}`}
+                        src={design.url}
+                        alt={`Design OSC${design.num}`}
                         className="w-full h-full object-contain bg-white"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
                       <span className={`absolute bottom-0 inset-x-0 text-center font-mono text-[9px] font-bold py-0.5 ${
                         isSelected ? 'bg-[#B8860B] text-white' : 'bg-stone-100 text-stone-600'
                       }`}>
-                        OSC{num}
+                        OSC{design.num}
                       </span>
                     </button>
                   );
                 })}
+                {/* Add new design button */}
+                <label
+                  className={`relative rounded-xl border-2 border-dashed border-stone-300 overflow-hidden transition-all aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#B8860B] hover:bg-amber-50 ${
+                    designUploading ? 'opacity-50 pointer-events-none' : ''
+                  }`}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleDesignUpload(f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <span className="text-2xl text-stone-400">{designUploading ? '...' : '+'}</span>
+                  <span className="font-mono text-[9px] text-stone-400 mt-1">
+                    {designUploading ? 'Uploading' : 'New Art'}
+                  </span>
+                </label>
               </div>
             </div>
           </div>
