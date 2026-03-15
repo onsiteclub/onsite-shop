@@ -879,6 +879,11 @@ function ProductModal({
                   </a>
                 </div>
               )}
+
+              {/* Color disclaimer */}
+              <p className="font-mono text-[10px] text-stone-400 mt-3 text-center leading-relaxed">
+                Colors may vary slightly from screen to product due to digital rendering.
+              </p>
             </div>
           </div>
         </div>
