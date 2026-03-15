@@ -1129,6 +1129,7 @@ function ProductForm({
     return match ? match[1] : '';
   };
   const [productNum, setProductNum] = useState(parseOscNum(product.sku || ''));
+  const [showDesignPicker, setShowDesignPicker] = useState(false);
 
   // Build name, SKU & slug automatically
   const buildProductIdentity = (pType: string, num: string) => {
@@ -1198,52 +1199,95 @@ function ProductForm({
         </div>
       </div>
 
-      {/* 2. Design — visual picker */}
+      {/* 2. Design — button to open picker modal */}
       <div>
         <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Design</label>
-        <div className="grid grid-cols-5 sm:grid-cols-7 gap-2 max-h-[280px] overflow-y-auto p-1">
-          {Array.from({ length: 21 }, (_, i) => {
-            const num = String(i + 1).padStart(3, '0');
-            const isSelected = productNum === num;
-            return (
-              <button
-                key={num}
-                type="button"
-                onClick={() => applyProductNum(num)}
-                className={`relative rounded-lg border-2 overflow-hidden transition-all aspect-square ${
-                  isSelected
-                    ? 'border-[#B8860B] ring-2 ring-[#B8860B] ring-offset-1'
-                    : 'border-stone-200 hover:border-stone-400'
-                }`}
-              >
-                <img
-                  src={`/designs/OSC${num}.jpg`}
-                  alt={`Design OSC${num}`}
-                  className="w-full h-full object-contain bg-white"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-                <span className={`absolute bottom-0 inset-x-0 text-center font-mono text-[8px] py-0.5 ${
-                  isSelected ? 'bg-[#B8860B] text-white' : 'bg-black/50 text-white'
-                }`}>
-                  {num}
-                </span>
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowDesignPicker(true)}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-stone-200 hover:border-[#B8860B] transition-all bg-white"
+          >
+            {productNum ? (
+              <img
+                src={`/designs/OSC${productNum}.jpg`}
+                alt={`OSC${productNum}`}
+                className="w-12 h-12 rounded-lg object-contain bg-white border border-stone-100"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 text-lg">?</div>
+            )}
+            <div className="text-left">
+              <p className="font-mono text-sm font-bold text-[#1B2B27]">
+                {productNum ? `OSC${productNum}` : 'Select design'}
+              </p>
+              <p className="font-mono text-[10px] text-stone-400">Click to browse all designs</p>
+            </div>
+          </button>
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-xs text-stone-400">OSC</span>
+            <input
+              type="text"
+              value={productNum}
+              onChange={(e) => applyProductNum(e.target.value)}
+              className="input font-mono text-sm tracking-widest text-center"
+              placeholder="022"
+              maxLength={3}
+              style={{ maxWidth: 80 }}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="font-mono text-xs text-stone-400">Or type:</span>
-          <span className="font-mono text-xs text-stone-400">OSC</span>
-          <input
-            type="text"
-            value={productNum}
-            onChange={(e) => applyProductNum(e.target.value)}
-            className="input font-mono text-sm tracking-widest text-center"
-            placeholder="022"
-            maxLength={3}
-            style={{ maxWidth: 80 }}
-          />
-        </div>
+
+        {/* Design picker modal */}
+        {showDesignPicker && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowDesignPicker(false)}>
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <div
+              className="relative bg-white rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-mono text-sm font-bold text-[#1B2B27] uppercase tracking-wider">Select Design</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowDesignPicker(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-100 text-xl"
+                >&times;</button>
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                {Array.from({ length: 21 }, (_, i) => {
+                  const num = String(i + 1).padStart(3, '0');
+                  const isSelected = productNum === num;
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => { applyProductNum(num); setShowDesignPicker(false); }}
+                      className={`relative rounded-xl border-2 overflow-hidden transition-all aspect-square ${
+                        isSelected
+                          ? 'border-[#B8860B] ring-2 ring-[#B8860B] ring-offset-1'
+                          : 'border-stone-200 hover:border-stone-400'
+                      }`}
+                    >
+                      <img
+                        src={`/designs/OSC${num}.jpg`}
+                        alt={`Design OSC${num}`}
+                        className="w-full h-full object-contain bg-white"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <span className={`absolute bottom-0 inset-x-0 text-center font-mono text-[9px] font-bold py-0.5 ${
+                        isSelected ? 'bg-[#B8860B] text-white' : 'bg-stone-100 text-stone-600'
+                      }`}>
+                        OSC{num}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Product Name (editable) */}
