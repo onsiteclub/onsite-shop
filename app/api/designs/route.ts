@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
 const supabase = createClient(
@@ -8,7 +10,7 @@ const supabase = createClient(
 
 const BUCKET = 'designs'
 
-// GET — list all design thumbnails
+// GET — list all design thumbnails (public)
 export async function GET() {
   const { data, error } = await supabase.storage.from(BUCKET).list('', {
     sortBy: { column: 'name', order: 'asc' },
@@ -30,43 +32,58 @@ export async function GET() {
   return NextResponse.json({ designs })
 }
 
-// POST — upload a new design thumbnail (admin only)
+// POST — upload a new design thumbnail (admin only via session)
 export async function POST(req: NextRequest) {
-  const adminSecret = req.headers.get('x-admin-secret')
-  if (adminSecret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Verify admin session
+  const cookieStore = cookies()
+  const authClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) { return cookieStore.get(name)?.value },
+        set() {},
+        remove() {},
+      },
+    }
+  )
+
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user?.email) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  }
+
+  const { data: admin } = await authClient
+    .from('admin_users')
+    .select('email')
+    .eq('email', user.email)
+    .single()
+
+  if (!admin) {
+    return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }
 
   const formData = await req.formData()
   const file = formData.get('file') as File | null
-  const numParam = formData.get('num') as string | null
 
   if (!file) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
 
-  // Determine the design number
-  let num: string
-  if (numParam) {
-    num = numParam.padStart(3, '0')
-  } else {
-    // Auto-assign next number
-    const { data: existing } = await supabase.storage.from(BUCKET).list('', {
-      sortBy: { column: 'name', order: 'asc' },
-    })
-    const nums = (existing || [])
-      .filter((f) => f.name.startsWith('OSC') && f.name.endsWith('.jpg'))
-      .map((f) => parseInt(f.name.replace('OSC', '').replace('.jpg', ''), 10))
-      .filter((n) => !isNaN(n))
-    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1
-    num = String(next).padStart(3, '0')
-  }
+  // Auto-assign next number
+  const { data: existing } = await supabase.storage.from(BUCKET).list('', {
+    sortBy: { column: 'name', order: 'asc' },
+  })
+  const nums = (existing || [])
+    .filter((f) => f.name.startsWith('OSC') && f.name.endsWith('.jpg'))
+    .map((f) => parseInt(f.name.replace('OSC', '').replace('.jpg', ''), 10))
+    .filter((n) => !isNaN(n))
+  const next = nums.length > 0 ? Math.max(...nums) + 1 : 1
+  const num = String(next).padStart(3, '0')
 
   const fileName = `OSC${num}.jpg`
   const buffer = Buffer.from(await file.arrayBuffer())
 
-  // Upsert: remove existing if present, then upload
-  await supabase.storage.from(BUCKET).remove([fileName])
   const { error } = await supabase.storage.from(BUCKET).upload(fileName, buffer, {
     contentType: 'image/jpeg',
     upsert: true,

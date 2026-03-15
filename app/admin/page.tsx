@@ -975,8 +975,6 @@ function ProductForm({
   onUpload: (file: File) => Promise<string | null>;
   saving: boolean;
 }) {
-  const supabase = createClient();
-
   const generateSlug = (name: string) =>
     name.toLowerCase()
       .replace(/[àáâãäå]/g, 'a').replace(/[èéêë]/g, 'e').replace(/[ìíîï]/g, 'i')
@@ -1170,31 +1168,29 @@ function ProductForm({
     });
   }
 
-  // Upload a new design thumbnail
+  // Upload a new design thumbnail via API (bypasses RLS)
   async function handleDesignUpload(file: File) {
     setDesignUploading(true);
     try {
       const blob = await resizeToThumbnail(file);
-      // Determine next number
-      const nums = designList.map((d) => parseInt(d.num, 10)).filter((n) => !isNaN(n));
-      const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-      const nextNum = String(next).padStart(3, '0');
-      const fileName = `OSC${nextNum}.jpg`;
+      const formData = new FormData();
+      formData.append('file', blob, 'design.jpg');
 
-      const { error } = await supabase.storage
-        .from('designs')
-        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+      const res = await fetch('/api/designs', {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (error) {
-        alert('Upload error: ' + error.message);
+      const data = await res.json();
+      if (!res.ok) {
+        alert('Upload error: ' + (data.error || 'Unknown error'));
         setDesignUploading(false);
         return;
       }
 
-      const { data: urlData } = supabase.storage.from('designs').getPublicUrl(fileName);
-      const newDesign = { num: nextNum, url: urlData.publicUrl };
+      const newDesign = { num: data.num, url: data.url };
       setDesignList([...designList, newDesign]);
-      applyProductNum(nextNum);
+      applyProductNum(data.num);
       setDesignUploading(false);
     } catch (err: any) {
       alert('Error: ' + err.message);
