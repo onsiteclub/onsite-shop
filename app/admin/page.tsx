@@ -682,58 +682,6 @@ export default function AdminPage() {
         </div>
         )}
 
-        {/* Categories management */}
-        {activeProductTab !== 'reviews' && activeStore === 'shop' && (
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <h2 className="font-mono text-sm font-medium text-[#1B2B27]/60">Categories</h2>
-            <button
-              onClick={() => setShowCategoryForm(!showCategoryForm)}
-              className="font-mono text-xs text-[#B8860B] hover:text-[#9A7209]"
-            >
-              {showCategoryForm ? 'Cancel' : '+ Add'}
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => (
-              <div
-                key={cat.id}
-                className="group flex items-center gap-1.5 bg-white/80 border border-stone-200 rounded-lg px-3 py-1.5"
-              >
-                <span className="font-mono text-xs text-[#1B2B27]">{cat.name}</span>
-                <span className="font-mono text-[10px] text-stone-400">({cat.slug})</span>
-                {cat.slug !== 'mens' && cat.slug !== 'members' && (
-                  <button
-                    onClick={() => handleDeleteCategory(cat.id)}
-                    className="font-mono text-[10px] text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
-                  >
-                    x
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          {showCategoryForm && (
-            <div className="flex gap-2 mt-2">
-              <input
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="e.g. Skulls, Nature, Abstract..."
-                className="input flex-1 text-sm"
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory(newCategoryName)}
-              />
-              <button
-                onClick={() => handleCreateCategory(newCategoryName)}
-                className="btn-accent text-sm"
-              >
-                Create
-              </button>
-            </div>
-          )}
-        </div>
-        )}
-
         {activeProductTab !== 'reviews' && (
         <>
         {/* Add product button */}
