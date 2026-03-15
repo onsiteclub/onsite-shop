@@ -136,6 +136,9 @@ export default function AdminPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showCategoryForm, setShowCategoryForm] = useState(false);
 
+  // Store tab (shop vs members)
+  const [activeStore, setActiveStore] = useState<'shop' | 'members'>('shop');
+
   // Product type tab filter
   const [activeProductTab, setActiveProductTab] = useState<string>('all');
 
@@ -653,8 +656,34 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Categories management */}
+        {/* Store tabs: SHOP / MEMBERS */}
         {activeProductTab !== 'reviews' && (
+        <div className="flex gap-0 mb-6 border-b-2 border-stone-200">
+          <button
+            onClick={() => { setActiveStore('shop'); setActiveProductTab('all'); }}
+            className={`font-mono text-sm py-3 px-8 transition-all border-b-2 -mb-[2px] ${
+              activeStore === 'shop'
+                ? 'border-[#1B2B27] text-[#1B2B27] font-bold'
+                : 'border-transparent text-stone-400 hover:text-stone-600'
+            }`}
+          >
+            SHOP
+          </button>
+          <button
+            onClick={() => { setActiveStore('members'); setActiveProductTab('all'); }}
+            className={`font-mono text-sm py-3 px-8 transition-all border-b-2 -mb-[2px] ${
+              activeStore === 'members'
+                ? 'border-[#B8860B] text-[#B8860B] font-bold'
+                : 'border-transparent text-stone-400 hover:text-stone-600'
+            }`}
+          >
+            MEMBERS
+          </button>
+        </div>
+        )}
+
+        {/* Categories management */}
+        {activeProductTab !== 'reviews' && activeStore === 'shop' && (
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <h2 className="font-mono text-sm font-medium text-[#1B2B27]/60">Categories</h2>
@@ -709,25 +738,28 @@ export default function AdminPage() {
         <>
         {/* Add product button */}
         <button
-          onClick={() => setEditingProduct({
-            id: '',
-            name: '',
-            slug: '',
-            description: '',
-            base_price: 0,
-            sku: '',
-            stripe_price_id: '',
-            product_type: '',
-            images: [],
-            sizes: ['S', 'M', 'L', 'XL'],
-            colors: [],
-            color_images: {},
-            primary_image: '',
-            category_id: null,
-            is_active: true,
-            is_featured: false,
-            is_published: false,
-          })}
+          onClick={() => {
+            const storeCat = categories.find(c => c.slug === (activeStore === 'members' ? 'members' : 'mens'));
+            setEditingProduct({
+              id: '',
+              name: '',
+              slug: '',
+              description: '',
+              base_price: 0,
+              sku: '',
+              stripe_price_id: '',
+              product_type: '',
+              images: [],
+              sizes: ['S', 'M', 'L', 'XL'],
+              colors: [],
+              color_images: {},
+              primary_image: '',
+              category_id: storeCat?.id || null,
+              is_active: true,
+              is_featured: false,
+              is_published: false,
+            });
+          }}
           className="btn-accent mb-6"
         >
           + Add Product
@@ -743,9 +775,12 @@ export default function AdminPage() {
             { key: 'cap', label: 'Caps' },
             { key: 'sticker-kit', label: 'Stickers' },
           ].map(tab => {
+            const storeCatSlug = activeStore === 'members' ? 'members' : 'mens';
+            const storeCat = categories.find(c => c.slug === storeCatSlug);
+            const storeProducts = products.filter(p => storeCat && p.category_id === storeCat.id);
             const count = tab.key === 'all'
-              ? products.length
-              : products.filter(p => p.product_type === tab.key).length;
+              ? storeProducts.length
+              : storeProducts.filter(p => p.product_type === tab.key).length;
             return (
               <button
                 key={tab.key}
@@ -861,7 +896,12 @@ export default function AdminPage() {
         {/* Products grid */}
         {activeProductTab !== 'reviews' && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.filter(p => activeProductTab === 'all' || p.product_type === activeProductTab).map((product) => (
+          {products.filter(p => {
+            const storeCatSlug = activeStore === 'members' ? 'members' : 'mens';
+            const storeCat = categories.find(c => c.slug === storeCatSlug);
+            if (!storeCat || p.category_id !== storeCat.id) return false;
+            return activeProductTab === 'all' || p.product_type === activeProductTab;
+          }).map((product) => (
             <div
               key={product.id}
               className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 ${
@@ -885,18 +925,6 @@ export default function AdminPage() {
                     <h3 className="font-mono font-medium text-[#1B2B27] truncate">
                       {product.name}
                     </h3>
-                    {(() => {
-                      const cat = categories.find(c => c.id === product.category_id);
-                      return cat ? (
-                        <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
-                          cat.slug === 'members'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-stone-100 text-stone-600'
-                        }`}>
-                          {cat.slug}
-                        </span>
-                      ) : null;
-                    })()}
                   </div>
                   <p className="font-mono text-xs text-[#1B2B27]/40">
                     {product.sku || 'no SKU'}
@@ -1433,48 +1461,6 @@ function ProductForm({
         <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
           Auto-generated from name. Edit for a cleaner URL.
         </p>
-      </div>
-
-      {/* Tab: Shop or Members */}
-      <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Show in</label>
-        <div className="flex gap-2 mb-2">
-          {(() => {
-            const membersCat = categories.find(c => c.slug === 'members');
-            const isMembers = membersCat && form.category_id === membersCat.id;
-            return (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const shopCat = categories.find(c => c.slug === 'mens');
-                    setForm({ ...form, category_id: shopCat?.id || null });
-                  }}
-                  className={`flex-1 font-mono text-sm py-2 px-4 rounded-lg border-2 transition-all ${
-                    !isMembers
-                      ? 'border-[#1B2B27] bg-[#1B2B27]/5 text-[#1B2B27] font-bold'
-                      : 'border-stone-200 text-stone-400 hover:border-stone-300'
-                  }`}
-                >
-                  SHOP
-                </button>
-                {membersCat && (
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, category_id: membersCat.id })}
-                    className={`flex-1 font-mono text-sm py-2 px-4 rounded-lg border-2 transition-all ${
-                      isMembers
-                        ? 'border-amber-500 bg-amber-50 text-amber-700 font-bold'
-                        : 'border-stone-200 text-stone-400 hover:border-stone-300'
-                    }`}
-                  >
-                    MEMBERS
-                  </button>
-                )}
-              </>
-            );
-          })()}
-        </div>
       </div>
 
       {/* Collection — only for shop products */}
