@@ -117,7 +117,7 @@ export default function LoginPage() {
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg">
           {/* Error/Success Messages */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl" role="alert">
               <p className="font-mono text-sm text-red-600">{error}</p>
             </div>
           )}
@@ -201,7 +201,7 @@ export default function LoginPage() {
               <div className="text-right">
                 <Link
                   href="/forgot-password"
-                  className="font-mono text-xs text-[#F6C343] hover:underline"
+                  className="font-mono text-xs text-[#B8860B] hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -226,7 +226,7 @@ export default function LoginPage() {
                 setError(null);
                 setSuccess(null);
               }}
-              className="text-[#F6C343] font-bold hover:underline"
+              className="text-[#B8860B] font-bold hover:underline"
             >
               {isLogin ? 'Create account' : 'Sign in'}
             </button>

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       apiVersion: '2025-12-15.clover',
     });
 
-    const { items, shipping_address, customer_notes, promo_code, promo_active, promo_discount_type } = await req.json();
+    const { items, shipping_address, customer_notes, promo_code, promo_active, promo_discount_type, shipping_service, shipping_cost_override, shipping_source } = await req.json();
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
@@ -131,16 +131,24 @@ export async function POST(req: NextRequest) {
       subtotal += resolved.price * item.quantity;
     }
 
-    // Calculate shipping from province (server-side, not user-selectable)
+    // Calculate shipping: prefer Canada Post quote, fallback to province rates
     const isFreeShipping = promo_active || subtotal >= FREE_SHIPPING_THRESHOLD;
-    const provinceData = PROVINCE_SHIPPING[shipping_address.province];
-    const shippingAmount = isFreeShipping ? 0 : (provinceData?.cost ?? 1499);
-    const shippingRegion = provinceData?.region ?? 'Canada';
-    const shippingLabel = promo_active
-      ? 'Free Shipping (promo)'
-      : isFreeShipping
-        ? 'Free Shipping (orders over $50)'
-        : `Shipping — ${shippingRegion}`;
+    let shippingAmount: number;
+    let shippingLabel: string;
+
+    if (isFreeShipping) {
+      shippingAmount = 0;
+      shippingLabel = promo_active ? 'Free Shipping (promo)' : 'Free Shipping (orders over $50)';
+    } else if (shipping_cost_override !== null && shipping_cost_override !== undefined) {
+      // Canada Post rate from client
+      shippingAmount = shipping_cost_override;
+      shippingLabel = shipping_service ? `Canada Post — ${shipping_service}` : 'Canada Post Shipping';
+    } else {
+      // Fallback to province-based rates
+      const provinceData = PROVINCE_SHIPPING[shipping_address.province];
+      shippingAmount = provinceData?.cost ?? 1499;
+      shippingLabel = `Shipping — ${provinceData?.region ?? 'Canada'}`;
+    }
 
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'http://localhost:3001';
 
@@ -161,6 +169,8 @@ export async function POST(req: NextRequest) {
         shipping_address: JSON.stringify(shipping_address),
         ...(customer_notes ? { customer_notes } : {}),
         ...(promo_code ? { promo_code } : {}),
+        ...(shipping_service ? { shipping_service } : {}),
+        ...(shipping_source ? { shipping_source } : {}),
       },
       payment_intent_data: {
         shipping: {

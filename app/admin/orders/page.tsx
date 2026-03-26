@@ -252,6 +252,8 @@ export default function AdminOrdersPage() {
   const [editStaffNotes, setEditStaffNotes] = useState('');
   const [editTrackingCode, setEditTrackingCode] = useState('');
   const [uploadingLabel, setUploadingLabel] = useState(false);
+  const [creatingLabel, setCreatingLabel] = useState(false);
+  const [selectedService, setSelectedService] = useState('DOM.EP');
 
   // Reports
   const [reportStartDate, setReportStartDate] = useState(() => {
@@ -406,6 +408,45 @@ export default function AdminOrdersPage() {
       alert(`Upload failed: ${err.message}`);
     }
     setUploadingLabel(false);
+  }
+
+  // ---- Create Label via Canada Post API ----
+
+  async function handleCreateLabel(orderId: string, orderNumber: string) {
+    setCreatingLabel(true);
+    try {
+      const res = await fetch('/api/shipping/create-label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, serviceCode: selectedService }),
+      });
+
+      const data = await res.json();
+
+      if (data.error && !data.trackingPin) {
+        throw new Error(data.error);
+      }
+
+      // Update local state
+      await loadOrders();
+      setSelectedOrder(prev => {
+        if (!prev || prev.id !== orderId) return prev;
+        return {
+          ...prev,
+          tracking_code: data.trackingPin || prev.tracking_code,
+          label_url: data.labelUrl || prev.label_url,
+        };
+      });
+      setEditTrackingCode(data.trackingPin || '');
+
+      if (data.error) {
+        alert(`Label created with warning: ${data.error}`);
+      }
+    } catch (err: any) {
+      console.error('Create label failed:', err);
+      alert(`Failed to create label: ${err.message}`);
+    }
+    setCreatingLabel(false);
   }
 
   // ---- Filtering ----
@@ -847,20 +888,65 @@ export default function AdminOrdersPage() {
                         />
                       </label>
                     </div>
+                  ) : selectedOrder.status === 'processing' ? (
+                    <div className="space-y-3">
+                      {/* Canada Post service selector */}
+                      <div>
+                        <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1.5">Shipping Service</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { code: 'DOM.RP', name: 'Regular Parcel', desc: '5-8 days' },
+                            { code: 'DOM.EP', name: 'Expedited', desc: '2-4 days' },
+                            { code: 'DOM.XP', name: 'Xpresspost', desc: '1-2 days' },
+                            { code: 'DOM.PC', name: 'Priority', desc: 'Next day' },
+                          ].map(svc => (
+                            <button
+                              key={svc.code}
+                              onClick={() => setSelectedService(svc.code)}
+                              className={`px-3 py-2 rounded-lg border-2 font-mono text-xs text-left transition-colors ${
+                                selectedService === svc.code
+                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                  : 'border-gray-200 bg-white text-[#1B2B27]/70 hover:border-gray-300'
+                              }`}
+                            >
+                              <span className="font-bold block">{svc.name}</span>
+                              <span className="text-[10px] opacity-60">{svc.desc}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Create Label button */}
+                      <button
+                        onClick={() => handleCreateLabel(selectedOrder.id, selectedOrder.order_number)}
+                        disabled={creatingLabel}
+                        className="w-full px-4 py-3 rounded-xl bg-red-600 text-white font-mono text-xs font-bold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                      >
+                        {creatingLabel ? (
+                          <>
+                            <span className="animate-spin inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+                            Creating Label...
+                          </>
+                        ) : (
+                          'Create Label via Canada Post'
+                        )}
+                      </button>
+                      {/* Manual upload fallback */}
+                      <label className="block w-full px-3 py-2 rounded-lg border border-dashed border-gray-300 text-center font-mono text-[10px] text-gray-400 hover:border-gray-400 cursor-pointer transition-colors">
+                        {uploadingLabel ? 'Uploading...' : 'or upload label manually (PDF, PNG, JPG)'}
+                        <input
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg"
+                          className="hidden"
+                          disabled={uploadingLabel}
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleLabelUpload(selectedOrder.id, selectedOrder.order_number, file);
+                          }}
+                        />
+                      </label>
+                    </div>
                   ) : (
-                    <label className={`block w-full px-4 py-3 rounded-xl border-2 border-dashed border-gray-300 text-center font-mono text-xs text-gray-500 hover:border-gray-400 transition-colors ${uploadingLabel ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}>
-                      {uploadingLabel ? 'Uploading...' : 'Upload Label (PDF, PNG, JPG)'}
-                      <input
-                        type="file"
-                        accept=".pdf,.png,.jpg,.jpeg"
-                        className="hidden"
-                        disabled={uploadingLabel}
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (file) handleLabelUpload(selectedOrder.id, selectedOrder.order_number, file);
-                        }}
-                      />
-                    </label>
+                    <p className="font-mono text-xs text-gray-400 text-center py-2">No label uploaded</p>
                   )}
                 </div>
               )}

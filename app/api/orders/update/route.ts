@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     // Whitelist allowed fields to prevent arbitrary writes
     const ALLOWED_FIELDS = [
-      'status', 'staff_notes', 'tracking_code',
+      'status', 'staff_notes', 'tracking_code', 'label_url',
       'shipped_at', 'delivered_at', 'cancelled_at',
       'processing_at', 'ready_at', 'archived_at',
     ];

@@ -18,6 +18,7 @@ function StarRating({
           key={star}
           type="button"
           onClick={() => onChange(star)}
+          aria-label={`${star} star${star > 1 ? 's' : ''}`}
           className="text-3xl transition-transform hover:scale-110 cursor-pointer"
           style={{ color: star <= value ? '#B8860B' : '#D3D1C7' }}
         >
@@ -187,6 +188,9 @@ export default function ReviewPage() {
               Rating
             </label>
             <StarRating value={rating} onChange={setRating} />
+            {rating === 0 && (
+              <p className="font-mono text-xs text-stone-400 mt-1">Tap a star to rate</p>
+            )}
           </div>
 
           {/* Name */}
@@ -232,7 +236,7 @@ export default function ReviewPage() {
           </div>
 
           {error && (
-            <p className="font-mono text-xs text-red-500 mb-4">{error}</p>
+            <p className="font-mono text-xs text-red-500 mb-4" role="alert">{error}</p>
           )}
 
           <button

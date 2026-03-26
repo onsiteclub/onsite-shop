@@ -169,3 +169,49 @@ export function getShippingCost(province: string, subtotal: number): number {
   if (subtotal >= FREE_SHIPPING_THRESHOLD) return 0;
   return PROVINCE_SHIPPING[province]?.cost ?? 1499;
 }
+
+// ============================================
+// PRODUCT WEIGHTS & DIMENSIONS (for Canada Post)
+// ============================================
+
+export const PRODUCT_SHIPPING_INFO: Record<ProductKey, { weight: number; length: number; width: number; height: number }> = {
+  'cotton-tee':   { weight: 0.25, length: 30, width: 22, height: 3 },
+  'sport-tee':    { weight: 0.22, length: 30, width: 22, height: 3 },
+  'hoodie':       { weight: 0.55, length: 35, width: 28, height: 5 },
+  'cap-premium':  { weight: 0.15, length: 20, width: 18, height: 12 },
+  'cap-classic':  { weight: 0.12, length: 20, width: 18, height: 12 },
+  'sticker-kit':  { weight: 0.05, length: 25, width: 18, height: 1 },
+};
+
+/** Calculate total package weight & bounding box for a cart */
+export function calculatePackage(items: { productKey: string; quantity: number }[]): {
+  weight: number
+  length: number
+  width: number
+  height: number
+} {
+  let totalWeight = 0;
+  let maxLength = 0;
+  let maxWidth = 0;
+  let totalHeight = 0;
+
+  for (const item of items) {
+    const info = PRODUCT_SHIPPING_INFO[item.productKey as ProductKey];
+    if (!info) continue;
+    totalWeight += info.weight * item.quantity;
+    maxLength = Math.max(maxLength, info.length);
+    maxWidth = Math.max(maxWidth, info.width);
+    totalHeight += info.height * item.quantity;
+  }
+
+  // Add packaging weight (~100g) and min dims
+  totalWeight += 0.10;
+  totalHeight = Math.max(totalHeight + 2, 5); // +2cm for packaging, min 5cm
+
+  return {
+    weight: Math.max(0.1, totalWeight),
+    length: Math.max(maxLength, 15),
+    width: Math.max(maxWidth, 10),
+    height: Math.min(totalHeight, 40),
+  };
+}
