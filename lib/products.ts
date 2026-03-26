@@ -23,7 +23,8 @@ const SKU_PREFIX_MAP: Record<string, keyof typeof STRIPE_PRODUCTS> = {
   'CTEE': 'cotton-tee',
   'STEE': 'sport-tee',
   'HOOD': 'hoodie',
-  'CAP': 'cap',
+  'CPPRM': 'cap-premium',
+  'CPCLS': 'cap-classic',
   'STK': 'sticker-kit',
 }
 

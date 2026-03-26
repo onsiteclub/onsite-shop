@@ -12,7 +12,8 @@ const SKU_PREFIX_TO_PRODUCT: Record<string, ProductKey> = {
   'CTEE': 'cotton-tee',
   'STEE': 'sport-tee',
   'HOOD': 'hoodie',
-  'CAP':  'cap',
+  'CPPRM': 'cap-premium',
+  'CPCLS': 'cap-classic',
   'STK':  'sticker-kit',
 };
 

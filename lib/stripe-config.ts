@@ -7,7 +7,7 @@ import Stripe from 'stripe';
 export const STRIPE_PRODUCTS = {
   'cotton-tee': {
     name: 'OnSite Cotton Tee',
-    priceId: 'price_1T6yaQGntiIt3xkawNdIb3ek',
+    priceId: 'price_1TFH7oKGyu88MA3NhRqoTVon',
     price: 2999,
     sku: 'OS-CTN-TEE',
     sizes: ['M', 'L', 'XL'],
@@ -15,7 +15,7 @@ export const STRIPE_PRODUCTS = {
   },
   'sport-tee': {
     name: 'OnSite Sport Tee',
-    priceId: 'price_1T6ybPGntiIt3xkaA7NoCQ4e',
+    priceId: 'price_1TFH9CKGyu88MA3N6PU78UN7',
     price: 3499,
     sku: 'OS-SPT-TEE',
     sizes: ['M', 'L', 'XL'],
@@ -23,24 +23,32 @@ export const STRIPE_PRODUCTS = {
   },
   'hoodie': {
     name: 'OnSite Hoodie',
-    priceId: 'price_1T6ydIGntiIt3xkaOI5uKbgH',
+    priceId: 'price_1TFHCgKGyu88MA3N3eBakq57',
     price: 4999,
     sku: 'OS-HOODIE',
     sizes: ['M', 'L', 'XL'],
     category: 'apparel',
   },
-  'cap': {
-    name: 'OnSite Cap',
-    priceId: 'price_1T6ylSGntiIt3xka7i5gMdhM',
-    price: 3999,
-    sku: 'OS-CP',
+  'cap-premium': {
+    name: 'OnSite Cap Premium',
+    priceId: 'price_1TFHE9KGyu88MA3NUsJlC2ca',
+    price: 3990,
+    sku: 'OS-CP-PRM',
+    sizes: ['One Size'],
+    category: 'apparel',
+  },
+  'cap-classic': {
+    name: 'OnSite Cap Classic',
+    priceId: 'price_1TFHH7KGyu88MA3NXsrnCOkw',
+    price: 2990,
+    sku: 'OS-CP-CLS',
     sizes: ['One Size'],
     category: 'apparel',
   },
   'sticker-kit': {
     name: 'OnSite Sticker Kit',
-    priceId: 'price_1T6yfRGntiIt3xkaNuMeFJSF',
-    price: 999,
+    priceId: 'price_1TFHIoKGyu88MA3NJgLU8OyP',
+    price: 990,
     sku: 'OS-STICKER',
     sizes: [],
     category: 'sticker',
