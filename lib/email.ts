@@ -339,6 +339,9 @@ function buildShippedEmailHtml(orderNumber: string, trackingCode: string): strin
         <a href="https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${trackingCode}" style="display: inline-block; background: #1B2B27; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500;">
           Track on Canada Post
         </a>
+        <p style="color: #9CA3AF; font-size: 12px; margin-top: 12px;">
+          Tracking info may take a few hours to become available after shipment.
+        </p>
       </div>
 
     </div>

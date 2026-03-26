@@ -41,6 +41,7 @@ interface Order {
   customer_notes: string | null;
   staff_notes: string | null;
   tracking_code: string | null;
+  label_url: string | null;
   stripe_session_id: string | null;
   created_at: string;
   processing_at: string | null;
@@ -111,6 +112,7 @@ function normalizeOrder(row: any): Order {
     customer_notes: row.customer_notes || null,
     staff_notes: row.staff_notes || null,
     tracking_code: row.tracking_code || null,
+    label_url: row.label_url || null,
     stripe_session_id: row.stripe_session_id || null,
     created_at: row.created_at || new Date().toISOString(),
     processing_at: row.processing_at || null,
@@ -187,6 +189,53 @@ function OrderTimeline({ order }: { order: Order }) {
 }
 
 // ============================================
+// MINI TIMELINE — compact lifecycle for order cards
+// ============================================
+
+function MiniTimeline({ order }: { order: Order }) {
+  const currentIdx = STATUS_ORDER[order.status] ?? 0;
+
+  return (
+    <div className="flex items-center gap-0 w-full mt-2">
+      {TIMELINE_STEPS.map((step, idx) => {
+        const isCompleted = idx < currentIdx;
+        const isCurrent = idx === currentIdx;
+
+        return (
+          <div key={step.key} className="flex items-center flex-1 last:flex-none">
+            {/* Dot + Label */}
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-3 h-3 rounded-full border-2 transition-all ${
+                  isCompleted
+                    ? 'bg-green-500 border-green-500'
+                    : isCurrent
+                    ? 'bg-amber-400 border-amber-400 ring-[3px] ring-amber-100'
+                    : 'bg-transparent border-gray-300'
+                }`}
+              />
+              <span className={`font-mono text-[8px] md:text-[9px] mt-1 whitespace-nowrap ${
+                isCompleted ? 'text-green-600 font-semibold'
+                  : isCurrent ? 'text-amber-600 font-semibold'
+                  : 'text-gray-400'
+              }`}>
+                {step.label}
+              </span>
+            </div>
+            {/* Connecting line */}
+            {idx < TIMELINE_STEPS.length - 1 && (
+              <div className={`flex-1 h-[2px] mx-1 rounded ${
+                isCompleted ? 'bg-green-400' : 'bg-gray-200'
+              }`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 
@@ -202,6 +251,7 @@ export default function AdminOrdersPage() {
   // Modal editable fields
   const [editStaffNotes, setEditStaffNotes] = useState('');
   const [editTrackingCode, setEditTrackingCode] = useState('');
+  const [uploadingLabel, setUploadingLabel] = useState(false);
 
   // Reports
   const [reportStartDate, setReportStartDate] = useState(() => {
@@ -322,6 +372,40 @@ export default function AdminOrdersPage() {
       alert(`Failed to update: ${err.message}`);
     }
     setUpdatingStatus(false);
+  }
+
+  // ---- Label upload ----
+
+  async function handleLabelUpload(orderId: string, orderNumber: string, file: File) {
+    setUploadingLabel(true);
+    try {
+      const ext = file.name.split('.').pop() || 'pdf';
+      const fileName = `${orderNumber}-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('shipping-labels')
+        .upload(fileName, file, { contentType: file.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('shipping-labels')
+        .getPublicUrl(fileName);
+
+      const labelUrl = urlData.publicUrl;
+
+      await apiUpdateOrder(orderId, { label_url: labelUrl });
+      await loadOrders();
+
+      setSelectedOrder(prev => {
+        if (!prev || prev.id !== orderId) return prev;
+        return { ...prev, label_url: labelUrl };
+      });
+    } catch (err: any) {
+      console.error('Label upload failed:', err);
+      alert(`Upload failed: ${err.message}`);
+    }
+    setUploadingLabel(false);
   }
 
   // ---- Filtering ----
@@ -552,9 +636,6 @@ export default function AdminOrdersPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1 flex-wrap">
                           <span className="font-mono text-sm font-bold text-[#1B2B27]">{order.order_number}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${sc(order.status).bg} ${sc(order.status).color}`}>
-                            {sc(order.status).label}
-                          </span>
                           {order.customer_notes && (
                             <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-pink-100 text-pink-700">Has notes</span>
                           )}
@@ -562,7 +643,8 @@ export default function AdminOrdersPage() {
                             <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-600">Tracked</span>
                           )}
                         </div>
-                        <div className="font-mono text-xs text-[#1B2B27]/60 space-y-0.5">
+                        <MiniTimeline order={order} />
+                        <div className="font-mono text-xs text-[#1B2B27]/60 space-y-0.5 mt-2">
                           <p>{fmtDate(order.created_at)}</p>
                           {order.shipping_address?.name && (
                             <p className="font-medium text-[#1B2B27]/80">{order.shipping_address.name}</p>
@@ -738,7 +820,52 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {/* ---- 8. ACTION AREA ---- */}
+              {/* ---- 8. SHIPPING LABEL PDF ---- */}
+              {(selectedOrder.status === 'processing' || selectedOrder.status === 'shipped' || selectedOrder.label_url) && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="font-mono text-xs font-bold text-[#1B2B27]/40 uppercase tracking-wider mb-3">Shipping Label</p>
+                  {selectedOrder.label_url ? (
+                    <div className="flex items-center gap-3">
+                      <a
+                        href={selectedOrder.label_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-[#1B2B27] text-white font-mono text-xs font-bold text-center hover:bg-[#2a3f39] transition-colors"
+                      >
+                        Download Label PDF
+                      </a>
+                      <label className="px-4 py-2.5 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-mono text-xs font-bold text-center hover:border-gray-400 cursor-pointer transition-colors">
+                        Replace
+                        <input
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleLabelUpload(selectedOrder.id, selectedOrder.order_number, file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <label className={`block w-full px-4 py-3 rounded-xl border-2 border-dashed border-gray-300 text-center font-mono text-xs text-gray-500 hover:border-gray-400 transition-colors ${uploadingLabel ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}>
+                      {uploadingLabel ? 'Uploading...' : 'Upload Label (PDF, PNG, JPG)'}
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        className="hidden"
+                        disabled={uploadingLabel}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) handleLabelUpload(selectedOrder.id, selectedOrder.order_number, file);
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+
+              {/* ---- 9. ACTION AREA ---- */}
               <div className="bg-white border-2 border-[#1B2B27]/10 rounded-xl p-4">
                 <p className="font-mono text-xs font-bold text-[#1B2B27]/60 uppercase tracking-wider mb-3">Next Step</p>
 
