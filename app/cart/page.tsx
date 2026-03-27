@@ -4,8 +4,6 @@ import { useCartStore } from '@/lib/store/cart';
 import {
   FREE_SHIPPING_THRESHOLD,
   PROVINCES,
-  getShippingCost,
-  PROVINCE_SHIPPING,
 } from '@/lib/stripe-config';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
@@ -170,13 +168,13 @@ export default function CartPage() {
 
   const effectiveSubtotal = subtotal - discountAmount;
 
-  // Shipping cost: use selected Canada Post quote, fallback to province rates
+  // Shipping cost: use selected Canada Post quote only (no fixed fallback)
   const selectedQuote = shippingQuotes.find((q: any) => q.serviceCode === selectedService);
   const shippingCost = promoActive
     ? 0
     : selectedQuote
       ? selectedQuote.priceTotalCents
-      : province ? getShippingCost(province, subtotal) : null;
+      : null;
   const total = shippingCost !== null ? effectiveSubtotal + shippingCost : (promoActive ? effectiveSubtotal : null);
   const isFreeShipping = promoActive || subtotal >= FREE_SHIPPING_THRESHOLD;
 
@@ -478,17 +476,24 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {province && PROVINCE_SHIPPING[province] && !shippingQuotes.length && (
-                <p className="font-mono text-xs text-stone-400 mt-3">
-                  Region: {PROVINCE_SHIPPING[province].region}
-                  {isFreeShipping && ' — Free shipping!'}
-                </p>
-              )}
-
               {loadingRates && (
                 <p className="font-mono text-xs text-stone-400 mt-3 animate-pulse">
                   Calculating shipping rates...
                 </p>
+              )}
+
+              {!loadingRates && !promoActive && shippingQuotes.length === 0 && province && postalCode.replace(/\s/g, '').length === 6 && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="font-mono text-xs text-amber-700 mb-2">
+                    Could not load shipping rates. Please try again.
+                  </p>
+                  <button
+                    onClick={() => fetchShippingRates(postalCode, province)}
+                    className="font-mono text-xs font-bold text-amber-800 underline hover:text-amber-900"
+                  >
+                    Retry
+                  </button>
+                </div>
               )}
 
               {!loadingRates && shippingQuotes.length > 1 && !promoActive && (
