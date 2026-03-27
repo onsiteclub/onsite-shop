@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRates } from '@/lib/canada-post/rating'
-import { calculatePackage, getShippingCost, PROVINCE_SHIPPING, FREE_SHIPPING_THRESHOLD } from '@/lib/stripe-config'
+import { calculatePackage, FREE_SHIPPING_THRESHOLD } from '@/lib/stripe-config'
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,24 +49,12 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Fallback to province-based flat rates
-    const fallbackCost = province ? getShippingCost(province, subtotal) : 1499
-    const region = province ? (PROVINCE_SHIPPING[province]?.region || 'Canada') : 'Canada'
-
+    // No fallback — return empty quotes so frontend shows retry
     return NextResponse.json({
-      source: 'fallback',
-      quotes: [{
-        serviceCode: 'FLAT',
-        serviceName: `Standard Shipping — ${region}`,
-        priceTotal: fallbackCost / 100,
-        priceTotalCents: subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : fallbackCost,
-        expectedTransitDays: null,
-        expectedDeliveryDate: null,
-        guaranteedDelivery: false,
-        freeShipping: subtotal >= FREE_SHIPPING_THRESHOLD,
-      }],
+      source: 'canada-post',
+      quotes: [],
       package: pkg,
-      fallbackReason: cpResult.error || 'No quotes from Canada Post',
+      error: cpResult.error || 'No quotes from Canada Post',
     })
   } catch (err: any) {
     console.error('[shipping/rates] Error:', err)
