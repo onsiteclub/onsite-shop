@@ -33,6 +33,21 @@ export default function CartPage() {
   // Field-level validation errors
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // Postal code → province mapping (first letter of FSA)
+  const POSTAL_PROVINCE: Record<string, string[]> = {
+    A: ['NL'], B: ['NS'], C: ['PE'], E: ['NB'],
+    G: ['QC'], H: ['QC'], J: ['QC'],
+    K: ['ON'], L: ['ON'], M: ['ON'], N: ['ON'], P: ['ON'],
+    R: ['MB'], S: ['SK'], T: ['AB'], V: ['BC'],
+    X: ['NT', 'NU'], Y: ['YT'],
+  };
+
+  function postalMatchesProvince(postal: string, prov: string): boolean {
+    const letter = postal.trim().charAt(0).toUpperCase();
+    const validProvinces = POSTAL_PROVINCE[letter];
+    return !validProvinces || validProvinces.includes(prov);
+  }
+
   function validateField(field: string, value: string) {
     setFieldErrors(prev => {
       const next = { ...prev };
@@ -51,11 +66,13 @@ export default function CartPage() {
           break;
         case 'province':
           if (!value) next.province = 'Select a province';
+          else if (postalCode.trim() && !postalMatchesProvince(postalCode, value)) next.province = 'Province doesn\'t match postal code';
           else delete next.province;
           break;
         case 'postalCode':
           if (!value.trim()) next.postalCode = 'Postal code is required';
           else if (!/^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i.test(value.trim())) next.postalCode = 'Format: A1A 1A1';
+          else if (province && !postalMatchesProvince(value, province)) next.postalCode = 'Postal code doesn\'t match province';
           else delete next.postalCode;
           break;
       }
@@ -71,6 +88,7 @@ export default function CartPage() {
     if (!province) errors.province = 'Select a province';
     if (!postalCode.trim()) errors.postalCode = 'Postal code is required';
     else if (!/^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i.test(postalCode.trim())) errors.postalCode = 'Format: A1A 1A1';
+    else if (province && !postalMatchesProvince(postalCode, province)) errors.postalCode = 'Postal code doesn\'t match province';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }
