@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 interface Props {
   onComplete: () => void
+  onSkip: () => void
   promoUsed: boolean
   cartValue: number
 }
@@ -37,7 +38,7 @@ function StarRating({
   )
 }
 
-export function PreCheckoutSurvey({ onComplete, promoUsed, cartValue }: Props) {
+export function PreCheckoutSurvey({ onComplete, onSkip, promoUsed, cartValue }: Props) {
   const [q1, setQ1] = useState(0)
   const [q2, setQ2] = useState(0)
   const [q3, setQ3] = useState(0)
@@ -79,7 +80,14 @@ export function PreCheckoutSurvey({ onComplete, promoUsed, cartValue }: Props) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl relative">
+        <button
+          onClick={onSkip}
+          className="absolute top-4 right-4 text-[#6B7280] hover:text-[#1B2B27] transition-colors text-xl font-bold leading-none"
+          aria-label="Close survey"
+        >
+          &times;
+        </button>
         <h2 className="font-mono text-xl font-bold text-[#1B2B27] mb-1">
           Before you go...
         </h2>

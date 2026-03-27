@@ -191,7 +191,11 @@ export default function CartPage() {
       return;
     }
     setError(null);
-    setShowSurvey(true);
+    if (promoActive) {
+      setShowSurvey(true);
+    } else {
+      handleCheckout();
+    }
   }
 
   async function handleSurveyComplete() {
@@ -626,6 +630,7 @@ export default function CartPage() {
         {showSurvey && (
           <PreCheckoutSurvey
             onComplete={handleSurveyComplete}
+            onSkip={handleSurveyComplete}
             promoUsed={promoActive}
             cartValue={subtotal / 100}
           />
