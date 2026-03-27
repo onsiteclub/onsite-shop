@@ -78,6 +78,15 @@ const PRODUCT_TYPES: Record<string, {
     defaultSizes: ['One Size'],
     description: 'Premium vinyl sticker pack. Waterproof, UV-resistant, and built for hard hats, toolboxes, and trucks. Easy peel-and-stick application. Durable outdoor-grade adhesive.',
   },
+  'test-product': {
+    label: 'Test Product — CA$0.10',
+    productName: 'OnSite Test Product',
+    skuPrefix: 'TEST',
+    stripe_price_id: 'price_1TFdP0KGyu88MA3NqGk6mvxR',
+    base_price: 0.10,
+    defaultSizes: ['One Size'],
+    description: 'Test product for order flow validation. 10 cents only.',
+  },
 };
 
 // ============================================

@@ -53,6 +53,14 @@ export const STRIPE_PRODUCTS = {
     sizes: [],
     category: 'sticker',
   },
+  'test-product': {
+    name: 'OnSite Test Product',
+    priceId: 'price_1TFdP0KGyu88MA3NqGk6mvxR',
+    price: 10,
+    sku: 'OS-TEST',
+    sizes: ['One Size'],
+    category: 'test',
+  },
 } as const;
 
 export type ProductKey = keyof typeof STRIPE_PRODUCTS;
@@ -181,6 +189,7 @@ export const PRODUCT_SHIPPING_INFO: Record<ProductKey, { weight: number; length:
   'cap-premium':  { weight: 0.15, length: 20, width: 18, height: 12 },
   'cap-classic':  { weight: 0.12, length: 20, width: 18, height: 12 },
   'sticker-kit':  { weight: 0.05, length: 25, width: 18, height: 1 },
+  'test-product': { weight: 0.05, length: 15, width: 10, height: 2 },
 };
 
 /** Calculate total package weight & bounding box for a cart */

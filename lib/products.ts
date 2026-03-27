@@ -26,6 +26,7 @@ const SKU_PREFIX_MAP: Record<string, keyof typeof STRIPE_PRODUCTS> = {
   'CPPRM': 'cap-premium',
   'CPCLS': 'cap-classic',
   'STK': 'sticker-kit',
+  'TEST': 'test-product',
 }
 
 function slugify(name: string): string {
