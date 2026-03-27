@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
 
       const customerEmail = session.customer_details?.email || null;
       const customerNotes = session.metadata?.customer_notes || null;
+      const shippingService = session.metadata?.shipping_service || null;
       const amountTotal = session.amount_total || 0;
       const shippingCost = (session as any).shipping_cost?.amount_total || 0;
       const orderNumber = `OS-${Date.now().toString(36).toUpperCase()}`;
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
           subtotal: subtotalCents,
           shipping: shippingCost,
           shipping_cost: shippingCost,
+          shipping_service: shippingService,
           stripe_session_id: session.id,
           created_at: new Date().toISOString(),
         });

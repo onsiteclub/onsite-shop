@@ -42,6 +42,7 @@ interface Order {
   staff_notes: string | null;
   tracking_code: string | null;
   label_url: string | null;
+  shipping_service: string | null;
   stripe_session_id: string | null;
   created_at: string;
   processing_at: string | null;
@@ -113,6 +114,7 @@ function normalizeOrder(row: any): Order {
     staff_notes: row.staff_notes || null,
     tracking_code: row.tracking_code || null,
     label_url: row.label_url || null,
+    shipping_service: row.shipping_service || null,
     stripe_session_id: row.stripe_session_id || null,
     created_at: row.created_at || new Date().toISOString(),
     processing_at: row.processing_at || null,
@@ -415,10 +417,14 @@ export default function AdminOrdersPage() {
   async function handleCreateLabel(orderId: string, orderNumber: string) {
     setCreatingLabel(true);
     try {
+      // Use customer's chosen service if available, otherwise admin's selection
+      const order = orders.find(o => o.id === orderId);
+      const serviceCode = order?.shipping_service || selectedService;
+
       const res = await fetch('/api/shipping/create-label', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, serviceCode: selectedService }),
+        body: JSON.stringify({ orderId, serviceCode }),
       });
 
       const data = await res.json();
@@ -890,31 +896,41 @@ export default function AdminOrdersPage() {
                     </div>
                   ) : selectedOrder.status === 'processing' ? (
                     <div className="space-y-3">
-                      {/* Canada Post service selector */}
-                      <div>
-                        <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1.5">Shipping Service</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { code: 'DOM.RP', name: 'Regular Parcel', desc: '5-8 days' },
-                            { code: 'DOM.EP', name: 'Expedited', desc: '2-4 days' },
-                            { code: 'DOM.XP', name: 'Xpresspost', desc: '1-2 days' },
-                            { code: 'DOM.PC', name: 'Priority', desc: 'Next day' },
-                          ].map(svc => (
-                            <button
-                              key={svc.code}
-                              onClick={() => setSelectedService(svc.code)}
-                              className={`px-3 py-2 rounded-lg border-2 font-mono text-xs text-left transition-colors ${
-                                selectedService === svc.code
-                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                  : 'border-gray-200 bg-white text-[#1B2B27]/70 hover:border-gray-300'
-                              }`}
-                            >
-                              <span className="font-bold block">{svc.name}</span>
-                              <span className="text-[10px] opacity-60">{svc.desc}</span>
-                            </button>
-                          ))}
+                      {/* Show customer's chosen service (locked) or fallback selector */}
+                      {selectedOrder.shipping_service ? (
+                        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200">
+                          <span className="font-mono text-xs text-blue-600">Service:</span>
+                          <span className="font-mono text-sm font-bold text-blue-800">
+                            {{'DOM.RP': 'Regular Parcel', 'DOM.EP': 'Expedited Parcel', 'DOM.XP': 'Xpresspost', 'DOM.PC': 'Priority'}[selectedOrder.shipping_service] || selectedOrder.shipping_service}
+                          </span>
+                          <span className="ml-auto font-mono text-[10px] text-blue-400">chosen by customer</span>
                         </div>
-                      </div>
+                      ) : (
+                        <div>
+                          <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1.5">Shipping Service</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { code: 'DOM.RP', name: 'Regular Parcel', desc: '5-8 days' },
+                              { code: 'DOM.EP', name: 'Expedited', desc: '2-4 days' },
+                              { code: 'DOM.XP', name: 'Xpresspost', desc: '1-2 days' },
+                              { code: 'DOM.PC', name: 'Priority', desc: 'Next day' },
+                            ].map(svc => (
+                              <button
+                                key={svc.code}
+                                onClick={() => setSelectedService(svc.code)}
+                                className={`px-3 py-2 rounded-lg border-2 font-mono text-xs text-left transition-colors ${
+                                  selectedService === svc.code
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-gray-200 bg-white text-[#1B2B27]/70 hover:border-gray-300'
+                                }`}
+                              >
+                                <span className="font-bold block">{svc.name}</span>
+                                <span className="text-[10px] opacity-60">{svc.desc}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {/* Create Label button */}
                       <button
                         onClick={() => handleCreateLabel(selectedOrder.id, selectedOrder.order_number)}
