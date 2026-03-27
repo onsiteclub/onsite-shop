@@ -189,7 +189,7 @@ export const PRODUCT_SHIPPING_INFO: Record<ProductKey, { weight: number; length:
   'cap-premium':  { weight: 0.15, length: 20, width: 18, height: 12 },
   'cap-classic':  { weight: 0.12, length: 20, width: 18, height: 12 },
   'sticker-kit':  { weight: 0.05, length: 25, width: 18, height: 1 },
-  'test-product': { weight: 0.05, length: 15, width: 10, height: 2 },
+  'test-product': { weight: 0.01, length: 1, width: 1, height: 1 },
 };
 
 /** Calculate total package weight & bounding box for a cart */
@@ -213,14 +213,19 @@ export function calculatePackage(items: { productKey: string; quantity: number }
     totalHeight += info.height * item.quantity;
   }
 
-  // Add packaging weight (~100g) and min dims
-  totalWeight += 0.10;
-  totalHeight = Math.max(totalHeight + 2, 5); // +2cm for packaging, min 5cm
+  // Add packaging overhead for real products only
+  const isMinimal = maxLength <= 1 && maxWidth <= 1;
+  if (!isMinimal) {
+    totalWeight += 0.10; // ~100g packaging
+    totalHeight = Math.max(totalHeight + 2, 5); // +2cm for packaging, min 5cm
+  } else {
+    totalHeight = Math.max(totalHeight, 1);
+  }
 
   return {
-    weight: Math.max(0.1, totalWeight),
-    length: Math.max(maxLength, 15),
-    width: Math.max(maxWidth, 10),
+    weight: Math.max(0.01, totalWeight),
+    length: Math.max(maxLength, isMinimal ? 10 : 15),
+    width: Math.max(maxWidth, isMinimal ? 7 : 10),
     height: Math.min(totalHeight, 40),
   };
 }
