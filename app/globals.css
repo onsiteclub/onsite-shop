@@ -1,22 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* OnSite Design System */
+  /* OnSite Shop Design System — New */
+  --amber: #F7B324;
+  --amber-dark: #C58B1B;
+  --amber-light: #FFF8E8;
+  --charcoal: #2C2C2C;
+  --charcoal-deep: #1A1A1A;
+  --charcoal-light: #3D3D3D;
+  --white: #FFFFFF;
+  --off-white: #F7F6F3;
+  --warm-100: #EDECE8;
+  --warm-200: #DEDCD6;
+  --warm-300: #C5C3BC;
+  --warm-400: #9C9A93;
+  --warm-500: #7A7870;
+  --warm-600: #5C5A53;
+  --text-primary: #1A1A18;
+  --text-secondary: #6B6960;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --radius-btn: 8px;
+
+  /* Legacy compat for admin pages */
   --onsite-primary: #1B2B27;
   --onsite-light: #FBFAFC;
-  --onsite-amber: #B8860B; /* Dark goldenrod - high contrast */
+  --onsite-amber: #B8860B;
   --onsite-text: #1B2B27;
   --onsite-text-secondary: #6B7280;
   --onsite-border: #E5E7EB;
-  
-  /* Grain Background */
-  --grain-light: #D8D4C8;
-  --grain-mid: #C9C4B5;
-  --grain-dark: #B8B3A4;
 }
 
 * {
@@ -25,53 +39,93 @@
   margin: 0;
 }
 
-html,
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   max-width: 100vw;
-  overflow-x: hidden;
-  font-family: 'JetBrains Mono', monospace;
+  overflow-x: clip;
 }
 
-/* Grain Texture Background */
-.bg-grain {
-  position: relative;
-  background: linear-gradient(145deg, var(--grain-light) 0%, var(--grain-mid) 40%, var(--grain-dark) 100%);
+body {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-primary);
+  background: var(--white);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-.bg-grain::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.5;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  pointer-events: none;
+a { text-decoration: none; color: inherit; }
+img { max-width: 100%; height: auto; display: block; }
+button { cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; }
+
+/* Container utility */
+.container-shop {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
-.bg-grain::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, transparent 0%, rgba(0,0,0,0.1) 100%);
-  pointer-events: none;
-}
-
-/* OnSite Button Styles */
+/* ===== BUTTON STYLES ===== */
 @layer components {
+  .btn-primary-new {
+    @apply inline-flex items-center justify-center px-9 py-4 rounded-lg
+           font-display font-bold text-sm uppercase tracking-wider
+           transition-all duration-300;
+    background: var(--white);
+    color: var(--charcoal-deep);
+  }
+
+  .btn-primary-new:hover {
+    background: var(--amber);
+    color: var(--charcoal-deep);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  }
+
+  .btn-outline-new {
+    @apply inline-flex items-center justify-center px-9 py-4 rounded-lg
+           font-display font-bold text-sm uppercase tracking-wider
+           transition-all duration-300;
+    background: transparent;
+    color: var(--white);
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+
+  .btn-outline-new:hover {
+    border-color: var(--white);
+    background: rgba(255,255,255,0.08);
+  }
+
+  .btn-amber {
+    @apply inline-flex items-center justify-center px-8 py-4 rounded-lg
+           font-display font-bold text-sm uppercase tracking-wider
+           transition-all duration-300;
+    background: var(--amber);
+    color: var(--charcoal-deep);
+  }
+
+  .btn-amber:hover {
+    background: var(--amber-dark);
+  }
+
+  /* Legacy compat for admin/cart pages that use old classes */
   .btn-primary {
-    @apply bg-onsite-primary text-white font-mono py-3 px-6 rounded-xl 
-           hover:bg-opacity-90 transition-all duration-200 
+    @apply bg-[#1B2B27] text-white font-mono py-3 px-6 rounded-xl
+           hover:bg-opacity-90 transition-all duration-200
            uppercase tracking-widest text-sm font-medium;
   }
 
   .btn-accent {
-    @apply bg-onsite-amber text-onsite-primary font-mono py-3 px-6 rounded-xl 
-           hover:bg-opacity-90 transition-all duration-200 
+    @apply bg-[#B8860B] text-[#1B2B27] font-mono py-3 px-6 rounded-xl
+           hover:bg-opacity-90 transition-all duration-200
            uppercase tracking-widest text-sm font-bold;
   }
 
   .btn-secondary {
-    @apply bg-white text-onsite-primary font-mono py-3 px-6 rounded-xl 
-           hover:bg-gray-100 transition-all duration-200 
+    @apply bg-white text-[#1B2B27] font-mono py-3 px-6 rounded-xl
+           hover:bg-gray-100 transition-all duration-200
            uppercase tracking-widest text-sm border border-gray-200;
   }
 
@@ -80,13 +134,56 @@ body {
   }
 
   .input {
-    @apply w-full px-4 py-3 rounded-xl border border-gray-200 
-           font-mono text-sm focus:outline-none focus:ring-2 
-           focus:ring-onsite-amber focus:border-transparent;
+    @apply w-full px-4 py-3 rounded-xl border border-gray-200
+           font-body text-sm focus:outline-none focus:ring-2
+           focus:ring-amber-400 focus:border-transparent;
   }
 }
 
-/* Floating product animation */
+/* ===== SECTION STYLES ===== */
+.section-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--warm-400);
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(28px, 3.5vw, 42px);
+  font-weight: 800;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 16px;
+  max-width: 500px;
+  margin-bottom: 48px;
+}
+
+/* ===== ANIMATIONS ===== */
+.fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s, transform 0.7s;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-in-delay-1 { transition-delay: 0.1s; }
+.fade-in-delay-2 { transition-delay: 0.2s; }
+.fade-in-delay-3 { transition-delay: 0.3s; }
+
+/* Floating product animation — legacy support */
 .floating-product {
   transition: transform 0.3s ease-out;
 }
@@ -96,40 +193,15 @@ body {
   z-index: 30 !important;
 }
 
-/* Modal backdrop */
-.modal-backdrop {
-  animation: fadeIn 0.2s ease-out;
-}
-
+/* Modal animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-/* Modal content */
-.modal-content {
-  animation: slideUp 0.3s ease-out;
-}
-
 @keyframes slideUp {
-  from { 
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Scroll indicator */
-.scroll-indicator {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Hide scrollbar but keep functionality */
@@ -146,81 +218,111 @@ body {
 
 /* Selection color */
 ::selection {
-  background: var(--onsite-amber);
-  color: var(--onsite-primary);
+  background: var(--amber);
+  color: var(--charcoal-deep);
 }
 
-/* ============================================================================
-   PREMIUM MOTION SYSTEM - Subtle, tactile, restrained
-   ============================================================================ */
-
-/* Custom cursor - hide default on desktop for custom cursor */
-@media (hover: hover) and (pointer: fine) {
-  .custom-cursor-active {
-    cursor: none;
-  }
+/* ===== PROSE SECTION (legal pages) ===== */
+.prose-section {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-primary);
+  line-height: 1.8;
+  font-size: 15px;
 }
 
-/* Subtle entrance animation for hover previews */
-@keyframes subtleFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.prose-section h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
 }
 
-.animate-subtle-fade-in {
-  animation: subtleFadeIn 150ms ease-out forwards;
+.prose-section h3 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
 }
 
-/* Micro-compression feedback for buttons */
-@keyframes microPress {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.98); }
-  100% { transform: scale(1); }
+.prose-section p {
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
 }
 
-.micro-press:active {
-  animation: microPress 100ms ease-out;
+.prose-section ul,
+.prose-section ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+  color: var(--text-secondary);
 }
 
-/* Particle drift animation (very subtle) */
-@keyframes ambientDrift {
-  0%, 100% {
-    transform: translate(0, 0);
-  }
-  25% {
-    transform: translate(2px, -2px);
-  }
-  50% {
-    transform: translate(-1px, 2px);
-  }
-  75% {
-    transform: translate(-2px, -1px);
-  }
+.prose-section ul { list-style-type: disc; }
+.prose-section ol { list-style-type: decimal; }
+
+.prose-section li {
+  margin-bottom: 0.4rem;
 }
 
-.ambient-particle {
-  animation: ambientDrift 20s ease-in-out infinite;
+.prose-section strong {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
-/* Progress indicator pulse */
-@keyframes progressPulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+.prose-section a {
+  color: var(--amber-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-.progress-pulse {
-  animation: progressPulse 2s ease-in-out infinite;
+.prose-section a:hover {
+  color: var(--charcoal);
 }
 
-/* ============================================================================
-   REDUCED MOTION SUPPORT - Accessibility first
-   ============================================================================ */
+.prose-section hr {
+  border: none;
+  border-top: 1px solid var(--warm-200);
+  margin: 2.5rem 0;
+}
+
+.prose-section table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 14px;
+}
+
+.prose-section th,
+.prose-section td {
+  padding: 0.6rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--warm-200);
+}
+
+.prose-section th {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--warm-500);
+  background: var(--off-white);
+}
+
+.prose-section td {
+  color: var(--text-secondary);
+}
+
+/* ===== LEGACY COMPAT ===== */
+/* Keep bg-grain working for admin pages that might use it */
+.bg-grain {
+  position: relative;
+  background: linear-gradient(145deg, #D8D4C8 0%, #C9C4B5 40%, #B8B3A4 100%);
+}
+
+/* ===== REDUCED MOTION ===== */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -230,42 +332,11 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-
-  .floating-product {
-    transition: none !important;
-  }
-
-  .floating-product:hover {
-    transform: none !important;
-  }
-
-  .ambient-particle {
-    display: none;
-  }
-
-  /* Static fallback for particles */
-  .particle-system {
-    display: none;
-  }
 }
 
-/* ============================================================================
-   MOBILE FALLBACKS - Simpler interactions for touch
-   ============================================================================ */
+/* ===== MOBILE FALLBACKS ===== */
 @media (hover: none) and (pointer: coarse) {
-  /* Remove hover-dependent effects on mobile */
   .floating-product:hover {
     transform: none !important;
-  }
-
-  /* Larger touch targets */
-  .floating-product {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  /* Simplify animations for performance */
-  .ambient-particle {
-    animation: none;
   }
 }

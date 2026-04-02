@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 // ============================================
@@ -458,8 +457,11 @@ export default function AdminPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-grain flex items-center justify-center">
-        <p className="font-mono text-[#1B2B27]">Loading...</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-amber border-t-transparent rounded-full animate-spin" />
+          <p className="font-display text-text-primary/60 text-sm">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -467,18 +469,20 @@ export default function AdminPage() {
   // Not logged in
   if (!user) {
     return (
-      <div className="min-h-screen bg-grain flex items-center justify-center px-4">
-        <div className="relative z-10 w-full max-w-sm">
-          <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-2 text-center">Admin</h1>
-          <p className="font-mono text-sm text-[#1B2B27]/60 mb-8 text-center">OnSite Shop</p>
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <img src="/assets/logo-onsite-club.png" alt="OnSite Club" className="h-8 mx-auto mb-3 brightness-0" />
+            <h1 className="font-display text-xl font-bold text-text-primary">Admin Login</h1>
+          </div>
 
-          <form onSubmit={handleLogin} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 space-y-4">
+          <form onSubmit={handleLogin} className="bg-white rounded-2xl p-6 shadow-sm border border-warm-200/60 space-y-4">
             {loginError && (
-              <p className="font-mono text-sm text-red-500 text-center">{loginError}</p>
+              <p className="font-display text-sm text-red-500 text-center">{loginError}</p>
             )}
 
             <div>
-              <label className="block font-mono text-sm text-[#1B2B27] mb-2">Email</label>
+              <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">Email</label>
               <input
                 type="email"
                 value={email}
@@ -490,7 +494,7 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <label className="block font-mono text-sm text-[#1B2B27] mb-2">Password</label>
+              <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -503,7 +507,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B2B27]/40 hover:text-[#1B2B27]/70 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-primary/40 hover:text-text-primary/70 transition-colors"
                 >
                   {showPassword ? (
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -524,17 +528,11 @@ export default function AdminPage() {
             <button
               type="submit"
               disabled={loginLoading}
-              className="btn-primary w-full disabled:opacity-50"
+              className="w-full py-3 bg-amber hover:bg-amber-dark text-charcoal-deep font-display text-sm font-bold rounded-xl transition-colors disabled:opacity-50"
             >
               {loginLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
-
-          <div className="text-center mt-4">
-            <Link href="/" className="font-mono text-sm text-[#1B2B27]/60 hover:text-[#1B2B27]">
-              ← Back to shop
-            </Link>
-          </div>
         </div>
       </div>
     );
@@ -543,13 +541,13 @@ export default function AdminPage() {
   // Logged in but not admin
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-grain flex items-center justify-center px-4">
-        <div className="relative z-10 w-full max-w-sm text-center">
-          <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-2">Access Denied</h1>
-          <p className="font-mono text-sm text-[#1B2B27]/60 mb-4">
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="w-full max-w-sm text-center bg-white rounded-2xl p-8 shadow-sm border border-warm-200/60">
+          <h1 className="font-display text-xl font-bold text-text-primary mb-2">Access Denied</h1>
+          <p className="font-body text-sm text-text-secondary mb-6">
             {user.email} does not have admin permissions.
           </p>
-          <button onClick={handleLogout} className="btn-secondary">
+          <button onClick={handleLogout} className="py-2.5 px-6 bg-warm-200 hover:bg-warm-300 text-text-primary font-display text-sm font-semibold rounded-xl transition-colors">
             Sign Out
           </button>
         </div>
@@ -560,53 +558,36 @@ export default function AdminPage() {
   // Product edit form
   if (editingProduct) {
     return (
-      <div className="min-h-screen bg-grain">
+      <div>
         {/* Toast notification */}
         {toast && (
           <div
-            className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg font-mono text-sm ${
+            className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg font-display text-sm flex items-center gap-2 ${
               toast.type === 'success'
-                ? 'bg-green-500 text-white'
+                ? 'bg-charcoal-deep text-white'
                 : 'bg-red-500 text-white'
             }`}
           >
+            {toast.type === 'success' && <span className="text-amber">●</span>}
             {toast.message}
           </div>
         )}
 
-        {/* Header */}
-        <div className="sticky top-0 z-40 bg-[#1B2B27] border-b border-white/10">
-          <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setEditingProduct(null)}
-                className="font-mono text-sm text-white/60 hover:text-white flex items-center gap-1"
-              >
-                ← Back
-              </button>
-              <span className="font-mono text-sm text-white/40">|</span>
-              <h2 className="font-mono text-sm font-medium text-white">
-                {editingProduct.id ? 'Edit Product' : 'New Product'}
-              </h2>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg border border-white/20 hover:border-white/40 transition-colors"
-              >
-                View Shop
-              </Link>
-              <button
-                onClick={() => setEditingProduct(null)}
-                className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+        {/* Back header */}
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => setEditingProduct(null)}
+            className="font-display text-sm text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
+          >
+            ← Back to Products
+          </button>
+          <span className="text-warm-300">|</span>
+          <h2 className="font-display text-lg font-bold text-text-primary">
+            {editingProduct.id ? 'Edit Product' : 'New Product'}
+          </h2>
         </div>
 
-        <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
+        <div className="max-w-2xl">
           <ProductForm
             product={editingProduct}
             categories={categories}
@@ -622,92 +603,68 @@ export default function AdminPage() {
 
   // Admin dashboard
   return (
-    <div className="min-h-screen bg-grain">
+    <div>
       {/* Toast notification */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg font-mono text-sm ${
+          className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg font-display text-sm flex items-center gap-2 ${
             toast.type === 'success'
-              ? 'bg-green-500 text-white'
+              ? 'bg-charcoal-deep text-white'
               : 'bg-red-500 text-white'
           }`}
         >
+          {toast.type === 'success' && <span className="text-amber">●</span>}
           {toast.message}
         </div>
       )}
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
+      <div>
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="font-mono text-2xl font-bold text-[#1B2B27]">Admin Dashboard</h1>
-            <p className="font-mono text-sm text-[#1B2B27]/60">
-              {user.email} • {products.length} products
+            <h1 className="font-display text-2xl font-extrabold tracking-tight text-text-primary">Products</h1>
+            <p className="font-body text-sm text-text-secondary mt-0.5">
+              {products.length} products
               {hasUnpublishedChanges && (
-                <span className="ml-2 text-amber-600">• Unpublished changes</span>
+                <span className="ml-2 text-amber-dark font-semibold">• Unpublished changes</span>
               )}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/admin/orders"
-              className="bg-[#1B2B27] hover:bg-[#2a3f39] text-white font-mono text-sm py-2 px-4 rounded-xl transition-colors"
-            >
-              Orders
-            </Link>
-            <button
-              onClick={() => setActiveProductTab(activeProductTab === 'reviews' ? 'all' : 'reviews')}
-              className={`font-mono text-sm py-2 px-4 rounded-xl transition-colors relative ${
-                activeProductTab === 'reviews'
-                  ? 'bg-[#B8860B] text-[#1B2B27] font-bold'
-                  : 'bg-[#1B2B27] hover:bg-[#2a3f39] text-white'
-              }`}
-            >
-              Reviews
-              {reviews.filter(r => r.status === 'pending').length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                  {reviews.filter(r => r.status === 'pending').length}
-                </span>
-              )}
-            </button>
+          <div className="flex items-center gap-3">
             {hasUnpublishedChanges && (
               <button
                 onClick={handlePublishAll}
                 disabled={publishing}
-                className="bg-green-500 hover:bg-green-600 text-white font-mono text-sm py-2 px-4 rounded-xl disabled:opacity-50 transition-colors"
+                className="bg-green-600 hover:bg-green-700 text-white font-display text-xs font-bold py-2.5 px-5 rounded-full disabled:opacity-50 transition-colors"
               >
                 {publishing ? 'Publishing...' : 'Publish to Shop'}
               </button>
             )}
-            <Link href="/" className="btn-secondary">View Shop</Link>
-            <button onClick={handleLogout} className="font-mono text-sm text-red-500">
-              Sign Out
-            </button>
           </div>
         </div>
 
         {/* Store tabs: SHOP / MEMBERS */}
         {activeProductTab !== 'reviews' && (
-        <div className="flex gap-0 mb-6 border-b-2 border-stone-200">
+        <div className="flex gap-2 mb-6">
           <button
             onClick={() => { setActiveStore('shop'); setActiveProductTab('all'); }}
-            className={`font-mono text-sm py-3 px-8 transition-all border-b-2 -mb-[2px] ${
+            className={`font-display text-xs font-bold tracking-wide uppercase py-2.5 px-6 rounded-full transition-all ${
               activeStore === 'shop'
-                ? 'border-[#1B2B27] text-[#1B2B27] font-bold'
-                : 'border-transparent text-stone-400 hover:text-stone-600'
+                ? 'bg-charcoal-deep text-white shadow-sm'
+                : 'bg-white text-warm-400 hover:text-text-primary border border-warm-200'
             }`}
           >
-            SHOP
+            Shop
           </button>
           <button
             onClick={() => { setActiveStore('members'); setActiveProductTab('all'); }}
-            className={`font-mono text-sm py-3 px-8 transition-all border-b-2 -mb-[2px] ${
+            className={`font-display text-xs font-bold tracking-wide uppercase py-2.5 px-6 rounded-full transition-all ${
               activeStore === 'members'
-                ? 'border-[#B8860B] text-[#B8860B] font-bold'
-                : 'border-transparent text-stone-400 hover:text-stone-600'
+                ? 'bg-charcoal-deep text-white shadow-sm'
+                : 'bg-white text-warm-400 hover:text-text-primary border border-warm-200'
             }`}
           >
-            MEMBERS
+            Members
           </button>
         </div>
         )}
@@ -738,13 +695,13 @@ export default function AdminPage() {
               is_published: false,
             });
           }}
-          className="btn-accent mb-6"
+          className="bg-amber hover:bg-amber-dark text-charcoal-deep font-display text-xs font-bold py-2.5 px-5 rounded-full transition-colors mb-6"
         >
           + Add Product
         </button>
 
         {/* Product type tabs */}
-        <div className="flex gap-1 mb-6 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide">
           {[
             { key: 'all', label: 'All' },
             { key: 'cotton-tee', label: 'Cotton Tees' },
@@ -763,10 +720,10 @@ export default function AdminPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveProductTab(tab.key)}
-                className={`font-mono text-xs py-2 px-4 rounded-lg transition-all whitespace-nowrap ${
+                className={`font-display text-[11px] font-bold py-2 px-4 rounded-full transition-all whitespace-nowrap ${
                   activeProductTab === tab.key
-                    ? 'bg-[#1B2B27] text-white font-bold'
-                    : 'bg-white/70 text-[#1B2B27]/60 hover:bg-white hover:text-[#1B2B27]'
+                    ? 'bg-amber text-charcoal-deep shadow-sm'
+                    : 'bg-white text-warm-400 hover:text-text-primary border border-warm-200'
                 }`}
               >
                 {tab.label} ({count})
@@ -780,17 +737,17 @@ export default function AdminPage() {
         {/* Reviews moderation panel */}
         {activeProductTab === 'reviews' && (
           <div>
-            <div className="flex gap-2 mb-6">
+            <div className="flex gap-1.5 mb-6">
               {(['all', 'pending', 'approved', 'rejected'] as const).map(f => {
                 const count = f === 'all' ? reviews.length : reviews.filter(r => r.status === f).length;
                 return (
                   <button
                     key={f}
                     onClick={() => setReviewFilter(f)}
-                    className={`font-mono text-xs py-2 px-4 rounded-lg transition-all capitalize ${
+                    className={`font-display text-[11px] font-bold py-2 px-4 rounded-full transition-all capitalize ${
                       reviewFilter === f
-                        ? 'bg-[#1B2B27] text-white font-bold'
-                        : 'bg-white/70 text-[#1B2B27]/60 hover:bg-white'
+                        ? 'bg-amber text-charcoal-deep shadow-sm'
+                        : 'bg-white text-warm-400 hover:text-text-primary border border-warm-200'
                     }`}
                   >
                     {f} ({count})
@@ -800,22 +757,22 @@ export default function AdminPage() {
             </div>
 
             {reviews.filter(r => reviewFilter === 'all' || r.status === reviewFilter).length === 0 && (
-              <p className="font-mono text-sm text-[#1B2B27]/40 text-center py-12">No reviews found</p>
+              <p className="font-body text-sm text-warm-400 text-center py-12">No reviews found</p>
             )}
 
             <div className="space-y-4">
               {reviews
                 .filter(r => reviewFilter === 'all' || r.status === reviewFilter)
                 .map(review => (
-                  <div key={review.id} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
+                  <div key={review.id} className="bg-white rounded-2xl p-6 shadow-sm border border-warm-200/60">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1">
-                          <span className="text-[#B8860B] text-sm tracking-wider">
+                          <span className="text-amber-dark text-sm tracking-wider">
                             {'★'.repeat(review.rating)}
-                            <span className="text-[#D3D1C7]">{'★'.repeat(5 - review.rating)}</span>
+                            <span className="text-warm-300">{'★'.repeat(5 - review.rating)}</span>
                           </span>
-                          <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                          <span className={`font-display text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ${
                             review.status === 'approved' ? 'bg-green-100 text-green-700'
                               : review.status === 'rejected' ? 'bg-red-100 text-red-700'
                               : 'bg-amber-100 text-amber-700'
@@ -825,14 +782,14 @@ export default function AdminPage() {
                         </div>
 
                         {review.title && (
-                          <h3 className="font-mono text-sm font-bold text-[#1B2B27] mb-1">{review.title}</h3>
+                          <h3 className="font-display text-sm font-bold text-text-primary mb-1">{review.title}</h3>
                         )}
 
                         {review.comment && (
-                          <p className="font-mono text-xs text-[#1B2B27]/70 leading-relaxed mb-2">{review.comment}</p>
+                          <p className="font-display text-xs text-text-primary/70 leading-relaxed mb-2">{review.comment}</p>
                         )}
 
-                        <p className="font-mono text-[10px] text-[#6B7280]">
+                        <p className="font-display text-[10px] text-text-secondary">
                           {review.customer_name || 'Anonymous'} • Order {review.order_number} •{' '}
                           {new Date(review.created_at).toLocaleDateString('en-CA')}
                         </p>
@@ -840,7 +797,7 @@ export default function AdminPage() {
                         {review.product_names?.length > 0 && (
                           <div className="flex gap-1 mt-2 flex-wrap">
                             {review.product_names.map((name: string, i: number) => (
-                              <span key={i} className="font-mono text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full">
+                              <span key={i} className="font-display text-[10px] bg-warm-100 text-warm-600 px-2 py-0.5 rounded-full">
                                 {name}
                               </span>
                             ))}
@@ -853,13 +810,13 @@ export default function AdminPage() {
                       <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
                         <button
                           onClick={() => handleReviewModerate(review.id, 'approve')}
-                          className="flex-1 font-mono text-xs py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                          className="flex-1 font-display text-xs py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
                         >
                           Approve
                         </button>
                         <button
                           onClick={() => handleReviewModerate(review.id, 'reject')}
-                          className="flex-1 font-mono text-xs py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                          className="flex-1 font-display text-xs py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
                         >
                           Reject
                         </button>
@@ -882,7 +839,7 @@ export default function AdminPage() {
           }).map((product) => (
             <div
               key={product.id}
-              className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 ${
+              className={`bg-white rounded-2xl p-4 shadow-sm border border-warm-200/60 hover:shadow-md transition-shadow ${
                 !product.is_active ? 'opacity-50' : ''
               }`}
             >
@@ -894,31 +851,29 @@ export default function AdminPage() {
                     className="w-20 h-20 object-cover rounded-xl"
                   />
                 ) : (
-                  <div className="w-20 h-20 bg-stone-100 rounded-xl flex items-center justify-center text-2xl font-mono text-stone-300">
+                  <div className="w-20 h-20 bg-warm-100 rounded-xl flex items-center justify-center text-2xl font-display text-warm-300">
                     ?
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-mono font-medium text-[#1B2B27] truncate">
-                      {product.name}
-                    </h3>
-                  </div>
-                  <p className="font-mono text-xs text-[#1B2B27]/40">
+                  <h3 className="font-display font-semibold text-sm text-text-primary truncate">
+                    {product.name}
+                  </h3>
+                  <p className="font-body text-xs text-text-secondary mt-0.5">
                     {product.sku || 'no SKU'}
-                    {product.product_type && ` • ${PRODUCT_TYPES[product.product_type]?.label.split(' —')[0] || product.product_type}`}
+                    {product.product_type && ` · ${PRODUCT_TYPES[product.product_type]?.label.split(' —')[0] || product.product_type}`}
                   </p>
-                  <p className="font-mono text-lg font-bold text-[#F6C343]">
+                  <p className="font-display text-lg font-bold text-amber-dark mt-1">
                     CA${product.base_price?.toFixed(2)}
                   </p>
                   {product.colors?.length > 0 && (
-                    <div className="flex gap-1 mt-1">
+                    <div className="flex gap-1 mt-1.5">
                       {product.colors.map((color) => {
                         const def = AVAILABLE_COLORS.find(c => c.name === color);
                         return (
                           <span
                             key={color}
-                            className="w-4 h-4 rounded-full border border-stone-200"
+                            className="w-4 h-4 rounded-full border border-warm-200"
                             style={{ backgroundColor: def?.hex || '#ccc' }}
                             title={color}
                           />
@@ -929,26 +884,26 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2 mt-4 pt-3 border-t border-warm-200/60">
                 <button
                   onClick={() => setEditingProduct(product)}
-                  className="flex-1 font-mono text-xs py-2 bg-stone-100 rounded-lg hover:bg-stone-200"
+                  className="flex-1 font-display text-xs font-semibold py-2 bg-warm-100 rounded-lg hover:bg-warm-200 transition-colors"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleToggleActive(product)}
-                  className={`flex-1 font-mono text-xs py-2 rounded-lg ${
+                  className={`flex-1 font-display text-xs font-semibold py-2 rounded-lg transition-colors ${
                     product.is_active
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
+                      ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                      : 'bg-red-50 text-red-700 hover:bg-red-100'
                   }`}
                 >
                   {product.is_active ? 'Active' : 'Inactive'}
                 </button>
                 <button
                   onClick={() => handleDeleteProduct(product.id)}
-                  className="font-mono text-xs py-2 px-3 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                  className="font-display text-xs font-semibold py-2 px-3 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
                 >
                   X
                 </button>
@@ -1271,20 +1226,20 @@ function ProductForm({
   const isNewProduct = !product.id;
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 space-y-6">
+    <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 space-y-6 shadow-sm border border-warm-200/60">
       {/* 1. Product Type — determines price & Stripe Price ID */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">1. Product Type</label>
+        <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">1. Product Type</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {Object.entries(PRODUCT_TYPES).map(([key, pt]) => (
             <button
               key={key}
               type="button"
               onClick={() => applyProductType(key)}
-              className={`font-mono text-xs py-3 px-3 rounded-lg border-2 transition-all text-left ${
+              className={`font-display text-xs py-3 px-3 rounded-xl border-2 transition-all text-left ${
                 form.product_type === key
-                  ? 'border-[#1B2B27] bg-[#1B2B27] text-white font-bold'
-                  : 'border-stone-200 text-stone-500 hover:border-stone-300'
+                  ? 'border-amber bg-amber/10 text-amber-dark font-bold'
+                  : 'border-warm-200 text-warm-500 hover:border-warm-300'
               }`}
             >
               {pt.label}
@@ -1295,37 +1250,37 @@ function ProductForm({
 
       {/* 2. Design — button to open picker modal */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">2. Design</label>
+        <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">2. Design</label>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setShowDesignPicker(true)}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-stone-200 hover:border-[#B8860B] transition-all bg-white"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-warm-200 hover:border-amber-dark transition-all bg-white"
           >
             {productNum && designList.find((d) => d.num === productNum.padStart(3, '0')) ? (
               <img
                 src={designList.find((d) => d.num === productNum.padStart(3, '0'))!.url}
                 alt={`OSC${productNum}`}
-                className="w-12 h-12 rounded-lg object-contain bg-white border border-stone-100"
+                className="w-12 h-12 rounded-lg object-contain bg-white border border-warm-100"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             ) : (
-              <div className="w-12 h-12 rounded-lg bg-stone-100 flex items-center justify-center text-stone-400 text-lg">?</div>
+              <div className="w-12 h-12 rounded-lg bg-warm-100 flex items-center justify-center text-warm-400 text-lg">?</div>
             )}
             <div className="text-left">
-              <p className="font-mono text-sm font-bold text-[#1B2B27]">
+              <p className="font-display text-sm font-bold text-text-primary">
                 {productNum ? `OSC${productNum}` : 'Select design'}
               </p>
-              <p className="font-mono text-[10px] text-stone-400">Click to browse all designs</p>
+              <p className="font-display text-[10px] text-warm-400">Click to browse all designs</p>
             </div>
           </button>
           <div className="flex items-center gap-1">
-            <span className="font-mono text-xs text-stone-400">OSC</span>
+            <span className="font-display text-xs text-warm-400">OSC</span>
             <input
               type="text"
               value={productNum}
               onChange={(e) => applyProductNum(e.target.value)}
-              className="input font-mono text-sm tracking-widest text-center"
+              className="input font-display text-sm tracking-widest text-center"
               placeholder="022"
               maxLength={3}
               style={{ maxWidth: 80 }}
@@ -1342,11 +1297,11 @@ function ProductForm({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-mono text-sm font-bold text-[#1B2B27] uppercase tracking-wider">Select Design</h3>
+                <h3 className="font-display text-xs font-bold text-text-primary uppercase tracking-[0.1em]">Select Design</h3>
                 <button
                   type="button"
                   onClick={() => setShowDesignPicker(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-100 text-xl"
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-warm-100 text-xl"
                 >&times;</button>
               </div>
               <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
@@ -1359,8 +1314,8 @@ function ProductForm({
                         onClick={() => { applyProductNum(design.num); setShowDesignPicker(false); }}
                         className={`relative rounded-xl border-2 overflow-hidden transition-all aspect-square w-full ${
                           isSelected
-                            ? 'border-[#B8860B] ring-2 ring-[#B8860B] ring-offset-1'
-                            : 'border-stone-200 hover:border-stone-400'
+                            ? 'border-amber-dark ring-2 ring-amber-dark ring-offset-1'
+                            : 'border-warm-200 hover:border-warm-400'
                         }`}
                       >
                         <img
@@ -1369,8 +1324,8 @@ function ProductForm({
                           className="w-full h-full object-contain bg-white"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
-                        <span className={`absolute bottom-0 inset-x-0 text-center font-mono text-[9px] font-bold py-0.5 ${
-                          isSelected ? 'bg-[#B8860B] text-white' : 'bg-stone-100 text-stone-600'
+                        <span className={`absolute bottom-0 inset-x-0 text-center font-display text-[9px] font-bold py-0.5 ${
+                          isSelected ? 'bg-amber-dark text-white' : 'bg-warm-100 text-warm-600'
                         }`}>
                           OSC{design.num}
                         </span>
@@ -1385,7 +1340,7 @@ function ProductForm({
                 })}
                 {/* Add new design button */}
                 <label
-                  className={`relative rounded-xl border-2 border-dashed border-stone-300 overflow-hidden transition-all aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-[#B8860B] hover:bg-amber-50 ${
+                  className={`relative rounded-xl border-2 border-dashed border-warm-300 overflow-hidden transition-all aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-amber-dark hover:bg-amber-50 ${
                     designUploading ? 'opacity-50 pointer-events-none' : ''
                   }`}
                 >
@@ -1399,8 +1354,8 @@ function ProductForm({
                       e.target.value = '';
                     }}
                   />
-                  <span className="text-2xl text-stone-400">{designUploading ? '...' : '+'}</span>
-                  <span className="font-mono text-[9px] text-stone-400 mt-1">
+                  <span className="text-2xl text-warm-400">{designUploading ? '...' : '+'}</span>
+                  <span className="font-display text-[9px] text-warm-400 mt-1">
                     {designUploading ? 'Uploading' : 'New Art'}
                   </span>
                 </label>
@@ -1412,7 +1367,7 @@ function ProductForm({
 
       {/* Product Name (editable) */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Product Name</label>
+        <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">Product Name</label>
         <input
           type="text"
           value={form.name || ''}
@@ -1425,9 +1380,9 @@ function ProductForm({
 
       {/* URL Slug (auto-generated, editable) */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">URL Slug</label>
+        <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">URL Slug</label>
         <div className="flex items-center gap-0">
-          <span className="font-mono text-xs text-stone-400 bg-stone-100 px-3 py-3 rounded-l-xl border border-r-0 border-gray-200">/products/</span>
+          <span className="font-display text-xs text-warm-400 bg-warm-100 px-3 py-3 rounded-l-xl border border-r-0 border-gray-200">/products/</span>
           <input
             type="text"
             value={form.slug || ''}
@@ -1436,7 +1391,7 @@ function ProductForm({
             placeholder="auto-generated-from-name"
           />
         </div>
-        <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+        <p className="font-display text-[10px] text-text-primary/40 mt-1">
           Auto-generated from name. Edit for a cleaner URL.
         </p>
       </div>
@@ -1450,24 +1405,24 @@ function ProductForm({
         if (isMembers || collections.length === 0) return null;
         return (
           <div>
-            <label className="block font-mono text-sm text-[#1B2B27] mb-2">Collection</label>
+            <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">Collection</label>
             <div className="flex flex-wrap gap-2">
               {collections.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setForm({ ...form, category_id: cat.id })}
-                  className={`font-mono text-xs py-1.5 px-3 rounded-lg border-2 transition-all ${
+                  className={`font-display text-xs py-1.5 px-3 rounded-full border-2 transition-all ${
                     form.category_id === cat.id
-                      ? 'border-[#B8860B] bg-[#B8860B]/10 text-[#B8860B] font-bold'
-                      : 'border-stone-200 text-stone-400 hover:border-stone-300'
+                      ? 'border-amber bg-amber/10 text-amber-dark font-bold'
+                      : 'border-warm-200 text-warm-400 hover:border-warm-300'
                   }`}
                 >
                   {cat.name}
                 </button>
               ))}
             </div>
-            <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+            <p className="font-display text-[10px] text-text-primary/40 mt-1">
               Group by art collection (optional). Create collections from the dashboard.
             </p>
           </div>
@@ -1477,23 +1432,23 @@ function ProductForm({
       {/* SKU + Price */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block font-mono text-sm text-[#1B2B27] mb-2">SKU</label>
+          <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">SKU</label>
           <input
             type="text"
             value={form.sku || ''}
             onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase() })}
-            className="input font-mono font-bold tracking-wider"
+            className="input font-display font-bold tracking-wider"
             placeholder="OSC001"
             required
           />
-          <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+          <p className="font-display text-[10px] text-text-primary/40 mt-1">
             Auto: {productNum
               ? `OSC${productNum.padStart(3, '0')}`
               : 'Enter product number above'}
           </p>
         </div>
         <div>
-          <label className="block font-mono text-sm text-[#1B2B27] mb-2">Price (CA$)</label>
+          <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">Price (CA$)</label>
           <input
             type="number"
             step="0.01"
@@ -1502,7 +1457,7 @@ function ProductForm({
             className="input"
             required
           />
-          <p className="font-mono text-[10px] text-[#1B2B27]/40 mt-1">
+          <p className="font-display text-[10px] text-text-primary/40 mt-1">
             {form.product_type ? 'Set by product type' : 'Select product type first'}
           </p>
         </div>
@@ -1510,16 +1465,16 @@ function ProductForm({
 
       {/* Stripe Price ID (auto-set, shown for reference) */}
       {form.stripe_price_id && (
-        <div className="bg-stone-50 rounded-lg px-3 py-2">
-          <p className="font-mono text-[10px] text-stone-400">
-            Stripe Price: <span className="text-stone-600">{form.stripe_price_id}</span>
+        <div className="bg-warm-100 rounded-lg px-3 py-2">
+          <p className="font-display text-[10px] text-warm-400">
+            Stripe Price: <span className="text-warm-600">{form.stripe_price_id}</span>
           </p>
         </div>
       )}
 
       {/* Description */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-2">Description</label>
+        <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-2">Description</label>
         <textarea
           value={form.description || ''}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -1530,7 +1485,7 @@ function ProductForm({
 
       {/* Sizes — clickable boxes */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-3">Sizes</label>
+        <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-3">Sizes</label>
         <div className="flex flex-wrap gap-2">
           {AVAILABLE_SIZES.map((size) => {
             const isSelected = (form.sizes || []).includes(size);
@@ -1539,10 +1494,10 @@ function ProductForm({
                 key={size}
                 type="button"
                 onClick={() => toggleSize(size)}
-                className={`font-mono text-sm px-4 py-2 rounded-lg border-2 transition-all ${
+                className={`font-display text-sm px-4 py-2 rounded-xl border-2 transition-all ${
                   isSelected
-                    ? 'border-[#1B2B27] bg-[#1B2B27] text-white'
-                    : 'border-stone-200 bg-white text-stone-400 hover:border-stone-300'
+                    ? 'border-charcoal-deep bg-charcoal-deep text-white'
+                    : 'border-warm-200 bg-white text-warm-400 hover:border-warm-300'
                 }`}
               >
                 {size}
@@ -1554,7 +1509,7 @@ function ProductForm({
 
       {/* Colors — square swatches */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-3">Colors</label>
+        <label className="block font-display text-xs font-bold tracking-wide uppercase text-text-secondary mb-3">Colors</label>
         <div className="flex flex-wrap gap-3">
           {AVAILABLE_COLORS.map((color) => {
             const isSelected = (form.colors || []).includes(color.name);
@@ -1564,16 +1519,16 @@ function ProductForm({
                 type="button"
                 onClick={() => toggleColor(color.name)}
                 title={color.name}
-                className={`relative w-10 h-10 rounded-lg border-2 transition-all ${
+                className={`relative w-10 h-10 rounded-xl border-2 transition-all ${
                   isSelected
-                    ? 'border-[#1B2B27] ring-2 ring-[#1B2B27]/20 scale-110'
-                    : 'border-stone-300 hover:border-stone-400 hover:scale-105'
+                    ? 'border-charcoal-deep ring-2 ring-charcoal-deep/20 scale-110'
+                    : 'border-warm-300 hover:border-warm-400 hover:scale-105'
                 }`}
                 style={{ backgroundColor: color.hex }}
               >
                 {isSelected && (
                   <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${
-                    color.hex === '#FFFFFF' || color.hex === '#D3D3D3' ? 'text-[#1B2B27]' : 'text-white'
+                    color.hex === '#FFFFFF' || color.hex === '#D3D3D3' ? 'text-text-primary' : 'text-white'
                   }`}>
                     ✓
                   </span>
@@ -1586,11 +1541,11 @@ function ProductForm({
 
       {/* Photos by Color — each color gets its own section */}
       <div>
-        <label className="block font-mono text-sm text-[#1B2B27] mb-1">
+        <label className="block font-display text-sm text-text-primary mb-1">
           {hasColors ? 'Photos by Color' : 'Images'}
         </label>
         {hasColors && (
-          <p className="font-mono text-[10px] text-[#1B2B27]/40 mb-3">
+          <p className="font-display text-[10px] text-text-primary/40 mb-3">
             Add photos for each color. Click the <span className="text-amber-500">★</span> to set the primary product photo.
           </p>
         )}
@@ -1605,21 +1560,21 @@ function ProductForm({
                   key={color}
                   className={`rounded-xl border-2 p-3 transition-all ${
                     activeColorTab === color
-                      ? 'border-[#1B2B27] bg-white'
-                      : 'border-stone-200 bg-stone-50'
+                      ? 'border-charcoal-deep bg-white'
+                      : 'border-warm-200 bg-warm-100'
                   }`}
                   onClick={() => setActiveColorTab(color)}
                 >
                   {/* Color header */}
                   <div className="flex items-center gap-2 mb-2">
                     <span
-                      className="w-5 h-5 rounded-full border border-stone-300 shrink-0"
+                      className="w-5 h-5 rounded-full border border-warm-300 shrink-0"
                       style={{ backgroundColor: colorDef?.hex || '#ccc' }}
                     />
-                    <span className="font-mono text-xs font-medium text-[#1B2B27]">
+                    <span className="font-display text-xs font-medium text-text-primary">
                       {color}
                     </span>
-                    <span className="font-mono text-[10px] text-stone-400">
+                    <span className="font-display text-[10px] text-warm-400">
                       {colorImgs.length} {colorImgs.length === 1 ? 'photo' : 'photos'}
                     </span>
                   </div>
@@ -1653,7 +1608,7 @@ function ProductForm({
                       </div>
                     ))}
                     {colorImgs.length === 0 && (
-                      <span className="font-mono text-[10px] text-stone-400 py-2">
+                      <span className="font-display text-[10px] text-warm-400 py-2">
                         No photos
                       </span>
                     )}
@@ -1670,7 +1625,7 @@ function ProductForm({
                         className="input text-xs"
                       />
                       {uploading && (
-                        <p className="font-mono text-[10px] text-[#1B2B27]/60 mt-1">Uploading...</p>
+                        <p className="font-display text-[10px] text-text-primary/60 mt-1">Uploading...</p>
                       )}
                     </div>
                   )}
@@ -1706,7 +1661,7 @@ function ProductForm({
                 </div>
               ))}
               {(form.images || []).length === 0 && (
-                <p className="font-mono text-xs text-stone-400 py-4">No photos added</p>
+                <p className="font-display text-xs text-warm-400 py-4">No photos added</p>
               )}
             </div>
             <input
@@ -1717,7 +1672,7 @@ function ProductForm({
               className="input text-sm"
             />
             {uploading && (
-              <p className="font-mono text-xs text-[#1B2B27]/60 mt-1">Uploading...</p>
+              <p className="font-display text-xs text-text-primary/60 mt-1">Uploading...</p>
             )}
           </div>
         )}
@@ -1725,9 +1680,9 @@ function ProductForm({
 
       {/* Primary image indicator */}
       {allImageUrls.length > 0 && form.primary_image && (
-        <div className="bg-stone-50 rounded-lg p-3 flex items-center gap-3">
+        <div className="bg-warm-100 rounded-lg p-3 flex items-center gap-3">
           <img src={form.primary_image} alt="" className="w-10 h-10 object-cover rounded-lg border-2 border-amber-400" />
-          <p className="font-mono text-xs text-[#1B2B27]/60">
+          <p className="font-display text-xs text-text-primary/60">
             <span className="text-amber-500">★</span> Primary product photo
           </p>
         </div>
@@ -1735,7 +1690,7 @@ function ProductForm({
 
       {/* Checkboxes */}
       <div className="flex gap-6">
-        <label className="flex items-center gap-2 font-mono text-sm cursor-pointer">
+        <label className="flex items-center gap-2 font-display text-sm cursor-pointer">
           <input
             type="checkbox"
             checked={form.is_active ?? true}
@@ -1744,7 +1699,7 @@ function ProductForm({
           />
           Active
         </label>
-        <label className="flex items-center gap-2 font-mono text-sm cursor-pointer">
+        <label className="flex items-center gap-2 font-display text-sm cursor-pointer">
           <input
             type="checkbox"
             checked={form.is_featured ?? false}
@@ -1757,10 +1712,10 @@ function ProductForm({
 
       {/* Buttons */}
       <div className="flex gap-4 pt-4">
-        <button type="submit" disabled={saving} className="btn-accent flex-1 disabled:opacity-50">
-          {saving ? 'Saving...' : 'Save'}
+        <button type="submit" disabled={saving} className="flex-1 py-3 bg-amber hover:bg-amber-dark text-charcoal-deep font-display text-sm font-bold rounded-xl transition-colors disabled:opacity-50">
+          {saving ? 'Saving...' : 'Save Product'}
         </button>
-        <button type="button" onClick={onCancel} className="btn-secondary flex-1">
+        <button type="button" onClick={onCancel} className="flex-1 py-3 bg-warm-100 hover:bg-warm-200 text-text-secondary font-display text-sm font-semibold rounded-xl transition-colors">
           Cancel
         </button>
       </div>

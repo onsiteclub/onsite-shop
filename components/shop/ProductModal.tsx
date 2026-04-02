@@ -21,11 +21,16 @@ export function ProductModal({
   const [validationError, setValidationError] = useState('');
   const addItem = useCartStore((state) => state.addItem);
   const modalRef = useRef<HTMLDivElement>(null);
+  const imgContainerRef = useRef<HTMLDivElement>(null);
 
-  // Image drag/pan state
+  // Image drag/pan state (mobile touch)
   const [imgPos, setImgPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, imgX: 0, imgY: 0 });
+
+  // Desktop zoom state
+  const [isZooming, setIsZooming] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
 
   // Get images for carousel — switches based on selected color
   const allImages = (() => {
@@ -130,12 +135,16 @@ export function ProductModal({
 
   if (!product) return null;
 
-  const handleImgMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX, y: e.clientY, imgX: imgPos.x, imgY: imgPos.y };
+  // Desktop zoom handlers
+  const handleZoomMove = (e: React.MouseEvent) => {
+    if (!imgContainerRef.current) return;
+    const rect = imgContainerRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setZoomOrigin({ x, y });
   };
 
+  // Mobile drag handlers (touch only)
   const handleImgTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
@@ -162,7 +171,7 @@ export function ProductModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
       onClick={handleClose}
       role="dialog"
       aria-modal="true"
@@ -186,7 +195,7 @@ export function ProductModal({
       {/* Modal */}
       <div
         ref={modalRef}
-        className="relative bg-[#F5F3EF] rounded-2xl overflow-hidden shadow-2xl
+        className="relative bg-off-white rounded-2xl overflow-hidden shadow-2xl
           w-[95vw] h-[85vh]
           md:w-[900px] md:h-[600px]
           lg:w-[1000px] lg:h-[650px]"
@@ -212,12 +221,13 @@ export function ProductModal({
 
         <div className="flex flex-col md:flex-row h-full">
           {/* Image section */}
-          <div className="md:w-3/5 p-3 md:p-6 flex-shrink-0 h-[50%] md:h-full">
+          <div className="md:w-3/5 p-3 md:p-6 flex-shrink-0 h-[40%] md:h-full">
             <div
+              ref={imgContainerRef}
               className="relative w-full h-full rounded-xl overflow-hidden select-none"
               style={{
                 background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
-                cursor: isDragging ? 'grabbing' : 'grab',
+                cursor: isZooming ? 'zoom-out' : 'zoom-in',
                 boxShadow: `
                   inset 0 2px 4px rgba(255,255,255,1),
                   inset 0 -1px 2px rgba(0,0,0,0.04),
@@ -226,7 +236,12 @@ export function ProductModal({
                   0 2px 8px rgba(0,0,0,0.08)
                 `,
               }}
-              onMouseDown={handleImgMouseDown}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsZooming(prev => !prev);
+              }}
+              onMouseMove={handleZoomMove}
+              onMouseLeave={() => setIsZooming(false)}
               onTouchStart={handleImgTouchStart}
             >
               {/* Glass reflection */}
@@ -246,7 +261,7 @@ export function ProductModal({
                 }}
               />
 
-              {/* Image */}
+              {/* Image with zoom */}
               {allImages[selectedImage] ? (
                 <img
                   src={allImages[selectedImage]}
@@ -258,8 +273,19 @@ export function ProductModal({
                     imageRendering: '-webkit-optimize-contrast',
                     WebkitBackfaceVisibility: 'hidden',
                     backfaceVisibility: 'hidden',
-                    transform: `translate(${imgPos.x}px, ${imgPos.y}px)`,
-                    transition: isDragging ? 'none' : 'transform 200ms ease-out',
+                    transform: isZooming
+                      ? 'scale(2.5)'
+                      : isDragging
+                      ? `translate(${imgPos.x}px, ${imgPos.y}px)`
+                      : 'scale(1)',
+                    transformOrigin: isZooming
+                      ? `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                      : 'center center',
+                    transition: isZooming
+                      ? 'transform 0.3s ease-out, transform-origin 0.05s ease-out'
+                      : isDragging
+                      ? 'none'
+                      : 'transform 0.3s ease-out',
                   }}
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
@@ -271,12 +297,15 @@ export function ProductModal({
                 </div>
               )}
 
-              {/* Drag hint */}
-              {allImages[selectedImage] && (
-                <div className="absolute bottom-2 right-2 z-20 pointer-events-none opacity-40">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/>
+              {/* Zoom hint */}
+              {allImages[selectedImage] && !isZooming && (
+                <div className="absolute bottom-2 right-2 z-20 pointer-events-none opacity-50 hidden md:flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full px-2 py-1">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                    <path d="M11 8v6M8 11h6" />
                   </svg>
+                  <span className="text-[9px] font-display font-bold text-text-secondary uppercase tracking-wider">Hover to zoom</span>
                 </div>
               )}
 
@@ -311,7 +340,7 @@ export function ProductModal({
                       onClick={(e) => { e.stopPropagation(); setSelectedImage(idx); }}
                       onMouseDown={(e) => e.stopPropagation()}
                       className={`w-2 h-2 rounded-full transition-colors cursor-pointer ${
-                        selectedImage === idx ? 'bg-[#B8860B]' : 'bg-white/60'
+                        selectedImage === idx ? 'bg-amber-dark' : 'bg-white/60'
                       }`}
                       aria-label={`Image ${idx + 1}`}
                     />
@@ -322,27 +351,27 @@ export function ProductModal({
           </div>
 
           {/* Product info section */}
-          <div className="md:w-2/5 p-3 md:p-6 md:pl-2 flex flex-col h-[50%] md:h-full overflow-y-auto">
+          <div className="md:w-2/5 p-3 md:p-6 md:pl-2 flex flex-col h-[60%] md:h-full overflow-y-auto">
             <div className="flex items-start justify-between md:block mb-1 md:mb-0">
-              <h2 id="product-modal-title" className="font-mono text-base md:text-xl font-bold text-[#1B2B27] md:mb-1">
+              <h2 id="product-modal-title" className="font-display text-base md:text-xl font-bold text-text-primary md:mb-1">
                 {cleanProductName(product.name)}
               </h2>
-              <p className="font-mono text-xs md:text-sm text-[#B8860B] font-bold tracking-wider uppercase md:mb-1">
+              <p className="font-display text-xs md:text-sm text-amber-dark font-bold tracking-wider uppercase md:mb-1">
                 {product.category === 'members' ? 'COMING SOON' : `CA$${product.price.toFixed(2)}`}
               </p>
             </div>
 
-            <p className="font-mono text-[11px] md:text-xs text-[#6B7280] mb-3 leading-snug">
+            <p className="text-[11px] md:text-xs text-text-secondary mb-3 leading-snug">
               {getProductTagline(product)}
             </p>
 
             {product.description && (
               <details className="mb-3 group">
-                <summary className="font-mono text-[10px] md:text-xs text-[#1B2B27]/60 uppercase tracking-wider cursor-pointer hover:text-[#1B2B27] transition-colors list-none flex items-center gap-1">
+                <summary className="font-display text-[10px] md:text-xs text-text-primary/60 uppercase tracking-wider cursor-pointer hover:text-text-primary transition-colors list-none flex items-center gap-1">
                   <span className="text-[8px] group-open:rotate-90 transition-transform">&#9654;</span>
                   Details
                 </summary>
-                <p className="text-[#6B7280] mt-1.5 leading-snug text-[10px] md:text-xs">
+                <p className="text-text-secondary mt-1.5 leading-snug text-[10px] md:text-xs">
                   {product.description}
                 </p>
               </details>
@@ -351,16 +380,16 @@ export function ProductModal({
             <div className="flex gap-3 md:block mb-2 md:mb-0">
               {product.sizes?.length > 1 && (
                 <div className="flex-1 md:mb-3">
-                  <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">Size</p>
+                  <p className="font-display text-[10px] md:text-xs text-text-primary mb-1 md:mb-1.5 uppercase tracking-wider">Size</p>
                   <div className="flex flex-wrap gap-1 md:gap-1.5">
                     {product.sizes.map((size) => (
                       <button
                         key={size}
                         onClick={() => setSelectedSize(size)}
-                        className={`px-2 md:px-2.5 py-0.5 md:py-1 rounded-md font-mono text-[10px] md:text-xs transition-all ${
+                        className={`px-2 md:px-2.5 py-0.5 md:py-1 rounded-md font-display text-[10px] md:text-xs transition-all ${
                           selectedSize === size
-                            ? 'bg-[#1B2B27] text-white'
-                            : 'bg-white text-[#1B2B27] hover:bg-gray-100'
+                            ? 'bg-charcoal-deep text-white'
+                            : 'bg-white text-text-primary hover:bg-warm-100'
                         }`}
                       >
                         {size}
@@ -372,7 +401,7 @@ export function ProductModal({
 
               {product.colors?.length > 1 && (
                 <div className="flex-1 md:mb-4">
-                  <p className="font-mono text-[10px] md:text-xs text-[#1B2B27] mb-1 md:mb-1.5 uppercase tracking-wider">Color</p>
+                  <p className="font-display text-[10px] md:text-xs text-text-primary mb-1 md:mb-1.5 uppercase tracking-wider">Color</p>
                   <div className="flex flex-wrap gap-1.5 md:gap-2">
                     {product.colors.map((color) => {
                       const colorImg = product.color_images?.[color]?.[0];
@@ -384,15 +413,15 @@ export function ProductModal({
                           aria-label={`Color: ${color}`}
                           className={`rounded-lg overflow-hidden transition-all ${
                             selectedColor === color
-                              ? 'ring-2 ring-[#1B2B27] ring-offset-1'
-                              : 'ring-1 ring-gray-200 hover:ring-gray-400'
+                              ? 'ring-2 ring-charcoal-deep ring-offset-1'
+                              : 'ring-1 ring-warm-200 hover:ring-warm-400'
                           }`}
                           style={{ width: 36, height: 36 }}
                         >
                           {colorImg ? (
                             <img src={colorImg} alt={color} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="w-full h-full flex items-center justify-center bg-white font-mono text-[8px] text-[#1B2B27]">
+                            <span className="w-full h-full flex items-center justify-center bg-white font-display text-[8px] text-text-primary">
                               {color.slice(0, 3)}
                             </span>
                           )}
@@ -408,91 +437,115 @@ export function ProductModal({
 
             <div className="mt-2 md:mt-auto">
               {validationError && (
-                <p className="font-mono text-[10px] text-red-500 mb-1.5 text-center" role="alert">{validationError}</p>
+                <p className="text-[10px] text-red-500 mb-1.5 text-center" role="alert">{validationError}</p>
               )}
               {product.category === 'members' ? (
                 <button
                   onClick={handleJoinWaitlist}
-                  className="w-full bg-[#B8860B] text-white font-mono py-2.5 md:py-3 px-3 rounded-lg hover:bg-[#9A7209] transition-colors uppercase tracking-wider text-xs md:text-sm font-bold"
+                  className="w-full bg-amber-dark text-white font-display py-2.5 md:py-3 px-3 rounded-lg hover:bg-amber transition-colors uppercase tracking-wider text-xs md:text-sm font-bold"
                 >
                   Join Waitlist
                 </button>
               ) : !product.price_id ? (
                 <button
                   disabled
-                  className="w-full font-mono py-2.5 md:py-3 px-3 rounded-lg bg-stone-300 text-stone-500 uppercase tracking-wider text-xs md:text-sm font-bold cursor-not-allowed"
+                  className="w-full font-display py-2.5 md:py-3 px-3 rounded-lg bg-warm-300 text-warm-500 uppercase tracking-wider text-xs md:text-sm font-bold cursor-not-allowed"
                 >
                   Coming Soon
                 </button>
+              ) : addedFeedback ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 py-2.5 bg-green-50 rounded-lg border border-green-200">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    <span className="font-display text-xs font-bold text-green-700 uppercase tracking-wider">Added to Bag</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleClose}
+                      className="flex-1 font-display py-2.5 md:py-3 px-3 rounded-lg bg-charcoal-deep text-white hover:bg-charcoal-light transition-colors uppercase tracking-wider text-xs md:text-sm font-bold"
+                    >
+                      Continue Shopping
+                    </button>
+                    <a
+                      href="/cart"
+                      className="flex-1 font-display py-2.5 md:py-3 px-3 rounded-lg bg-amber-dark text-white hover:bg-amber transition-colors uppercase tracking-wider text-xs md:text-sm font-bold text-center"
+                    >
+                      View Cart &rarr;
+                    </a>
+                  </div>
+                </div>
               ) : (
-                <div className="flex gap-2">
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (product.sizes?.length > 1 && !selectedSize) {
+                          setValidationError('Please select a size');
+                          return;
+                        }
+                        if (product.colors?.length > 1 && !selectedColor) {
+                          setValidationError('Please select a color');
+                          return;
+                        }
+                        setValidationError('');
+                        addItem({
+                          product_key: product.product_key,
+                          price_id: product.price_id,
+                          name: product.name,
+                          design: '',
+                          color: selectedColor || product.colors?.[0] || '',
+                          size: selectedSize || product.sizes?.[0] || '',
+                          price: Math.round(product.price * 100),
+                          image: allImages[0] || product.image,
+                        });
+                        setAddedFeedback(true);
+                      }}
+                      className="flex-1 font-display py-2.5 md:py-3 px-3 rounded-lg bg-charcoal-deep text-white hover:bg-charcoal-light transition-colors uppercase tracking-wider text-xs md:text-sm font-bold"
+                    >
+                      Add to Bag
+                    </button>
+                    <a
+                      href="/checkout"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (product.sizes?.length > 1 && !selectedSize) {
+                          setValidationError('Please select a size');
+                          return;
+                        }
+                        if (product.colors?.length > 1 && !selectedColor) {
+                          setValidationError('Please select a color');
+                          return;
+                        }
+                        setValidationError('');
+                        addItem({
+                          product_key: product.product_key,
+                          price_id: product.price_id,
+                          name: product.name,
+                          design: '',
+                          color: selectedColor || product.colors?.[0] || '',
+                          size: selectedSize || product.sizes?.[0] || '',
+                          price: Math.round(product.price * 100),
+                          image: allImages[0] || product.image,
+                        });
+                        window.location.href = '/checkout';
+                      }}
+                      className="flex-1 font-display py-2.5 md:py-3 px-3 rounded-lg bg-amber-dark text-white hover:bg-amber transition-colors uppercase tracking-wider text-xs md:text-sm font-bold text-center"
+                    >
+                      Checkout
+                    </a>
+                  </div>
                   <button
-                    disabled={addedFeedback}
-                    onClick={() => {
-                      if (addedFeedback) return;
-                      if (product.sizes?.length > 1 && !selectedSize) {
-                        setValidationError('Please select a size');
-                        return;
-                      }
-                      if (product.colors?.length > 1 && !selectedColor) {
-                        setValidationError('Please select a color');
-                        return;
-                      }
-                      setValidationError('');
-                      addItem({
-                        product_key: product.product_key,
-                        price_id: product.price_id,
-                        name: product.name,
-                        design: '',
-                        color: selectedColor || product.colors?.[0] || '',
-                        size: selectedSize || product.sizes?.[0] || '',
-                        price: Math.round(product.price * 100),
-                        image: allImages[0] || product.image,
-                      });
-                      setAddedFeedback(true);
-                      setTimeout(() => setAddedFeedback(false), 2000);
-                    }}
-                    className={`flex-1 font-mono py-2.5 md:py-3 px-3 rounded-lg transition-colors uppercase tracking-wider text-xs md:text-sm font-bold ${
-                      addedFeedback
-                        ? 'bg-green-600 text-white cursor-not-allowed'
-                        : 'bg-[#1B2B27] text-white hover:bg-[#2a3f39]'
-                    }`}
+                    onClick={handleClose}
+                    className="w-full font-display py-2 text-[11px] font-semibold text-warm-400 hover:text-text-primary transition-colors uppercase tracking-wider"
                   >
-                    {addedFeedback ? 'Added!' : 'Add to Bag'}
+                    Continue Shopping
                   </button>
-                  <a
-                    href="/checkout"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (product.sizes?.length > 1 && !selectedSize) {
-                        setValidationError('Please select a size');
-                        return;
-                      }
-                      if (product.colors?.length > 1 && !selectedColor) {
-                        setValidationError('Please select a color');
-                        return;
-                      }
-                      setValidationError('');
-                      addItem({
-                        product_key: product.product_key,
-                        price_id: product.price_id,
-                        name: product.name,
-                        design: '',
-                        color: selectedColor || product.colors?.[0] || '',
-                        size: selectedSize || product.sizes?.[0] || '',
-                        price: Math.round(product.price * 100),
-                        image: allImages[0] || product.image,
-                      });
-                      window.location.href = '/checkout';
-                    }}
-                    className="flex-1 font-mono py-2.5 md:py-3 px-3 rounded-lg bg-[#B8860B] text-white hover:bg-[#9A7209] transition-colors uppercase tracking-wider text-xs md:text-sm font-bold text-center"
-                  >
-                    Checkout
-                  </a>
                 </div>
               )}
 
-              <p className="font-mono text-[10px] text-stone-400 mt-3 text-center leading-relaxed">
+              <p className="text-[10px] text-warm-400 mt-3 text-center leading-relaxed">
                 Colors may vary slightly from screen to product due to digital rendering.
               </p>
             </div>

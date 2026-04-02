@@ -88,7 +88,7 @@ export default async function ProductPage({
   const productUrl = `https://shop.onsiteclub.ca/products/${slug}`
 
   return (
-    <main className="bg-grain min-h-screen">
+    <main className="bg-white min-h-screen">
       {/* JSON-LD Structured Data */}
       <ProductSchema
         name={product.name}
@@ -108,12 +108,12 @@ export default async function ProductPage({
 
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
         {/* Breadcrumb navigation */}
-        <nav className="font-mono text-xs text-[#6B7280] mb-6 uppercase tracking-wider">
-          <a href="/" className="hover:text-[#1B2B27] transition-colors">Shop</a>
+        <nav className="font-display text-xs text-text-secondary mb-6 uppercase tracking-wider">
+          <a href="/" className="hover:text-text-primary transition-colors">Shop</a>
           <span className="mx-2">/</span>
           <span>{categoryLabel}</span>
           <span className="mx-2">/</span>
-          <span className="text-[#1B2B27]">{product.name}</span>
+          <span className="text-text-primary">{product.name}</span>
         </nav>
 
         <div className="flex flex-col md:flex-row gap-8 md:gap-12">
@@ -140,22 +140,22 @@ export default async function ProductPage({
           {/* Product info section */}
           <div className="md:w-2/5">
             {/* H1 with primary keyword */}
-            <h1 className="font-mono text-2xl md:text-3xl font-bold text-[#1B2B27] mb-2">
+            <h1 className="font-display text-2xl md:text-3xl font-bold text-text-primary mb-2">
               {product.name}
             </h1>
 
-            <p className="font-mono text-lg text-[#B8860B] font-bold tracking-wider uppercase mb-4">
+            <p className="font-display text-lg text-amber-dark font-bold tracking-wider uppercase mb-4">
               CA${product.base_price.toFixed(2)} CAD
             </p>
 
             {/* Visible body text for SEO — at least 150 words server-rendered */}
             {product.description && (
-              <p className="text-[#6B7280] mb-6 leading-relaxed text-sm font-mono">
+              <p className="text-text-secondary mb-6 leading-relaxed text-sm">
                 {product.description}
               </p>
             )}
 
-            <p className="text-[#6B7280] mb-6 leading-relaxed text-sm font-mono">
+            <p className="text-text-secondary mb-6 leading-relaxed text-sm">
               Shipped across Canada — Ontario, Quebec, British Columbia, Alberta, and all provinces.
             </p>
 

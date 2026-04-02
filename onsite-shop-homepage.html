@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OnSite Club Shop | Construction Worker Clothing Canada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --amber: #F7B324;
+  --amber-dark: #C58B1B;
+  --amber-light: #FFF8E8;
+  --charcoal: #2C2C2C;
+  --charcoal-deep: #1A1A1A;
+  --charcoal-light: #3D3D3D;
+  --white: #FFFFFF;
+  --off-white: #F7F6F3;
+  --warm-100: #EDECE8;
+  --warm-200: #DEDCD6;
+  --warm-300: #C5C3BC;
+  --warm-400: #9C9A93;
+  --warm-500: #7A7870;
+  --warm-600: #5C5A53;
+  --text-primary: #1A1A18;
+  --text-secondary: #6B6960;
+  --font-display: 'Montserrat', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --container: 1200px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --radius-btn: 8px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--white);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; color: inherit; }
+img { max-width: 100%; height: auto; display: block; }
+button { cursor: pointer; border: none; font-family: var(--font-body); }
+
+.container { max-width: var(--container); margin: 0 auto; padding: 0 24px; }
+
+/* ===== NAVBAR ===== */
+.navbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--warm-200);
+  transition: background 0.3s;
+}
+.navbar .container {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 72px;
+}
+.navbar-logo {
+  height: 40px;
+  filter: brightness(0);
+}
+.navbar-links { display: flex; gap: 32px; align-items: center; }
+.navbar-links a {
+  font-family: var(--font-display);
+  font-weight: 600; font-size: 13px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+.navbar-links a:hover { color: var(--warm-500); }
+.navbar-right { display: flex; align-items: center; gap: 20px; }
+.navbar-right a { position: relative; }
+.cart-badge {
+  position: absolute; top: -6px; right: -8px;
+  background: var(--amber); color: var(--charcoal);
+  font-size: 10px; font-weight: 700;
+  width: 18px; height: 18px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+}
+.nav-icon { width: 22px; height: 22px; }
+.mobile-menu { display: none; background: none; }
+
+/* ===== HERO ===== */
+.hero {
+  margin-top: 72px;
+  background: var(--charcoal);
+  position: relative;
+  overflow: hidden;
+  min-height: 85vh;
+  display: flex; align-items: center;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--charcoal) 0%, var(--charcoal-deep) 50%, rgba(26,26,24,0.9) 100%);
+  z-index: 1;
+}
+.hero-bg-texture {
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(ellipse at 70% 50%, rgba(255,255,255,0.03) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 80%, rgba(255,255,255,0.02) 0%, transparent 40%);
+  z-index: 2;
+}
+.hero .container {
+  position: relative; z-index: 3;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  padding-top: 60px;
+  padding-bottom: 60px;
+}
+.hero-content { color: var(--white); }
+.hero-tag {
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--warm-300);
+  margin-bottom: 20px;
+  display: inline-block;
+}
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 5vw, 64px);
+  font-weight: 900;
+  line-height: 1.05;
+  margin-bottom: 24px;
+  letter-spacing: -0.02em;
+}
+.hero-title span { color: var(--white); }
+.hero-desc {
+  font-size: 18px;
+  color: rgba(255,255,255,0.7);
+  max-width: 440px;
+  margin-bottom: 40px;
+  line-height: 1.7;
+}
+.hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; }
+.btn-primary {
+  background: var(--white);
+  color: var(--charcoal-deep);
+  padding: 16px 36px;
+  font-weight: 700; font-size: 14px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  border-radius: var(--radius-btn);
+  transition: all 0.3s;
+  font-family: var(--font-display);
+}
+.btn-primary:hover { background: var(--amber); color: var(--charcoal-deep); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+.btn-outline {
+  background: transparent;
+  color: var(--white);
+  padding: 16px 36px;
+  font-weight: 700; font-size: 14px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  border-radius: var(--radius-btn);
+  border: 2px solid rgba(255,255,255,0.3);
+  transition: all 0.3s;
+  font-family: var(--font-display);
+}
+.btn-outline:hover { border-color: var(--white); background: rgba(255,255,255,0.08); }
+
+.hero-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  position: relative;
+}
+.hero-img-card {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 3/4;
+  background: var(--charcoal-light);
+}
+.hero-img-card img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s;
+}
+.hero-img-card:hover img { transform: scale(1.05); }
+.hero-img-card:first-child { margin-top: 40px; }
+.hero-img-card:last-child { margin-top: -40px; }
+.hero-img-label {
+  position: absolute; bottom: 16px; left: 16px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  color: var(--white);
+  padding: 8px 16px;
+  border-radius: var(--radius-btn);
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  font-family: var(--font-display);
+}
+
+/* ===== MARQUEE ===== */
+.marquee {
+  background: var(--charcoal-deep);
+  padding: 14px 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.marquee-track {
+  display: flex;
+  animation: marquee 25s linear infinite;
+}
+.marquee-item {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--warm-300);
+  padding: 0 40px;
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 40px;
+}
+.marquee-item::after {
+  content: '◆';
+  font-size: 8px;
+  opacity: 0.5;
+}
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ===== CATEGORIES ===== */
+.categories { padding: 100px 0; }
+.section-label {
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--warm-400);
+  margin-bottom: 12px;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.5vw, 42px);
+  font-weight: 800;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 16px;
+  max-width: 500px;
+  margin-bottom: 48px;
+}
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 20px;
+}
+.category-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 3/4;
+  background: var(--warm-100);
+  cursor: pointer;
+}
+.category-card img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s;
+}
+.category-card:hover img { transform: scale(1.06); }
+.category-card-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
+}
+.category-card-name {
+  position: absolute; bottom: 20px; left: 20px;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 16px;
+  letter-spacing: 0.03em;
+}
+
+/* ===== PRODUCTS ===== */
+.products { padding: 0 0 100px; }
+.products-header {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-bottom: 48px;
+}
+.view-all {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 13px;
+  color: var(--charcoal);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.view-all:hover { color: var(--amber-dark); }
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.product-card { position: relative; }
+.product-badge {
+  position: absolute; top: 14px; left: 14px; z-index: 2;
+  background: var(--charcoal);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--radius-btn);
+}
+.product-img {
+  aspect-ratio: 3/4;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--warm-100);
+  margin-bottom: 14px;
+  position: relative;
+}
+.product-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s;
+}
+.product-card:hover .product-img img { transform: scale(1.05); }
+.product-quick-add {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--charcoal);
+  color: var(--white);
+  text-align: center;
+  padding: 12px;
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  transform: translateY(100%);
+  transition: transform 0.3s;
+}
+.product-card:hover .product-quick-add { transform: translateY(0); }
+.product-name {
+  font-weight: 600; font-size: 14px;
+  margin-bottom: 6px;
+}
+.product-price { display: flex; align-items: center; gap: 8px; }
+.product-price-old {
+  font-size: 13px; color: var(--warm-400);
+  text-decoration: line-through;
+}
+.product-price-current {
+  font-size: 15px; font-weight: 700;
+  color: var(--amber-dark);
+}
+.product-colors {
+  display: flex; gap: 6px; margin-top: 8px;
+}
+.product-color-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--warm-200);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.product-color-dot:hover, .product-color-dot.active { border-color: var(--charcoal); }
+
+/* ===== TRUST BAR ===== */
+.trust-bar {
+  background: var(--charcoal);
+  padding: 50px 0;
+}
+.trust-bar .container {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+.trust-bar-title {
+  font-family: var(--font-display);
+  font-size: clamp(18px, 2.5vw, 24px);
+  font-weight: 800;
+  color: var(--white);
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.trust-bar-title span { font-size: 28px; }
+.trust-items { display: flex; gap: 40px; flex-wrap: wrap; }
+.trust-item { text-align: center; }
+.trust-item-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+.trust-item-label {
+  font-size: 12px; font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.05em; text-transform: uppercase;
+  font-family: var(--font-display);
+}
+.trust-item-value {
+  font-size: 13px; color: rgba(255,255,255,0.4);
+  margin-top: 2px;
+}
+
+/* ===== REVIEWS ===== */
+.reviews { padding: 100px 0; background: var(--off-white); }
+.reviews-header { text-align: center; margin-bottom: 56px; }
+.reviews-header .section-desc { margin: 0 auto; }
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.review-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  border: 1px solid var(--warm-200);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.review-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
+.review-stars { color: var(--amber); font-size: 16px; margin-bottom: 16px; letter-spacing: 2px; }
+.review-text {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+.review-author { display: flex; align-items: center; gap: 12px; }
+.review-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--warm-100);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 14px;
+  color: var(--charcoal);
+}
+.review-author-name { font-weight: 700; font-size: 14px; }
+.review-author-role { font-size: 12px; color: var(--warm-400); }
+
+/* ===== SOCIAL / FOLLOW ===== */
+.social-banner {
+  padding: 100px 0;
+  background: var(--charcoal);
+  position: relative;
+  overflow: hidden;
+}
+.social-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.04) 0%, transparent 60%);
+}
+.social-banner .container {
+  position: relative; z-index: 2;
+  text-align: center;
+}
+.social-banner .section-title { color: var(--white); }
+.social-banner .section-desc { color: rgba(255,255,255,0.6); margin: 0 auto 40px; }
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 40px;
+}
+.social-img {
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--charcoal-light);
+  position: relative;
+}
+.social-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s, filter 0.4s;
+}
+.social-img:hover img { transform: scale(1.08); filter: brightness(1.1); }
+.social-img-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.social-img:hover .social-img-overlay { opacity: 1; }
+.social-img-overlay svg { width: 28px; height: 28px; fill: white; }
+
+.btn-social {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: transparent;
+  border: 2px solid rgba(255,255,255,0.3);
+  color: var(--white);
+  padding: 14px 32px;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 13px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  transition: all 0.3s;
+}
+.btn-social:hover { border-color: var(--white); color: var(--white); }
+
+/* ===== NEWSLETTER ===== */
+.newsletter {
+  padding: 80px 0;
+  background: var(--charcoal);
+}
+.newsletter .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 40px;
+}
+.newsletter-content { max-width: 500px; }
+.newsletter .section-title { color: var(--white); margin-bottom: 8px; }
+.newsletter-desc { color: rgba(255,255,255,0.6); font-size: 15px; }
+.newsletter-form { display: flex; gap: 12px; flex: 1; max-width: 480px; }
+.newsletter-input {
+  flex: 1;
+  padding: 16px 24px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--radius-btn);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: rgba(255,255,255,0.08);
+  color: var(--white);
+  outline: none;
+  transition: background 0.2s;
+}
+.newsletter-input::placeholder { color: var(--warm-500); }
+.newsletter-input:focus { background: var(--white); }
+.btn-newsletter {
+  background: var(--amber);
+  color: var(--charcoal-deep);
+  padding: 16px 32px;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 13px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  white-space: nowrap;
+  transition: all 0.3s;
+}
+.btn-newsletter:hover { background: var(--amber-dark); }
+
+/* ===== BLOG ===== */
+.blog { padding: 100px 0; background: var(--white); }
+.blog-header {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-bottom: 48px;
+}
+.blog-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 40px;
+}
+.blog-posts { display: flex; flex-direction: column; gap: 32px; }
+.blog-card {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 28px;
+  align-items: start;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--warm-200);
+  transition: transform 0.3s;
+}
+.blog-card:hover { transform: translateX(4px); }
+.blog-card:last-child { border-bottom: none; padding-bottom: 0; }
+.blog-card-img {
+  aspect-ratio: 4/3;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--warm-100);
+}
+.blog-card-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s;
+}
+.blog-card:hover .blog-card-img img { transform: scale(1.05); }
+.blog-card-content { padding-top: 4px; }
+.blog-card-tag {
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--warm-500);
+  margin-bottom: 10px;
+  display: inline-block;
+}
+.blog-card-title {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 800;
+  line-height: 1.3;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+  transition: color 0.2s;
+}
+.blog-card:hover .blog-card-title { color: var(--charcoal-light); }
+.blog-card-excerpt {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.blog-card-meta {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px; color: var(--warm-400);
+}
+.blog-card-meta span { display: flex; align-items: center; gap: 4px; }
+.blog-read-more {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 700;
+  color: var(--amber-dark);
+  letter-spacing: 0.03em;
+  transition: color 0.2s;
+}
+.blog-read-more:hover { color: var(--charcoal); }
+
+/* Blog Sidebar */
+.blog-sidebar { display: flex; flex-direction: column; gap: 32px; }
+.sidebar-block {
+  background: var(--off-white);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+.sidebar-title {
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 800;
+  letter-spacing: 0.03em;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--warm-200);
+}
+.sidebar-recent { display: flex; flex-direction: column; gap: 16px; }
+.sidebar-recent-item {
+  display: flex; gap: 12px; align-items: start;
+  transition: transform 0.2s;
+}
+.sidebar-recent-item:hover { transform: translateX(3px); }
+.sidebar-recent-img {
+  width: 64px; height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--warm-100);
+}
+.sidebar-recent-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.sidebar-recent-title {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  transition: color 0.2s;
+}
+.sidebar-recent-item:hover .sidebar-recent-title { color: var(--charcoal-light); }
+.sidebar-recent-date {
+  font-size: 11px;
+  color: var(--warm-400);
+}
+.sidebar-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.sidebar-tag {
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 8px 16px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--warm-200);
+  background: var(--white);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.sidebar-tag:hover {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--charcoal);
+}
+
+/* Blog Responsive */
+@media (max-width: 1024px) {
+  .blog-layout { grid-template-columns: 1fr; }
+  .blog-sidebar { flex-direction: row; flex-wrap: wrap; }
+  .sidebar-block { flex: 1; min-width: 280px; }
+}
+@media (max-width: 640px) {
+  .blog-card { grid-template-columns: 1fr; gap: 16px; }
+  .blog-sidebar { flex-direction: column; }
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  background: var(--charcoal-deep);
+  padding: 80px 0 40px;
+  color: rgba(255,255,255,0.5);
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 60px;
+}
+.footer-brand-desc {
+  font-size: 14px;
+  line-height: 1.7;
+  margin-top: 16px;
+  max-width: 280px;
+}
+.footer-logo {
+  height: 36px;
+  filter: brightness(0) invert(1);
+}
+.footer-col-title {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 13px;
+  color: var(--white);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.footer-links { list-style: none; }
+.footer-links li { margin-bottom: 12px; }
+.footer-links a {
+  font-size: 14px;
+  color: rgba(255,255,255,0.5);
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--white); }
+.footer-social { display: flex; gap: 12px; margin-top: 20px; }
+.footer-social a {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s;
+}
+.footer-social a:hover { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.05); }
+.footer-social svg { width: 16px; height: 16px; fill: rgba(255,255,255,0.6); }
+.footer-social a:hover svg { fill: var(--white); }
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.footer-bottom-links { display: flex; gap: 24px; }
+.footer-bottom-links a { color: rgba(255,255,255,0.4); transition: color 0.2s; }
+.footer-bottom-links a:hover { color: rgba(255,255,255,0.8); }
+
+/* ===== ANIMATIONS ===== */
+.fade-in {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 0.7s, transform 0.7s;
+}
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+.fade-in-delay-1 { transition-delay: 0.1s; }
+.fade-in-delay-2 { transition-delay: 0.2s; }
+.fade-in-delay-3 { transition-delay: 0.3s; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .hero .container { grid-template-columns: 1fr; text-align: center; }
+  .hero-desc { margin: 0 auto 40px; }
+  .hero-buttons { justify-content: center; }
+  .hero-images { max-width: 500px; margin: 0 auto; }
+  .categories-grid { grid-template-columns: repeat(3, 1fr); }
+  .products-grid { grid-template-columns: repeat(2, 1fr); }
+  .reviews-grid { grid-template-columns: 1fr; max-width: 500px; margin: 0 auto; }
+  .social-grid { grid-template-columns: repeat(3, 1fr); }
+  .newsletter .container { flex-direction: column; text-align: center; }
+  .newsletter-form { max-width: 100%; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 640px) {
+  .navbar-links { display: none; }
+  .mobile-menu { display: block; }
+  .hero { min-height: auto; padding: 60px 0; }
+  .hero-images { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hero-img-card:first-child { margin-top: 20px; }
+  .hero-img-card:last-child { margin-top: -20px; }
+  .categories-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .products-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .trust-bar .container { flex-direction: column; text-align: center; }
+  .trust-items { justify-content: center; }
+  .social-grid { grid-template-columns: repeat(3, 1fr); }
+  .newsletter-form { flex-direction: column; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="container">
+    <a href="/">
+      <img src="https://shop.onsiteclub.ca/assets/logo-onsite-club.png" alt="OnSite Club" class="navbar-logo">
+    </a>
+    <div class="navbar-links">
+      <a href="#shop">Shop</a>
+      <a href="#about">About</a>
+      <a href="#reviews">Reviews</a>
+      <a href="#blog">Blog</a>
+      <a href="#contact">Contact</a>
+      <a href="https://www.onsiteclub.ca" target="_blank">Main Site</a>
+    </div>
+    <div class="navbar-right">
+      <a href="#" aria-label="Search">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </a>
+      <a href="/cart" aria-label="Cart" style="position:relative;">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <span class="cart-badge">0</span>
+      </a>
+      <button class="mobile-menu" aria-label="Menu">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-texture"></div>
+  <div class="container">
+    <div class="hero-content">
+      <span class="hero-tag">OnSite Club Gear</span>
+      <h1 class="hero-title">Built for Those<br>Who <span>Build.</span></h1>
+      <p class="hero-desc">Tees, hoodies, and jobsite essentials made for the crew that wakes up before the sun and builds something real.</p>
+      <div class="hero-buttons">
+        <a href="#shop" class="btn-primary">Shop Collection</a>
+        <a href="#about" class="btn-outline">Our Story</a>
+      </div>
+    </div>
+    <div class="hero-images">
+      <div class="hero-img-card">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=640&q=80" alt="OnSite T-Shirt The Jump">
+        <span class="hero-img-label">The Jump</span>
+      </div>
+      <div class="hero-img-card">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-women.webp&w=640&q=80" alt="OnSite T-Shirt Mascot">
+        <span class="hero-img-label">Mascot</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee">
+  <div class="marquee-track">
+    <span class="marquee-item">Built for the Jobsite</span>
+    <span class="marquee-item">Rep Your Trade</span>
+    <span class="marquee-item">Made in Canada</span>
+    <span class="marquee-item">Buildings Don't Remember Who Built Them — We Do</span>
+    <span class="marquee-item">Wear the Work</span>
+    <span class="marquee-item">Built for the Jobsite</span>
+    <span class="marquee-item">Rep Your Trade</span>
+    <span class="marquee-item">Made in Canada</span>
+    <span class="marquee-item">Buildings Don't Remember Who Built Them — We Do</span>
+    <span class="marquee-item">Wear the Work</span>
+  </div>
+</div>
+
+<!-- CATEGORIES -->
+<section class="categories" id="shop">
+  <div class="container">
+    <span class="section-label fade-in">Shop by Category</span>
+    <h2 class="section-title fade-in">Find Your Gear</h2>
+    <p class="section-desc fade-in">From cotton tees to stickers — built for the crew.</p>
+    <div class="categories-grid">
+      <a href="#" class="category-card fade-in">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=640&q=80" alt="Cotton Tees">
+        <div class="category-card-overlay"></div>
+        <span class="category-card-name">Cotton Tees</span>
+      </a>
+      <a href="#" class="category-card fade-in fade-in-delay-1">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision1.png&w=640&q=80" alt="Hoodies">
+        <div class="category-card-overlay"></div>
+        <span class="category-card-name">Hoodies</span>
+      </a>
+      <a href="#" class="category-card fade-in fade-in-delay-2">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-women.webp&w=640&q=80" alt="Sport Tees">
+        <div class="category-card-overlay"></div>
+        <span class="category-card-name">Sport Tees</span>
+      </a>
+      <a href="#" class="category-card fade-in fade-in-delay-3">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision2.png&w=640&q=80" alt="Caps">
+        <div class="category-card-overlay"></div>
+        <span class="category-card-name">Caps</span>
+      </a>
+      <a href="#" class="category-card fade-in fade-in-delay-3">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision3.png&w=640&q=80" alt="Stickers">
+        <div class="category-card-overlay"></div>
+        <span class="category-card-name">Stickers</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section class="products">
+  <div class="container">
+    <div class="products-header">
+      <div>
+        <span class="section-label">Customer Favorites</span>
+        <h2 class="section-title">Most Wanted</h2>
+      </div>
+      <a href="#" class="view-all">View All →</a>
+    </div>
+    <div class="products-grid">
+      <a href="#" class="product-card fade-in">
+        <span class="product-badge">New</span>
+        <div class="product-img">
+          <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=640&q=80" alt="Cotton Tee — The Jump">
+          <div class="product-quick-add">Quick Add</div>
+        </div>
+        <div class="product-name">Cotton Tee — The Jump</div>
+        <div class="product-price">
+          <span class="product-price-current">$38.00</span>
+        </div>
+        <div class="product-colors">
+          <span class="product-color-dot active" style="background:#1A1A18;"></span>
+          <span class="product-color-dot" style="background:#F7B324;"></span>
+        </div>
+      </a>
+      <a href="#" class="product-card fade-in fade-in-delay-1">
+        <div class="product-img">
+          <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-women.webp&w=640&q=80" alt="Sport Tee — Mascot">
+          <div class="product-quick-add">Quick Add</div>
+        </div>
+        <div class="product-name">Sport Tee — Mascot</div>
+        <div class="product-price">
+          <span class="product-price-current">$38.00</span>
+        </div>
+        <div class="product-colors">
+          <span class="product-color-dot active" style="background:#FFFFFF; border-color:#ccc;"></span>
+          <span class="product-color-dot" style="background:#1A1A18;"></span>
+        </div>
+      </a>
+      <a href="#" class="product-card fade-in fade-in-delay-2">
+        <div class="product-img">
+          <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision1.png&w=640&q=80" alt="Hoodie — Skyline">
+          <div class="product-quick-add">Quick Add</div>
+        </div>
+        <div class="product-name">Hoodie — Skyline</div>
+        <div class="product-price">
+          <span class="product-price-current">$65.00</span>
+        </div>
+        <div class="product-colors">
+          <span class="product-color-dot active" style="background:#1B2B27;"></span>
+          <span class="product-color-dot" style="background:#3A3832;"></span>
+        </div>
+      </a>
+      <a href="#" class="product-card fade-in fade-in-delay-3">
+        <span class="product-badge">Best Seller</span>
+        <div class="product-img">
+          <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-members.webp&w=640&q=80" alt="Cotton Tee — Classic">
+          <div class="product-quick-add">Quick Add</div>
+        </div>
+        <div class="product-name">Cotton Tee — Classic</div>
+        <div class="product-price">
+          <span class="product-price-current">$38.00</span>
+        </div>
+        <div class="product-colors">
+          <span class="product-color-dot active" style="background:#3A5A40;"></span>
+          <span class="product-color-dot" style="background:#1A1A18;"></span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- MEMBERS EXCLUSIVE -->
+<section class="products" style="padding-top: 20px; padding-bottom: 100px;">
+  <div class="container">
+    <div class="products-header" style="margin-bottom: 16px;">
+      <div>
+        <span class="section-label">Members Area</span>
+        <h2 class="section-title">Exclusive Gear</h2>
+      </div>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 15px; max-width: 520px; margin-bottom: 40px; line-height: 1.7;">These pieces are reserved for OnSite Club members. Browse the collection — join the crew to unlock pricing and checkout.</p>
+    <div class="products-grid">
+      <div class="product-card fade-in">
+        <span class="product-badge" style="background: var(--charcoal-deep); color: var(--white);">Members</span>
+        <div class="product-img">
+          <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-members.webp&w=640&q=80" alt="Members Tee — Founders Edition">
+          <a href="https://dashboard.onsiteclub.ca" class="product-quick-add" style="background: var(--white); color: var(--charcoal-deep);">Become a Member</a>
+        </div>
+        <div class="product-name">Members Tee — Founders Edition</div>
+        <div class="product-price">
+          <a href="https://dashboard.onsiteclub.ca" style="font-size: 13px; font-weight: 700; color: var(--charcoal); font-family: var(--font-display); letter-spacing: 0.03em;">Become a Member →</a>
+        </div>
+      </div>
+      <div class="product-card fade-in fade-in-delay-1">
+        <span class="product-badge" style="background: var(--charcoal-deep); color: var(--white);">Members</span>
+        <div class="product-img">
+          <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision3.png&w=640&q=80" alt="Members Hoodie — Built Different">
+          <a href="https://dashboard.onsiteclub.ca" class="product-quick-add" style="background: var(--white); color: var(--charcoal-deep);">Become a Member</a>
+        </div>
+        <div class="product-name">Members Hoodie — Built Different</div>
+        <div class="product-price">
+          <a href="https://dashboard.onsiteclub.ca" style="font-size: 13px; font-weight: 700; color: var(--charcoal); font-family: var(--font-display); letter-spacing: 0.03em;">Become a Member →</a>
+        </div>
+      </div>
+      <div class="product-card fade-in fade-in-delay-2">
+        <span class="product-badge" style="background: var(--charcoal-deep); color: var(--white);">Members</span>
+        <div class="product-img">
+          <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision2.png&w=640&q=80" alt="Members Cap — OnSite">
+          <a href="https://dashboard.onsiteclub.ca" class="product-quick-add" style="background: var(--white); color: var(--charcoal-deep);">Become a Member</a>
+        </div>
+        <div class="product-name">Members Cap — OnSite Original</div>
+        <div class="product-price">
+          <a href="https://dashboard.onsiteclub.ca" style="font-size: 13px; font-weight: 700; color: var(--charcoal); font-family: var(--font-display); letter-spacing: 0.03em;">Become a Member →</a>
+        </div>
+      </div>
+      <div class="product-card fade-in fade-in-delay-3">
+        <span class="product-badge" style="background: var(--charcoal-deep); color: var(--white);">Members</span>
+        <div class="product-img">
+          <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=640&q=80" alt="Members Sticker Pack">
+          <a href="https://dashboard.onsiteclub.ca" class="product-quick-add" style="background: var(--white); color: var(--charcoal-deep);">Become a Member</a>
+        </div>
+        <div class="product-name">Members Sticker Pack — Vol. 1</div>
+        <div class="product-price">
+          <a href="https://dashboard.onsiteclub.ca" style="font-size: 13px; font-weight: 700; color: var(--charcoal); font-family: var(--font-display); letter-spacing: 0.03em;">Become a Member →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BAR -->
+<section class="trust-bar">
+  <div class="container">
+    <div class="trust-bar-title">Built Right, Shipped Right <span>⚡</span></div>
+    <div class="trust-items">
+      <div class="trust-item">
+        <div class="trust-item-icon">🇨🇦</div>
+        <div class="trust-item-label">Canadian Made</div>
+        <div class="trust-item-value">Ontario-based</div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-item-icon">📦</div>
+        <div class="trust-item-label">Fast Shipping</div>
+        <div class="trust-item-value">Canada Post</div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-item-icon">💳</div>
+        <div class="trust-item-label">Secure Checkout</div>
+        <div class="trust-item-value">Stripe powered</div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-item-icon">↩️</div>
+        <div class="trust-item-label">14 Day Returns</div>
+        <div class="trust-item-value">No hassle</div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-item-icon">💬</div>
+        <div class="trust-item-label">Real Support</div>
+        <div class="trust-item-value">Humans, not bots</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="reviews" id="reviews">
+  <div class="container">
+    <div class="reviews-header">
+      <span class="section-label">Hear from the Crew</span>
+      <h2 class="section-title">What Builders Are Saying</h2>
+      <p class="section-desc">Real people, real jobsites, real opinions.</p>
+    </div>
+    <div class="reviews-grid">
+      <div class="review-card fade-in">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">"Finally a brand that gets it. Wore the Jump tee on site all week — fits right, looks right, holds up."</p>
+        <div class="review-author">
+          <div class="review-avatar">M</div>
+          <div>
+            <div class="review-author-name">Marcus T.</div>
+            <div class="review-author-role">Framer — Ottawa, ON</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card fade-in fade-in-delay-1">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">"My crew saw my shirt and everyone wanted one. We ordered five more. The quality is legit."</p>
+        <div class="review-author">
+          <div class="review-avatar">D</div>
+          <div>
+            <div class="review-author-name">Dave R.</div>
+            <div class="review-author-role">Site Supervisor — Toronto, ON</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card fade-in fade-in-delay-2">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">"Love that this brand is by someone who actually worked the trade. You can feel it in everything they do."</p>
+        <div class="review-author">
+          <div class="review-avatar">S</div>
+          <div>
+            <div class="review-author-name">Sarah K.</div>
+            <div class="review-author-role">Electrician — Hamilton, ON</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT (mini) -->
+<section class="categories" id="about" style="background: var(--white);">
+  <div class="container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;">
+    <div>
+      <span class="section-label fade-in">About the Gear</span>
+      <h2 class="section-title fade-in">This Didn't Start<br>in a Boardroom.</h2>
+      <p style="color: var(--text-secondary); font-size: 16px; line-height: 1.8; margin-bottom: 20px;" class="fade-in">
+        OnSite Club started on the jobsite. Boots on, tool belt strapped, hands full of lumber. We know what it's like to build something from nothing and have nobody remember your name.
+      </p>
+      <p style="color: var(--text-secondary); font-size: 16px; line-height: 1.8; margin-bottom: 32px;" class="fade-in">
+        The gear exists because the people who build this country deserve a brand that's theirs. Not a fashion label playing dress-up. The real thing.
+      </p>
+      <a href="https://www.onsiteclub.ca" class="btn-primary fade-in" target="_blank">Learn More at OnSiteClub.ca</a>
+    </div>
+    <div style="position: relative;">
+      <div style="border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 4/5; background: var(--warm-100);" class="fade-in">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision3.png&w=640&q=80" alt="Builder at sunrise" style="width:100%;height:100%;object-fit:cover;">
+      </div>
+      <div style="position: absolute; bottom: -20px; right: -20px; background: var(--charcoal); border-radius: var(--radius); padding: 24px 28px; max-width: 260px;" class="fade-in fade-in-delay-2">
+        <p style="font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--white); line-height: 1.4;">"Buildings don't remember who built them. We do."</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL FOLLOW -->
+<section class="social-banner">
+  <div class="container">
+    <span class="section-label" style="color: var(--warm-300);">Follow the Movement</span>
+    <h2 class="section-title" style="color: var(--white);">Join the Crew on Instagram</h2>
+    <p class="section-desc" style="color: rgba(255,255,255,0.6); margin: 0 auto 40px;">Tag us @onsite.club and get featured.</p>
+    <div class="social-grid">
+      <div class="social-img">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision1.png&w=400&q=80" alt="OnSite Community">
+        <div class="social-img-overlay"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></div>
+      </div>
+      <div class="social-img">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision2.png&w=400&q=80" alt="OnSite Community">
+        <div class="social-img-overlay"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></div>
+      </div>
+      <div class="social-img">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision3.png&w=400&q=80" alt="OnSite Community">
+        <div class="social-img-overlay"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></div>
+      </div>
+      <div class="social-img">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=400&q=80" alt="OnSite Products">
+        <div class="social-img-overlay"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></div>
+      </div>
+      <div class="social-img">
+        <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-members.webp&w=400&q=80" alt="OnSite Products">
+        <div class="social-img-overlay"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg></div>
+      </div>
+    </div>
+    <a href="https://www.instagram.com/onsite.club/" target="_blank" class="btn-social">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+      @onsite.club
+    </a>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+
+<!-- BLOG -->
+<section class="blog" id="blog">
+  <div class="container">
+    <div class="blog-header">
+      <div>
+        <span class="section-label">The OnSite Edit</span>
+        <h2 class="section-title">Stories from the Jobsite</h2>
+      </div>
+      <a href="#" class="view-all">All Posts →</a>
+    </div>
+    <div class="blog-layout">
+      <!-- Posts -->
+      <div class="blog-posts">
+        <a href="#" class="blog-card fade-in">
+          <div class="blog-card-img">
+            <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision1.png&w=640&q=80" alt="Why Construction Workers Deserve a Brand">
+          </div>
+          <div class="blog-card-content">
+            <span class="blog-card-tag">Culture</span>
+            <h3 class="blog-card-title">Why Construction Workers Deserve a Brand That's Theirs</h3>
+            <p class="blog-card-excerpt">Every skyline in this country was built by people who wake up before the sun. But the fashion industry has never made space for them. We're changing that — here's why OnSite Club exists.</p>
+            <div class="blog-card-meta">
+              <span>Mar 15, 2025</span>
+              <span>·</span>
+              <span>5 min read</span>
+            </div>
+          </div>
+        </a>
+        <a href="#" class="blog-card fade-in fade-in-delay-1">
+          <div class="blog-card-img">
+            <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Flearn.png&w=640&q=80" alt="Getting Into Construction in Ontario">
+          </div>
+          <div class="blog-card-content">
+            <span class="blog-card-tag">Guides</span>
+            <h3 class="blog-card-title">Getting Into Construction in Ontario: The No-BS Guide</h3>
+            <p class="blog-card-excerpt">Certifications, safety gear, finding your first gig — everything you need to start your career in the trades. Written by someone who's been on the tools.</p>
+            <div class="blog-card-meta">
+              <span>Mar 8, 2025</span>
+              <span>·</span>
+              <span>8 min read</span>
+            </div>
+          </div>
+        </a>
+        <a href="#" class="blog-card fade-in fade-in-delay-2">
+          <div class="blog-card-img">
+            <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=640&q=80" alt="The Jump Tee Story">
+          </div>
+          <div class="blog-card-content">
+            <span class="blog-card-tag">Drops</span>
+            <h3 class="blog-card-title">Behind the Design: The Jump Tee</h3>
+            <p class="blog-card-excerpt">Every piece we make has a story. The Jump was inspired by that first moment you step onto a frame for the first time — the adrenaline, the height, the pride.</p>
+            <div class="blog-card-meta">
+              <span>Feb 28, 2025</span>
+              <span>·</span>
+              <span>4 min read</span>
+            </div>
+          </div>
+        </a>
+        <a href="#" class="blog-card fade-in fade-in-delay-3">
+          <div class="blog-card-img">
+            <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fepis.png&w=640&q=80" alt="Essential Safety Equipment">
+          </div>
+          <div class="blog-card-content">
+            <span class="blog-card-tag">Safety</span>
+            <h3 class="blog-card-title">The Safety Gear Checklist Every New Builder Needs</h3>
+            <p class="blog-card-excerpt">Hard hats, boots, glasses, gloves — what's required, what's recommended, and what the experienced crew actually wears on site every day.</p>
+            <div class="blog-card-meta">
+              <span>Feb 20, 2025</span>
+              <span>·</span>
+              <span>6 min read</span>
+            </div>
+          </div>
+        </a>
+      </div>
+      <!-- Sidebar -->
+      <aside class="blog-sidebar">
+        <div class="sidebar-block">
+          <h4 class="sidebar-title">Recent Posts</h4>
+          <div class="sidebar-recent">
+            <a href="#" class="sidebar-recent-item">
+              <div class="sidebar-recent-img">
+                <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision1.png&w=128&q=80" alt="">
+              </div>
+              <div>
+                <div class="sidebar-recent-title">Why Construction Workers Deserve a Brand</div>
+                <div class="sidebar-recent-date">Mar 15, 2025</div>
+              </div>
+            </a>
+            <a href="#" class="sidebar-recent-item">
+              <div class="sidebar-recent-img">
+                <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Flearn.png&w=128&q=80" alt="">
+              </div>
+              <div>
+                <div class="sidebar-recent-title">Getting Into Construction in Ontario</div>
+                <div class="sidebar-recent-date">Mar 8, 2025</div>
+              </div>
+            </a>
+            <a href="#" class="sidebar-recent-item">
+              <div class="sidebar-recent-img">
+                <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=128&q=80" alt="">
+              </div>
+              <div>
+                <div class="sidebar-recent-title">Behind the Design: The Jump Tee</div>
+                <div class="sidebar-recent-date">Feb 28, 2025</div>
+              </div>
+            </a>
+            <a href="#" class="sidebar-recent-item">
+              <div class="sidebar-recent-img">
+                <img src="https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fepis.png&w=128&q=80" alt="">
+              </div>
+              <div>
+                <div class="sidebar-recent-title">Safety Gear Checklist for New Builders</div>
+                <div class="sidebar-recent-date">Feb 20, 2025</div>
+              </div>
+            </a>
+          </div>
+        </div>
+        <div class="sidebar-block">
+          <h4 class="sidebar-title">Topics</h4>
+          <div class="sidebar-tags">
+            <a href="#" class="sidebar-tag">Culture</a>
+            <a href="#" class="sidebar-tag">Guides</a>
+            <a href="#" class="sidebar-tag">Drops</a>
+            <a href="#" class="sidebar-tag">Safety</a>
+            <a href="#" class="sidebar-tag">Tools</a>
+            <a href="#" class="sidebar-tag">Crew Spotlight</a>
+            <a href="#" class="sidebar-tag">Career</a>
+          </div>
+        </div>
+        <div class="sidebar-block" style="background: var(--charcoal); color: var(--white);">
+          <h4 class="sidebar-title" style="color: var(--white); border-color: rgba(255,255,255,0.15);">Join the Crew</h4>
+          <p style="font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 16px;">Get new posts, gear drops, and exclusive content delivered to your inbox.</p>
+          <input type="email" placeholder="your@email.com" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: var(--white); font-family: var(--font-body); font-size: 13px; margin-bottom: 10px; outline: none;">
+          <button class="btn-primary" style="width: 100%; padding: 12px; font-size: 12px;">Subscribe</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section class="newsletter" id="contact">
+  <div class="container">
+    <div class="newsletter-content">
+      <h2 class="section-title">Get 10% Off Your First Order</h2>
+      <p class="newsletter-desc">Join the crew. Get early drops, jobsite stories, and exclusive deals.</p>
+    </div>
+    <form class="newsletter-form" onsubmit="event.preventDefault();">
+      <input type="email" class="newsletter-input" placeholder="your@email.com" required>
+      <button type="submit" class="btn-newsletter">Subscribe</button>
+    </form>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <img src="https://shop.onsiteclub.ca/assets/logo-onsite-club.png" alt="OnSite Club" class="footer-logo">
+        <p class="footer-brand-desc">Built for those who build. Gear, tools, and a crew for the people whose work everyone sees but nobody credits.</p>
+        <div class="footer-social">
+          <a href="https://facebook.com/onsiteclub" aria-label="Facebook">
+            <svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </a>
+          <a href="https://www.instagram.com/onsite.club/" aria-label="Instagram">
+            <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+          </a>
+          <a href="/cdn-cgi/l/email-protection#5b3834352f3a382f1b343528322f3e38372e3975383a" aria-label="Email">
+            <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div>
+        <h4 class="footer-col-title">Shop</h4>
+        <ul class="footer-links">
+          <li><a href="#">All Products</a></li>
+          <li><a href="#">Cotton Tees</a></li>
+          <li><a href="#">Hoodies</a></li>
+          <li><a href="#">Sport Tees</a></li>
+          <li><a href="#">Caps</a></li>
+          <li><a href="#">Stickers</a></li>
+          <li><a href="#members">Members Exclusive</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="footer-col-title">Help</h4>
+        <ul class="footer-links">
+          <li><a href="#">Shipping & Returns</a></li>
+          <li><a href="#">Size Guide</a></li>
+          <li><a href="#">FAQ</a></li>
+          <li><a href="#blog">Blog</a></li>
+          <li><a href="/cdn-cgi/l/email-protection#f4979b9a80959780b49b9a879d809197988196da9795">Contact Us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="footer-col-title">Ecosystem</h4>
+        <ul class="footer-links">
+          <li><a href="https://www.onsiteclub.ca" target="_blank">OnSite Club</a></li>
+          <li><a href="https://calculator.onsiteclub.ca" target="_blank">Calculator</a></li>
+          <li><a href="https://timekeeperweb.onsiteclub.ca" target="_blank">Timekeeper</a></li>
+          <li><a href="https://dashboard.onsiteclub.ca" target="_blank">Member Hub</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2025 OnSite Club. All rights reserved.</span>
+      <div class="footer-bottom-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- SCROLL ANIMATIONS -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isInte

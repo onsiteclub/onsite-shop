@@ -100,7 +100,7 @@ export default function CartPage() {
   const [loadingRates, setLoadingRates] = useState(false);
   const ratesFetchRef = useRef<AbortController | null>(null);
 
-  const fetchShippingRates = useCallback(async (postal: string, prov: string) => {
+  const fetchShippingRates = useCallback(async (postal: string, prov: string, retryCount = 0) => {
     const clean = postal.replace(/\s/g, '');
     if (!/^[A-Z]\d[A-Z]\d[A-Z]\d$/i.test(clean) || items.length === 0) return;
 
@@ -123,18 +123,50 @@ export default function CartPage() {
       });
       const data = await res.json();
       if (!controller.signal.aborted) {
-        setShippingQuotes(data.quotes || []);
-        setShippingSource(data.source || 'fallback');
-        // Auto-select cheapest option
         if (data.quotes?.length > 0) {
+          setShippingQuotes(data.quotes);
+          setShippingSource(data.source || 'canada-post');
           setSelectedService(data.quotes[0].serviceCode);
+        } else if (retryCount < 1) {
+          // Retry once after 1s
+          await new Promise(r => setTimeout(r, 1000));
+          if (!controller.signal.aborted) {
+            return fetchShippingRates(postal, prov, retryCount + 1);
+          }
+        } else {
+          // Fallback after 2 failed attempts
+          const fallback = [{
+            serviceCode: 'FALLBACK',
+            serviceName: 'Standard Shipping (estimated)',
+            priceTotalCents: 1499,
+            expectedTransitDays: '7-12',
+            freeShipping: false,
+          }];
+          setShippingQuotes(fallback);
+          setShippingSource('fallback');
+          setSelectedService('FALLBACK');
         }
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        console.error('Shipping rates error:', err);
-        setShippingQuotes([]);
-        setShippingSource(null);
+        if (retryCount < 1) {
+          await new Promise(r => setTimeout(r, 1000));
+          if (!controller.signal.aborted) {
+            return fetchShippingRates(postal, prov, retryCount + 1);
+          }
+        } else {
+          console.error('Shipping rates error:', err);
+          const fallback = [{
+            serviceCode: 'FALLBACK',
+            serviceName: 'Standard Shipping (estimated)',
+            priceTotalCents: 1499,
+            expectedTransitDays: '7-12',
+            freeShipping: false,
+          }];
+          setShippingQuotes(fallback);
+          setShippingSource('fallback');
+          setSelectedService('FALLBACK');
+        }
       }
     } finally {
       if (!controller.signal.aborted) setLoadingRates(false);
@@ -281,30 +313,30 @@ export default function CartPage() {
   // --- Empty cart ---
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-grain">
+      <div className="min-h-screen bg-white">
         <div className="relative z-10 max-w-4xl mx-auto px-6 py-20">
           <nav className="flex items-center justify-between mb-16">
-            <Link href="/" className="font-mono text-lg font-bold text-stone-800">
+            <Link href="/" className="font-display text-lg font-bold text-text-primary">
               ONSITE SHOP
             </Link>
-            <Link href="/" className="font-mono text-sm text-stone-500 hover:text-stone-800">
-              ← Continue shopping
+            <Link href="/" className="text-sm text-text-secondary hover:text-text-primary">
+              &larr; Continue shopping
             </Link>
           </nav>
 
           <div className="text-center py-20">
-            <div className="mx-auto mb-6 w-16 h-16 text-stone-300">
+            <div className="mx-auto mb-6 w-16 h-16 text-warm-300">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
               </svg>
             </div>
-            <h1 className="font-mono text-2xl font-bold text-stone-800 mb-4">
+            <h1 className="font-display text-2xl font-bold text-text-primary mb-4">
               Your cart is empty
             </h1>
-            <p className="text-stone-500 mb-8">
+            <p className="text-text-secondary mb-8">
               Add some products!
             </p>
-            <Link href="/" className="btn-primary inline-block">
+            <Link href="/" className="btn-primary-new inline-block">
               Browse products
             </Link>
           </div>
@@ -315,18 +347,18 @@ export default function CartPage() {
 
   // --- Cart with items ---
   return (
-    <div className="min-h-screen bg-grain">
+    <div className="min-h-screen bg-white">
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-10">
         <nav className="flex items-center justify-between mb-10">
-          <Link href="/" className="font-mono text-lg font-bold text-stone-800">
+          <Link href="/" className="font-display text-lg font-bold text-text-primary">
             ONSITE SHOP
           </Link>
-          <Link href="/" className="font-mono text-sm text-stone-500 hover:text-stone-800">
-            ← Continue shopping
+          <Link href="/" className="text-sm text-text-secondary hover:text-text-primary">
+            &larr; Continue shopping
           </Link>
         </nav>
 
-        <h1 className="font-mono text-2xl font-bold text-stone-800 mb-8">
+        <h1 className="font-display text-2xl font-bold text-text-primary mb-8">
           Your Cart ({items.length} {items.length === 1 ? 'item' : 'items'})
         </h1>
 
@@ -336,40 +368,40 @@ export default function CartPage() {
             {items.map((item, idx) => (
               <div
                 key={`${item.product_key}-${item.size}-${item.color}-${idx}`}
-                className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 flex gap-4"
+                className="bg-white rounded-2xl p-4 flex gap-4 border border-warm-200"
               >
-                <div className="w-24 h-24 bg-stone-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-24 h-24 bg-warm-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
                   {item.image ? (
                     <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                   ) : (
-                    <svg className="w-8 h-8 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <svg className="w-8 h-8 text-warm-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                     </svg>
                   )}
                 </div>
 
                 <div className="flex-1">
-                  <h3 className="font-mono font-medium text-stone-800">{item.name}</h3>
-                  <p className="font-mono text-sm text-stone-500">
+                  <h3 className="font-display font-medium text-text-primary">{item.name}</h3>
+                  <p className="text-sm text-text-secondary">
                     {item.color}{item.size ? ` — ${item.size}` : ''}
                   </p>
                   {item.design && (
-                    <p className="font-mono text-xs text-stone-400">{item.design}</p>
+                    <p className="text-xs text-warm-400">{item.design}</p>
                   )}
-                  <p className="font-mono text-amber-600 font-bold mt-1">{fmt(item.price)}</p>
+                  <p className="text-amber-dark font-bold mt-1">{fmt(item.price)}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => updateQuantity(item.product_key, item.color, item.size, item.quantity - 1)}
-                    className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center"
+                    className="w-8 h-8 rounded-lg bg-warm-100 hover:bg-warm-200 flex items-center justify-center"
                   >
                     -
                   </button>
-                  <span className="font-mono w-8 text-center">{item.quantity}</span>
+                  <span className="w-8 text-center">{item.quantity}</span>
                   <button
                     onClick={() => updateQuantity(item.product_key, item.color, item.size, item.quantity + 1)}
-                    className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center"
+                    className="w-8 h-8 rounded-lg bg-warm-100 hover:bg-warm-200 flex items-center justify-center"
                   >
                     +
                   </button>
@@ -377,7 +409,7 @@ export default function CartPage() {
 
                 <button
                   onClick={() => removeItem(item.product_key, item.color, item.size)}
-                  className="text-stone-400 hover:text-red-500 transition-colors"
+                  className="text-warm-400 hover:text-red-500 transition-colors"
                   aria-label={`Remove ${item.name}`}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -389,7 +421,7 @@ export default function CartPage() {
 
             <button
               onClick={() => { if (window.confirm('Remove all items from your cart?')) clearCart(); }}
-              className="font-mono text-sm text-stone-400 hover:text-stone-600"
+              className="text-sm text-warm-400 hover:text-text-secondary"
             >
               Clear cart
             </button>
@@ -399,12 +431,12 @@ export default function CartPage() {
           <div className="lg:col-span-3 lg:order-2 space-y-4">
 
             {/* Shipping Address Form */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
-              <h2 className="font-mono font-bold text-stone-800 mb-4">Shipping Address</h2>
+            <div className="bg-white rounded-2xl p-6 border border-warm-200">
+              <h2 className="font-display font-bold text-text-primary mb-4">Shipping Address</h2>
 
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="ship-name" className="block font-mono text-xs text-stone-600 mb-1">Full name</label>
+                  <label htmlFor="ship-name" className="block font-display text-xs text-text-secondary mb-1">Full name</label>
                   <input
                     id="ship-name"
                     type="text"
@@ -412,12 +444,12 @@ export default function CartPage() {
                     value={name}
                     onChange={e => setName(e.target.value)}
                     onBlur={() => validateField('name', name)}
-                    className={`w-full px-3 py-2.5 rounded-lg border font-mono text-sm focus:outline-none focus:border-stone-400 bg-white ${fieldErrors.name ? 'border-red-400' : 'border-stone-200'}`}
+                    className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:border-warm-400 bg-white ${fieldErrors.name ? 'border-red-400' : 'border-warm-200'}`}
                   />
-                  {fieldErrors.name && <p className="font-mono text-xs text-red-500 mt-1" role="alert">{fieldErrors.name}</p>}
+                  {fieldErrors.name && <p className="text-xs text-red-500 mt-1" role="alert">{fieldErrors.name}</p>}
                 </div>
                 <div>
-                  <label htmlFor="ship-street" className="block font-mono text-xs text-stone-600 mb-1">Street address</label>
+                  <label htmlFor="ship-street" className="block font-display text-xs text-text-secondary mb-1">Street address</label>
                   <input
                     id="ship-street"
                     type="text"
@@ -425,24 +457,24 @@ export default function CartPage() {
                     value={street}
                     onChange={e => setStreet(e.target.value)}
                     onBlur={() => validateField('street', street)}
-                    className={`w-full px-3 py-2.5 rounded-lg border font-mono text-sm focus:outline-none focus:border-stone-400 bg-white ${fieldErrors.street ? 'border-red-400' : 'border-stone-200'}`}
+                    className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:border-warm-400 bg-white ${fieldErrors.street ? 'border-red-400' : 'border-warm-200'}`}
                   />
-                  {fieldErrors.street && <p className="font-mono text-xs text-red-500 mt-1" role="alert">{fieldErrors.street}</p>}
+                  {fieldErrors.street && <p className="text-xs text-red-500 mt-1" role="alert">{fieldErrors.street}</p>}
                 </div>
                 <div>
-                  <label htmlFor="ship-apt" className="block font-mono text-xs text-stone-600 mb-1">Apartment, unit <span className="text-stone-400">(optional)</span></label>
+                  <label htmlFor="ship-apt" className="block font-display text-xs text-text-secondary mb-1">Apartment, unit <span className="text-warm-400">(optional)</span></label>
                   <input
                     id="ship-apt"
                     type="text"
                     placeholder="Apt 4B"
                     value={apartment}
                     onChange={e => setApartment(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-stone-200 font-mono text-sm focus:outline-none focus:border-stone-400 bg-white"
+                    className="w-full px-3 py-2.5 rounded-lg border border-warm-200 text-sm focus:outline-none focus:border-warm-400 bg-white"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="ship-city" className="block font-mono text-xs text-stone-600 mb-1">City</label>
+                    <label htmlFor="ship-city" className="block font-display text-xs text-text-secondary mb-1">City</label>
                     <input
                       id="ship-city"
                       type="text"
@@ -450,29 +482,29 @@ export default function CartPage() {
                       value={city}
                       onChange={e => setCity(e.target.value)}
                       onBlur={() => validateField('city', city)}
-                      className={`w-full px-3 py-2.5 rounded-lg border font-mono text-sm focus:outline-none focus:border-stone-400 bg-white ${fieldErrors.city ? 'border-red-400' : 'border-stone-200'}`}
+                      className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:border-warm-400 bg-white ${fieldErrors.city ? 'border-red-400' : 'border-warm-200'}`}
                     />
-                    {fieldErrors.city && <p className="font-mono text-xs text-red-500 mt-1" role="alert">{fieldErrors.city}</p>}
+                    {fieldErrors.city && <p className="text-xs text-red-500 mt-1" role="alert">{fieldErrors.city}</p>}
                   </div>
                   <div>
-                    <label htmlFor="ship-province" className="block font-mono text-xs text-stone-600 mb-1">Province</label>
+                    <label htmlFor="ship-province" className="block font-display text-xs text-text-secondary mb-1">Province</label>
                     <select
                       id="ship-province"
                       value={province}
                       onChange={e => { setProvince(e.target.value); validateField('province', e.target.value); }}
                       onBlur={() => validateField('province', province)}
-                      className={`w-full px-3 py-2.5 rounded-lg border font-mono text-sm focus:outline-none focus:border-stone-400 bg-white ${fieldErrors.province ? 'border-red-400' : 'border-stone-200'}`}
+                      className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:border-warm-400 bg-white ${fieldErrors.province ? 'border-red-400' : 'border-warm-200'}`}
                     >
                       <option value="">Select</option>
                       {PROVINCES.map(p => (
                         <option key={p.code} value={p.code}>{p.name}</option>
                       ))}
                     </select>
-                    {fieldErrors.province && <p className="font-mono text-xs text-red-500 mt-1" role="alert">{fieldErrors.province}</p>}
+                    {fieldErrors.province && <p className="text-xs text-red-500 mt-1" role="alert">{fieldErrors.province}</p>}
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="ship-postal" className="block font-mono text-xs text-stone-600 mb-1">Postal code</label>
+                  <label htmlFor="ship-postal" className="block font-display text-xs text-text-secondary mb-1">Postal code</label>
                   <input
                     id="ship-postal"
                     type="text"
@@ -488,43 +520,51 @@ export default function CartPage() {
                     }}
                     onBlur={() => validateField('postalCode', postalCode)}
                     maxLength={7}
-                    className={`w-full px-3 py-2.5 rounded-lg border font-mono text-sm focus:outline-none focus:border-stone-400 bg-white ${fieldErrors.postalCode ? 'border-red-400' : 'border-stone-200'}`}
+                    className={`w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:border-warm-400 bg-white ${fieldErrors.postalCode ? 'border-red-400' : 'border-warm-200'}`}
                   />
-                  {fieldErrors.postalCode && <p className="font-mono text-xs text-red-500 mt-1" role="alert">{fieldErrors.postalCode}</p>}
+                  {fieldErrors.postalCode && <p className="text-xs text-red-500 mt-1" role="alert">{fieldErrors.postalCode}</p>}
                 </div>
               </div>
 
               {loadingRates && (
-                <p className="font-mono text-xs text-stone-400 mt-3 animate-pulse">
+                <p className="text-xs text-warm-400 mt-3 animate-pulse">
                   Calculating shipping rates...
                 </p>
               )}
 
               {!loadingRates && !promoActive && shippingQuotes.length === 0 && province && postalCode.replace(/\s/g, '').length === 6 && (
-                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="font-mono text-xs text-amber-700 mb-2">
+                <div className="mt-3 p-3 bg-amber-light border border-amber/30 rounded-lg">
+                  <p className="text-xs text-amber-dark mb-2">
                     Could not load shipping rates. Please try again.
                   </p>
                   <button
                     onClick={() => fetchShippingRates(postalCode, province)}
-                    className="font-mono text-xs font-bold text-amber-800 underline hover:text-amber-900"
+                    className="text-xs font-bold text-amber-dark underline hover:text-charcoal"
                   >
                     Retry
                   </button>
                 </div>
               )}
 
+              {!loadingRates && shippingSource === 'fallback' && shippingQuotes.length > 0 && !promoActive && (
+                <div className="mt-3 p-3 bg-amber-light border border-amber/30 rounded-lg">
+                  <p className="text-xs text-amber-dark">
+                    Shipping cost estimated — final cost confirmed by email.
+                  </p>
+                </div>
+              )}
+
               {!loadingRates && shippingQuotes.length > 1 && !promoActive && (
                 <div className="mt-3">
-                  <p className="font-mono text-xs text-stone-500 mb-2">Shipping options:</p>
+                  <p className="text-xs text-text-secondary mb-2">Shipping options:</p>
                   <div className="space-y-1.5">
                     {shippingQuotes.map((q: any) => (
                       <label
                         key={q.serviceCode}
                         className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
                           selectedService === q.serviceCode
-                            ? 'border-stone-800 bg-stone-50'
-                            : 'border-stone-200 hover:border-stone-300'
+                            ? 'border-charcoal bg-off-white'
+                            : 'border-warm-200 hover:border-warm-300'
                         }`}
                       >
                         <input
@@ -533,15 +573,15 @@ export default function CartPage() {
                           value={q.serviceCode}
                           checked={selectedService === q.serviceCode}
                           onChange={() => setSelectedService(q.serviceCode)}
-                          className="accent-stone-800"
+                          className="accent-charcoal"
                         />
-                        <span className="flex-1 font-mono text-xs text-stone-700">
+                        <span className="flex-1 text-xs text-text-primary">
                           {q.serviceName}
                           {q.expectedTransitDays && (
-                            <span className="text-stone-400 ml-1">({q.expectedTransitDays} days)</span>
+                            <span className="text-warm-400 ml-1">({q.expectedTransitDays} days)</span>
                           )}
                         </span>
-                        <span className="font-mono text-xs font-bold text-stone-800">
+                        <span className="text-xs font-bold text-text-primary">
                           {q.freeShipping ? 'FREE' : fmt(q.priceTotalCents)}
                         </span>
                       </label>
@@ -550,8 +590,8 @@ export default function CartPage() {
                 </div>
               )}
 
-              <div className="mt-4 pt-4 border-t border-stone-200">
-                <label className="font-mono text-xs text-stone-500 block mb-2">
+              <div className="mt-4 pt-4 border-t border-warm-200">
+                <label className="font-display text-xs text-text-secondary block mb-2">
                   Special instructions (optional)
                 </label>
                 <textarea
@@ -559,13 +599,13 @@ export default function CartPage() {
                   value={customerNotes}
                   onChange={e => setCustomerNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2.5 rounded-lg border border-stone-200 font-mono text-sm focus:outline-none focus:border-stone-400 bg-white resize-none"
+                  className="w-full px-3 py-2.5 rounded-lg border border-warm-200 text-sm focus:outline-none focus:border-warm-400 bg-white resize-none"
                 />
               </div>
             </div>
 
             {/* Promo Code */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
+            <div className="bg-white rounded-2xl p-6 border border-warm-200">
               <PromoCodeField
                 onApply={(data) => {
                   if (data?.valid) {
@@ -578,71 +618,71 @@ export default function CartPage() {
             </div>
 
             {/* Order Summary */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6">
-              <h2 className="font-mono font-bold text-stone-800 mb-4">Summary</h2>
+            <div className="bg-white rounded-2xl p-6 border border-warm-200">
+              <h2 className="font-display font-bold text-text-primary mb-4">Summary</h2>
 
               <div className="space-y-2 mb-4">
-                <div className="flex justify-between font-mono text-sm">
-                  <span className="text-stone-500">Subtotal</span>
-                  <span className="text-stone-800">{fmt(subtotal)}</span>
+                <div className="flex justify-between text-sm">
+                  <span className="text-text-secondary">Subtotal</span>
+                  <span className="text-text-primary">{fmt(subtotal)}</span>
                 </div>
                 {promoActive && discountAmount > 0 && (
-                  <div className="flex justify-between font-mono text-sm">
+                  <div className="flex justify-between text-sm">
                     <span className="text-green-600">Promo discount</span>
                     <span className="text-green-600 font-bold">-{fmt(discountAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-mono text-sm">
-                  <span className="text-stone-500">
+                <div className="flex justify-between text-sm">
+                  <span className="text-text-secondary">
                     Shipping
                     {selectedQuote && !promoActive && (
-                      <span className="text-stone-400 text-xs block">{selectedQuote.serviceName}</span>
+                      <span className="text-warm-400 text-xs block">{selectedQuote.serviceName}</span>
                     )}
                   </span>
                   {loadingRates ? (
-                    <span className="text-stone-400 text-xs animate-pulse">Calculating...</span>
+                    <span className="text-warm-400 text-xs animate-pulse">Calculating...</span>
                   ) : promoActive ? (
                     <span className="text-green-600 font-bold">FREE</span>
                   ) : shippingCost !== null ? (
-                    <span className={shippingCost === 0 ? 'text-green-600 font-bold' : 'text-stone-800'}>
+                    <span className={shippingCost === 0 ? 'text-green-600 font-bold' : 'text-text-primary'}>
                       {shippingCost === 0 ? 'FREE' : fmt(shippingCost)}
                     </span>
                   ) : (
-                    <span className="text-stone-400 text-xs">Enter postal code</span>
+                    <span className="text-warm-400 text-xs">Enter postal code</span>
                   )}
                 </div>
               </div>
 
-              <div className="border-t border-stone-200 pt-4 mb-4">
-                <div className="flex justify-between font-mono">
-                  <span className="font-bold text-stone-800">Total</span>
-                  <span className="font-bold text-lg text-stone-800">
+              <div className="border-t border-warm-200 pt-4 mb-4">
+                <div className="flex justify-between">
+                  <span className="font-bold text-text-primary">Total</span>
+                  <span className="font-bold text-lg text-text-primary">
                     {total !== null ? fmt(total) : '—'}
                   </span>
                 </div>
               </div>
 
               {!isFreeShipping && subtotal > 0 && (
-                <p className="font-mono text-xs text-stone-500 mb-4">
+                <p className="text-xs text-text-secondary mb-4">
                   Add {fmt(FREE_SHIPPING_THRESHOLD - subtotal)} more for free shipping!
                 </p>
               )}
 
               {error && (
                 <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl" role="alert" aria-live="assertive">
-                  <p className="font-mono text-xs text-red-600">{error}</p>
+                  <p className="text-xs text-red-600">{error}</p>
                 </div>
               )}
 
               <button
                 onClick={handleProceedToPayment}
                 disabled={isLoading || items.length === 0}
-                className="btn-accent w-full disabled:opacity-50"
+                className="btn-amber w-full disabled:opacity-50"
               >
                 {isLoading ? 'Redirecting...' : 'Proceed to Payment →'}
               </button>
 
-              <p className="font-mono text-xs text-stone-400 text-center mt-4">
+              <p className="text-xs text-warm-400 text-center mt-4">
                 Secure payment via Stripe
               </p>
             </div>
@@ -658,6 +698,27 @@ export default function CartPage() {
             cartValue={subtotal / 100}
           />
         )}
+      </div>
+
+      {/* Sticky mobile summary */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.08)] border-t border-warm-200 px-4 py-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <span className="font-bold text-text-primary">
+              {total !== null ? fmt(total) : fmt(effectiveSubtotal)}
+            </span>
+            {shippingSource === 'fallback' && (
+              <span className="text-[10px] text-warm-400 block">Shipping estimated</span>
+            )}
+          </div>
+          <button
+            onClick={handleProceedToPayment}
+            disabled={isLoading || items.length === 0}
+            className="btn-amber flex-1 max-w-[240px] py-3 disabled:opacity-50"
+          >
+            {isLoading ? 'Redirecting...' : 'Proceed to Payment →'}
+          </button>
+        </div>
       </div>
     </div>
   );

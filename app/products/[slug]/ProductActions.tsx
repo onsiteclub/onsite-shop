@@ -92,7 +92,7 @@ export function ProductActions({
     return (
       <button
         disabled
-        className="w-full font-mono py-3 px-6 rounded-xl bg-stone-300 text-stone-500 uppercase tracking-wider text-sm font-bold cursor-not-allowed"
+        className="w-full font-display py-3 px-6 rounded-xl bg-warm-300 text-warm-500 uppercase tracking-wider text-sm font-bold cursor-not-allowed"
       >
         Coming Soon
       </button>
@@ -104,7 +104,7 @@ export function ProductActions({
       {/* Size selector */}
       {sizes?.length > 1 && (
         <div className="mb-4">
-          <p className="font-mono text-xs text-[#1B2B27] mb-2 uppercase tracking-wider">
+          <p className="font-display text-xs text-text-primary mb-2 uppercase tracking-wider">
             Size
           </p>
           <div className="flex flex-wrap gap-2">
@@ -112,10 +112,10 @@ export function ProductActions({
               <button
                 key={size}
                 onClick={() => setSelectedSize(size)}
-                className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+                className={`px-3 py-1.5 rounded-lg font-display text-xs transition-all ${
                   selectedSize === size
-                    ? 'bg-[#1B2B27] text-white'
-                    : 'bg-white text-[#1B2B27] hover:bg-gray-100 border border-gray-200'
+                    ? 'bg-charcoal-deep text-white'
+                    : 'bg-white text-text-primary hover:bg-warm-100 border border-warm-200'
                 }`}
               >
                 {size}
@@ -128,7 +128,7 @@ export function ProductActions({
       {/* Color selector */}
       {colors?.length > 1 && (
         <div className="mb-6">
-          <p className="font-mono text-xs text-[#1B2B27] mb-2 uppercase tracking-wider">
+          <p className="font-display text-xs text-text-primary mb-2 uppercase tracking-wider">
             Color
           </p>
           <div className="flex flex-wrap gap-2">
@@ -136,10 +136,10 @@ export function ProductActions({
               <button
                 key={color}
                 onClick={() => setSelectedColor(color)}
-                className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
+                className={`px-3 py-1.5 rounded-lg font-display text-xs transition-all ${
                   selectedColor === color
-                    ? 'bg-[#1B2B27] text-white'
-                    : 'bg-white text-[#1B2B27] hover:bg-gray-100 border border-gray-200'
+                    ? 'bg-charcoal-deep text-white'
+                    : 'bg-white text-text-primary hover:bg-warm-100 border border-warm-200'
                 }`}
               >
                 {color}
@@ -151,7 +151,7 @@ export function ProductActions({
 
       {/* Validation error */}
       {validationError && (
-        <p className="font-mono text-xs text-red-500 mb-3 text-center">{validationError}</p>
+        <p className="text-xs text-red-500 mb-3 text-center">{validationError}</p>
       )}
 
       {/* Action buttons */}
@@ -159,17 +159,17 @@ export function ProductActions({
         <button
           disabled={addedFeedback}
           onClick={handleAddToCart}
-          className={`flex-1 font-mono py-3 px-4 rounded-xl transition-colors uppercase tracking-wider text-sm font-bold ${
+          className={`flex-1 font-display py-3 px-4 rounded-xl transition-colors uppercase tracking-wider text-sm font-bold ${
             addedFeedback
               ? 'bg-green-600 text-white cursor-not-allowed'
-              : 'bg-[#1B2B27] text-white hover:bg-[#2a3f39]'
+              : 'bg-charcoal-deep text-white hover:bg-charcoal-light'
           }`}
         >
           {addedFeedback ? 'Added!' : 'Add to Bag'}
         </button>
         <button
           onClick={handleCheckout}
-          className="flex-1 font-mono py-3 px-4 rounded-xl bg-[#B8860B] text-white hover:bg-[#9A7209] transition-colors uppercase tracking-wider text-sm font-bold"
+          className="flex-1 font-display py-3 px-4 rounded-xl bg-amber-dark text-white hover:bg-amber transition-colors uppercase tracking-wider text-sm font-bold"
         >
           Checkout
         </button>

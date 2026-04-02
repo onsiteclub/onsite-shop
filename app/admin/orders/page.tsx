@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 // ============================================
@@ -174,12 +173,12 @@ function OrderTimeline({ order }: { order: Order }) {
                   <div className={`flex-1 h-0.5 ${isCompleted ? 'bg-green-400' : 'bg-gray-200'}`} />
                 )}
               </div>
-              <p className={`font-mono text-xs font-medium ${
+              <p className={`font-display text-xs font-medium ${
                 isCurrent ? 'text-amber-700' : isCompleted ? 'text-green-700' : 'text-gray-400'
               }`}>
                 {step.label}
               </p>
-              <p className="font-mono text-[10px] text-gray-400 mt-0.5 h-4">
+              <p className="font-display text-[10px] text-gray-400 mt-0.5 h-4">
                 {dateValue ? fmtDateShort(dateValue) : '—'}
               </p>
             </div>
@@ -216,7 +215,7 @@ function MiniTimeline({ order }: { order: Order }) {
                     : 'bg-transparent border-gray-300'
                 }`}
               />
-              <span className={`font-mono text-[8px] md:text-[9px] mt-1 whitespace-nowrap ${
+              <span className={`font-display text-[8px] md:text-[9px] mt-1 whitespace-nowrap ${
                 isCompleted ? 'text-green-600 font-semibold'
                   : isCurrent ? 'text-amber-600 font-semibold'
                   : 'text-gray-400'
@@ -257,13 +256,6 @@ export default function AdminOrdersPage() {
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [selectedService, setSelectedService] = useState('DOM.EP');
 
-  // Reports
-  const [reportStartDate, setReportStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(1); // first of current month
-    return d.toISOString().split('T')[0];
-  });
-  const [reportEndDate, setReportEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const supabase = createClient();
 
@@ -472,48 +464,31 @@ export default function AdminOrdersPage() {
     if (order.status === 'archived') return false; // archived hidden from all tabs
     if (filter === 'active') return ACTIVE_STATUSES.includes(order.status);
     if (filter === 'delivered') return order.status === 'delivered';
-    if (filter === 'reports') return false; // reports tab handles its own display
     if (ACTIVE_STATUSES.includes(filter)) return order.status === filter;
     return ACTIVE_STATUSES.includes(order.status);
   });
 
-  // Reports data
-  const reportOrders = orders.filter(order => {
-    const isReportable = ['shipped', 'delivered', 'archived'].includes(order.status);
-    if (!isReportable) return false;
-
-    const orderDate = order.shipped_at || order.created_at;
-    const d = new Date(orderDate).toISOString().split('T')[0];
-    return d >= reportStartDate && d <= reportEndDate;
-  });
-
-  const reportTotals = reportOrders.reduce(
-    (acc, o) => ({
-      count: acc.count + 1,
-      subtotal: acc.subtotal + (o.total - o.shipping_cost),
-      shipping: acc.shipping + o.shipping_cost,
-      total: acc.total + o.total,
-    }),
-    { count: 0, subtotal: 0, shipping: 0, total: 0 }
-  );
 
   // ---- Loading / Auth ----
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-grain flex items-center justify-center">
-        <p className="font-mono text-[#1B2B27]/60">Loading...</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-amber border-t-transparent rounded-full animate-spin" />
+          <p className="font-display text-text-secondary text-sm">Loading...</p>
+        </div>
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-grain flex items-center justify-center px-4">
-        <div className="text-center">
-          <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-4">Access Restricted</h1>
-          <p className="font-mono text-[#1B2B27]/70 mb-6">Please login as an administrator.</p>
-          <Link href="/admin" className="btn-accent">Go to Admin</Link>
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="text-center bg-white rounded-2xl p-8 shadow-sm border border-warm-200/60">
+          <h1 className="font-display text-xl font-bold text-text-primary mb-2">Access Restricted</h1>
+          <p className="font-body text-sm text-text-secondary mb-6">Please login as an administrator.</p>
+          <a href="/admin" className="py-2.5 px-6 bg-amber hover:bg-amber-dark text-charcoal-deep font-display text-sm font-bold rounded-xl transition-colors inline-block">Go to Admin</a>
         </div>
       </div>
     );
@@ -525,48 +500,46 @@ export default function AdminOrdersPage() {
   const deliveredCount = orders.filter(o => o.status === 'delivered').length;
 
   return (
-    <div className="min-h-screen bg-grain">
-      {/* ===== Header ===== */}
-      <div className="sticky top-0 z-40 bg-[#1B2B27] border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/admin" className="font-mono text-sm text-white/60 hover:text-white">← Admin</Link>
-            <span className="font-mono text-sm text-white/40">|</span>
-            <h1 className="font-mono text-sm font-medium text-white">
-              Orders {filter !== 'reports' && `(${filteredOrders.length})`}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Search all orders..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 font-mono text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/50 w-56"
-            />
-            <button onClick={loadOrders} className="font-mono text-xs text-white/60 hover:text-white px-3 py-1.5 rounded-lg border border-white/20 hover:border-white/40">
-              ↻
-            </button>
-          </div>
+    <div>
+      {/* ===== Page Header ===== */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-text-primary">Orders</h1>
+          <p className="font-body text-sm text-text-secondary mt-0.5">
+            {filteredOrders.length} orders
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Search orders..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="px-4 py-2.5 rounded-xl bg-white border border-warm-200 font-body text-sm text-text-primary placeholder-warm-400 focus:outline-none focus:border-warm-400 w-56"
+          />
+          <button onClick={loadOrders} className="font-display text-xs text-warm-400 hover:text-text-primary px-3 py-2.5 rounded-xl bg-white border border-warm-200 hover:border-warm-300 transition-colors">
+            ↻
+          </button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div>
         {/* ===== Filters ===== */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 items-center">
+        <div className="flex gap-1.5 mb-6 overflow-x-auto pb-2 items-center">
           {[
             { key: 'active', label: 'Active', count: activeCount },
             { key: 'paid', label: 'Paid', count: orders.filter(o => o.status === 'paid').length },
             { key: 'processing', label: 'Processing', count: orders.filter(o => o.status === 'processing').length },
             { key: 'shipped', label: 'Shipped', count: orders.filter(o => o.status === 'shipped').length },
             { key: 'delivered', label: 'Delivered', count: deliveredCount },
-            { key: 'reports', label: 'Reports', count: null },
           ].map(({ key, label, count }) => (
             <button
               key={key}
               onClick={() => { setFilter(key); setSearchQuery(''); }}
-              className={`px-4 py-2 rounded-full font-mono text-xs whitespace-nowrap transition-colors ${
-                filter === key ? 'bg-[#1B2B27] text-white' : 'bg-white/80 text-[#1B2B27]/70 hover:bg-white'
+              className={`px-4 py-2 rounded-full font-display text-[11px] font-bold whitespace-nowrap transition-all ${
+                filter === key
+                  ? 'bg-amber text-charcoal-deep shadow-sm'
+                  : 'bg-white text-warm-400 hover:text-text-primary border border-warm-200'
               }`}
             >
               {label}
@@ -575,99 +548,10 @@ export default function AdminOrdersPage() {
           ))}
         </div>
 
-        {/* ===== Reports Tab ===== */}
-        {filter === 'reports' && !searchQuery.trim() && (
-          <div>
-            {/* Date range picker */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 mb-4 flex flex-wrap items-end gap-4">
-              <div>
-                <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1">From</label>
-                <input
-                  type="date"
-                  value={reportStartDate}
-                  onChange={e => setReportStartDate(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm"
-                />
-              </div>
-              <div>
-                <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1">To</label>
-                <input
-                  type="date"
-                  value={reportEndDate}
-                  onChange={e => setReportEndDate(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm"
-                />
-              </div>
-              <p className="font-mono text-xs text-[#1B2B27]/50">
-                Showing shipped/delivered orders in this period
-              </p>
-            </div>
-
-            {/* Report table */}
-            {reportOrders.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="font-mono text-[#1B2B27]/60">No orders in this period.</p>
-              </div>
-            ) : (
-              <div className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Order</th>
-                      <th className="text-left font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Date</th>
-                      <th className="text-left font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Customer</th>
-                      <th className="text-right font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Items</th>
-                      <th className="text-right font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Subtotal</th>
-                      <th className="text-right font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Shipping</th>
-                      <th className="text-right font-mono text-xs font-bold text-[#1B2B27]/60 px-4 py-3">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportOrders.map(order => (
-                      <tr
-                        key={order.id}
-                        className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        <td className="font-mono text-sm px-4 py-3 font-bold">{order.order_number}</td>
-                        <td className="font-mono text-xs px-4 py-3 text-[#1B2B27]/60">
-                          {fmtDateFull(order.shipped_at || order.created_at)}
-                        </td>
-                        <td className="font-mono text-xs px-4 py-3">
-                          {order.shipping_address?.name || order.email || '—'}
-                        </td>
-                        <td className="font-mono text-xs px-4 py-3 text-right">{itemCount(order)}</td>
-                        <td className="font-mono text-sm px-4 py-3 text-right">{fmtMoney(order.total - order.shipping_cost)}</td>
-                        <td className="font-mono text-sm px-4 py-3 text-right">{fmtMoney(order.shipping_cost)}</td>
-                        <td className="font-mono text-sm px-4 py-3 text-right font-bold">{fmtMoney(order.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-[#1B2B27]/5 font-bold">
-                      <td className="font-mono text-sm px-4 py-3" colSpan={3}>
-                        Total — {reportTotals.count} order{reportTotals.count !== 1 ? 's' : ''}
-                      </td>
-                      <td className="font-mono text-xs px-4 py-3 text-right">
-                        {reportOrders.reduce((s, o) => s + itemCount(o), 0)}
-                      </td>
-                      <td className="font-mono text-sm px-4 py-3 text-right">{fmtMoney(reportTotals.subtotal)}</td>
-                      <td className="font-mono text-sm px-4 py-3 text-right">{fmtMoney(reportTotals.shipping)}</td>
-                      <td className="font-mono text-sm px-4 py-3 text-right text-green-700">{fmtMoney(reportTotals.total)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* ===== Order List ===== */}
-        {(filter !== 'reports' || searchQuery.trim()) && (
-          <>
-            {filteredOrders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
               <div className="text-center py-12">
-                <p className="font-mono text-[#1B2B27]/60">
+                <p className="font-display text-text-primary/60">
                   {searchQuery.trim() ? 'No orders match your search.' : 'No orders found.'}
                 </p>
               </div>
@@ -676,40 +560,38 @@ export default function AdminOrdersPage() {
                 {filteredOrders.map((order) => (
                   <div
                     key={order.id}
-                    className="bg-white/90 backdrop-blur-sm rounded-xl p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                    className="bg-white rounded-xl p-4 shadow-sm border border-warm-200/60 hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => setSelectedOrder(order)}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1 flex-wrap">
-                          <span className="font-mono text-sm font-bold text-[#1B2B27]">{order.order_number}</span>
+                          <span className="font-display text-sm font-bold text-text-primary">{order.order_number}</span>
                           {order.customer_notes && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-pink-100 text-pink-700">Has notes</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-display bg-pink-100 text-pink-700">Has notes</span>
                           )}
                           {order.tracking_code && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-blue-50 text-blue-600">Tracked</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-display bg-blue-50 text-blue-600">Tracked</span>
                           )}
                         </div>
                         <MiniTimeline order={order} />
-                        <div className="font-mono text-xs text-[#1B2B27]/60 space-y-0.5 mt-2">
+                        <div className="font-display text-xs text-text-primary/60 space-y-0.5 mt-2">
                           <p>{fmtDate(order.created_at)}</p>
                           {order.shipping_address?.name && (
-                            <p className="font-medium text-[#1B2B27]/80">{order.shipping_address.name}</p>
+                            <p className="font-medium text-text-primary/80">{order.shipping_address.name}</p>
                           )}
                           {order.email && <p>{order.email}</p>}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-mono text-lg font-bold text-[#1B2B27]">{fmtMoney(order.total)}</p>
-                        <p className="font-mono text-xs text-[#1B2B27]/60">{itemCount(order)} item(s)</p>
+                        <p className="font-display text-lg font-bold text-text-primary">{fmtMoney(order.total)}</p>
+                        <p className="font-display text-xs text-text-primary/60">{itemCount(order)} item(s)</p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </>
-        )}
       </div>
 
       {/* ============================================================ */}
@@ -723,12 +605,12 @@ export default function AdminOrdersPage() {
             <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between rounded-t-2xl z-10">
               <div>
                 <div className="flex items-center gap-3">
-                  <h2 className="font-mono text-xl font-bold text-[#1B2B27]">{selectedOrder.order_number}</h2>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${sc(selectedOrder.status).bg} ${sc(selectedOrder.status).color}`}>
+                  <h2 className="font-display text-xl font-bold text-text-primary">{selectedOrder.order_number}</h2>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-display ${sc(selectedOrder.status).bg} ${sc(selectedOrder.status).color}`}>
                     {sc(selectedOrder.status).label}
                   </span>
                 </div>
-                <p className="font-mono text-xs text-[#1B2B27]/50 mt-0.5">
+                <p className="font-display text-xs text-text-primary/50 mt-0.5">
                   {selectedOrder.email || 'No email'} · {fmtDate(selectedOrder.created_at)}
                 </p>
               </div>
@@ -742,10 +624,10 @@ export default function AdminOrdersPage() {
               {/* ---- 1. CUSTOMER INSTRUCTIONS ---- */}
               {selectedOrder.customer_notes && (
                 <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
-                  <p className="font-mono text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">
+                  <p className="font-display text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">
                     Customer Instructions
                   </p>
-                  <p className="font-mono text-sm text-[#1B2B27] leading-relaxed">
+                  <p className="font-display text-sm text-text-primary leading-relaxed">
                     {selectedOrder.customer_notes}
                   </p>
                 </div>
@@ -758,18 +640,18 @@ export default function AdminOrdersPage() {
 
               {/* ---- 3. PACKING LIST ---- */}
               <div>
-                <p className="font-mono text-xs font-bold text-[#1B2B27]/60 uppercase tracking-wider mb-3">
+                <p className="font-display text-xs font-bold text-text-primary/60 uppercase tracking-wider mb-3">
                   Packing List ({itemCount(selectedOrder)} item{itemCount(selectedOrder) !== 1 ? 's' : ''})
                 </p>
 
                 {selectedOrder.items.length === 0 ? (
                   <div className="bg-gray-50 rounded-xl p-4 text-center">
-                    <p className="font-mono text-sm text-gray-400">No item details available</p>
+                    <p className="font-display text-sm text-gray-400">No item details available</p>
                   </div>
                 ) : (
                   <div className="border border-gray-200 rounded-xl overflow-hidden">
                     {/* Table header */}
-                    <div className="bg-gray-50 px-4 py-2 grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center font-mono text-xs text-[#1B2B27]/50 uppercase tracking-wider border-b border-gray-200">
+                    <div className="bg-gray-50 px-4 py-2 grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center font-display text-xs text-text-primary/50 uppercase tracking-wider border-b border-gray-200">
                       <span>Product</span>
                       <span className="w-20 text-center">SKU</span>
                       <span className="w-14 text-center">Size</span>
@@ -779,11 +661,11 @@ export default function AdminOrdersPage() {
                     {/* Rows */}
                     {selectedOrder.items.map((item, idx) => (
                       <div key={idx} className="px-4 py-3 grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center border-b border-gray-100 last:border-b-0 bg-white">
-                        <span className="font-mono text-sm font-bold text-[#1B2B27] truncate">{item.name || 'Product'}</span>
-                        <span className="font-mono text-sm text-amber-700 font-semibold w-20 text-center">{item.sku || '—'}</span>
-                        <span className="font-mono text-sm text-[#1B2B27] w-14 text-center font-semibold">{item.size || '—'}</span>
-                        <span className="font-mono text-sm text-[#1B2B27] w-16 text-center">{item.color || '—'}</span>
-                        <span className="font-mono text-sm font-black text-[#1B2B27] w-10 text-center">{item.qty || 1}</span>
+                        <span className="font-display text-sm font-bold text-text-primary truncate">{item.name || 'Product'}</span>
+                        <span className="font-display text-sm text-amber-700 font-semibold w-20 text-center">{item.sku || '—'}</span>
+                        <span className="font-display text-sm text-text-primary w-14 text-center font-semibold">{item.size || '—'}</span>
+                        <span className="font-display text-sm text-text-primary w-16 text-center">{item.color || '—'}</span>
+                        <span className="font-display text-sm font-black text-text-primary w-10 text-center">{item.qty || 1}</span>
                       </div>
                     ))}
                   </div>
@@ -793,10 +675,10 @@ export default function AdminOrdersPage() {
               {/* ---- 4. SHIPPING LABEL ---- */}
               {selectedOrder.shipping_address ? (
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-5 bg-white">
-                  <p className="font-mono text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
+                  <p className="font-display text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-3">
                     Ship To
                   </p>
-                  <div className="font-mono text-base text-[#1B2B27] leading-relaxed">
+                  <div className="font-display text-base text-text-primary leading-relaxed">
                     <p className="font-bold text-lg">{selectedOrder.shipping_address.name || '—'}</p>
                     {selectedOrder.shipping_address.street && <p>{selectedOrder.shipping_address.street}</p>}
                     {selectedOrder.shipping_address.apartment && <p>{selectedOrder.shipping_address.apartment}</p>}
@@ -811,18 +693,18 @@ export default function AdminOrdersPage() {
                 </div>
               ) : (
                 <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 bg-gray-50 text-center">
-                  <p className="font-mono text-sm text-gray-400">No shipping address</p>
+                  <p className="font-display text-sm text-gray-400">No shipping address</p>
                 </div>
               )}
 
               {/* ---- 5. ORDER SUMMARY ---- */}
-              <div className="bg-gray-50 rounded-xl p-4 font-mono text-sm">
+              <div className="bg-gray-50 rounded-xl p-4 font-display text-sm">
                 <div className="flex justify-between mb-1">
-                  <span className="text-[#1B2B27]/60">Subtotal</span>
+                  <span className="text-text-primary/60">Subtotal</span>
                   <span>{fmtMoney(selectedOrder.total - selectedOrder.shipping_cost)}</span>
                 </div>
                 <div className="flex justify-between mb-2">
-                  <span className="text-[#1B2B27]/60">Shipping</span>
+                  <span className="text-text-primary/60">Shipping</span>
                   <span className={selectedOrder.shipping_cost === 0 ? 'text-green-600 font-bold' : ''}>
                     {selectedOrder.shipping_cost === 0 ? 'FREE' : fmtMoney(selectedOrder.shipping_cost)}
                   </span>
@@ -836,17 +718,17 @@ export default function AdminOrdersPage() {
               {/* ---- 6. STAFF NOTES (read-only unless processing) ---- */}
               {(selectedOrder.staff_notes || selectedOrder.status === 'processing') && (
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="font-mono text-xs font-bold text-[#1B2B27]/40 uppercase tracking-wider mb-2">Staff Notes</p>
+                  <p className="font-display text-xs font-bold text-text-primary/40 uppercase tracking-wider mb-2">Staff Notes</p>
                   {selectedOrder.status === 'processing' ? (
                     <textarea
                       placeholder="Packing notes, special instructions..."
                       value={editStaffNotes}
                       onChange={e => setEditStaffNotes(e.target.value)}
                       rows={2}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 font-mono text-sm focus:outline-none focus:border-gray-400 bg-white resize-none"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 font-display text-sm focus:outline-none focus:border-gray-400 bg-white resize-none"
                     />
                   ) : (
-                    <p className="font-mono text-sm text-[#1B2B27]/70">{selectedOrder.staff_notes}</p>
+                    <p className="font-display text-sm text-text-primary/70">{selectedOrder.staff_notes}</p>
                   )}
                 </div>
               )}
@@ -854,13 +736,13 @@ export default function AdminOrdersPage() {
               {/* ---- 7. TRACKING INFO (for shipped/delivered/archived) ---- */}
               {selectedOrder.tracking_code && selectedOrder.status !== 'processing' && (
                 <div className="flex items-center gap-3 bg-blue-50 rounded-xl p-4">
-                  <span className="font-mono text-xs text-blue-600">Tracking:</span>
-                  <code className="font-mono text-sm font-bold text-blue-800">{selectedOrder.tracking_code}</code>
+                  <span className="font-display text-xs text-blue-600">Tracking:</span>
+                  <code className="font-display text-sm font-bold text-blue-800">{selectedOrder.tracking_code}</code>
                   <a
                     href={`https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${selectedOrder.tracking_code}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-auto font-mono text-xs text-blue-600 hover:underline"
+                    className="ml-auto font-display text-xs text-blue-600 hover:underline"
                   >
                     Track on Canada Post →
                   </a>
@@ -870,18 +752,18 @@ export default function AdminOrdersPage() {
               {/* ---- 8. SHIPPING LABEL PDF ---- */}
               {(selectedOrder.status === 'processing' || selectedOrder.status === 'shipped' || selectedOrder.label_url) && (
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="font-mono text-xs font-bold text-[#1B2B27]/40 uppercase tracking-wider mb-3">Shipping Label</p>
+                  <p className="font-display text-xs font-bold text-text-primary/40 uppercase tracking-wider mb-3">Shipping Label</p>
                   {selectedOrder.label_url ? (
                     <div className="flex items-center gap-3">
                       <a
                         href={selectedOrder.label_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 px-4 py-2.5 rounded-xl bg-[#1B2B27] text-white font-mono text-xs font-bold text-center hover:bg-[#2a3f39] transition-colors"
+                        className="flex-1 px-4 py-2.5 rounded-xl bg-charcoal-deep text-white font-display text-xs font-bold text-center hover:bg-charcoal transition-colors"
                       >
                         Download Label PDF
                       </a>
-                      <label className="px-4 py-2.5 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-mono text-xs font-bold text-center hover:border-gray-400 cursor-pointer transition-colors">
+                      <label className="px-4 py-2.5 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-display text-xs font-bold text-center hover:border-gray-400 cursor-pointer transition-colors">
                         Replace
                         <input
                           type="file"
@@ -899,15 +781,15 @@ export default function AdminOrdersPage() {
                       {/* Show customer's chosen service (locked) or fallback selector */}
                       {selectedOrder.shipping_service ? (
                         <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200">
-                          <span className="font-mono text-xs text-blue-600">Service:</span>
-                          <span className="font-mono text-sm font-bold text-blue-800">
+                          <span className="font-display text-xs text-blue-600">Service:</span>
+                          <span className="font-display text-sm font-bold text-blue-800">
                             {{'DOM.RP': 'Regular Parcel', 'DOM.EP': 'Expedited Parcel', 'DOM.XP': 'Xpresspost', 'DOM.PC': 'Priority'}[selectedOrder.shipping_service] || selectedOrder.shipping_service}
                           </span>
-                          <span className="ml-auto font-mono text-[10px] text-blue-400">chosen by customer</span>
+                          <span className="ml-auto font-display text-[10px] text-blue-400">chosen by customer</span>
                         </div>
                       ) : (
                         <div>
-                          <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1.5">Shipping Service</label>
+                          <label className="font-display text-xs text-text-primary/60 block mb-1.5">Shipping Service</label>
                           <div className="grid grid-cols-2 gap-2">
                             {[
                               { code: 'DOM.RP', name: 'Regular Parcel', desc: '5-8 days' },
@@ -918,10 +800,10 @@ export default function AdminOrdersPage() {
                               <button
                                 key={svc.code}
                                 onClick={() => setSelectedService(svc.code)}
-                                className={`px-3 py-2 rounded-lg border-2 font-mono text-xs text-left transition-colors ${
+                                className={`px-3 py-2 rounded-lg border-2 font-display text-xs text-left transition-colors ${
                                   selectedService === svc.code
                                     ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                    : 'border-gray-200 bg-white text-[#1B2B27]/70 hover:border-gray-300'
+                                    : 'border-gray-200 bg-white text-text-primary/70 hover:border-gray-300'
                                 }`}
                               >
                                 <span className="font-bold block">{svc.name}</span>
@@ -935,7 +817,7 @@ export default function AdminOrdersPage() {
                       <button
                         onClick={() => handleCreateLabel(selectedOrder.id, selectedOrder.order_number)}
                         disabled={creatingLabel}
-                        className="w-full px-4 py-3 rounded-xl bg-red-600 text-white font-mono text-xs font-bold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                        className="w-full px-4 py-3 rounded-xl bg-red-600 text-white font-display text-xs font-bold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                       >
                         {creatingLabel ? (
                           <>
@@ -947,7 +829,7 @@ export default function AdminOrdersPage() {
                         )}
                       </button>
                       {/* Manual upload fallback */}
-                      <label className="block w-full px-3 py-2 rounded-lg border border-dashed border-gray-300 text-center font-mono text-[10px] text-gray-400 hover:border-gray-400 cursor-pointer transition-colors">
+                      <label className="block w-full px-3 py-2 rounded-lg border border-dashed border-gray-300 text-center font-display text-[10px] text-gray-400 hover:border-gray-400 cursor-pointer transition-colors">
                         {uploadingLabel ? 'Uploading...' : 'or upload label manually (PDF, PNG, JPG)'}
                         <input
                           type="file"
@@ -962,21 +844,21 @@ export default function AdminOrdersPage() {
                       </label>
                     </div>
                   ) : (
-                    <p className="font-mono text-xs text-gray-400 text-center py-2">No label uploaded</p>
+                    <p className="font-display text-xs text-gray-400 text-center py-2">No label uploaded</p>
                   )}
                 </div>
               )}
 
               {/* ---- 9. ACTION AREA ---- */}
-              <div className="bg-white border-2 border-[#1B2B27]/10 rounded-xl p-4">
-                <p className="font-mono text-xs font-bold text-[#1B2B27]/60 uppercase tracking-wider mb-3">Next Step</p>
+              <div className="bg-white border-2 border-charcoal-deep/10 rounded-xl p-4">
+                <p className="font-display text-xs font-bold text-text-primary/60 uppercase tracking-wider mb-3">Next Step</p>
 
                 {/* PAID → Start Processing */}
                 {selectedOrder.status === 'paid' && (
                   <button
                     onClick={() => updateOrderStatus(selectedOrder.id, 'processing')}
                     disabled={updatingStatus}
-                    className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-yellow-500 text-white hover:bg-yellow-600 disabled:opacity-50 transition-colors"
+                    className="w-full px-5 py-3 rounded-xl font-display text-sm font-bold bg-yellow-500 text-white hover:bg-yellow-600 disabled:opacity-50 transition-colors"
                   >
                     {updatingStatus ? 'Updating...' : 'Start Processing →'}
                   </button>
@@ -986,13 +868,13 @@ export default function AdminOrdersPage() {
                 {selectedOrder.status === 'processing' && (
                   <div className="space-y-3">
                     <div>
-                      <label className="font-mono text-xs text-[#1B2B27]/60 block mb-1">Canada Post Tracking Code</label>
+                      <label className="font-display text-xs text-text-primary/60 block mb-1">Canada Post Tracking Code</label>
                       <input
                         type="text"
                         placeholder="Enter tracking number..."
                         value={editTrackingCode}
                         onChange={e => setEditTrackingCode(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-blue-200 font-mono text-sm focus:outline-none focus:border-blue-400 bg-blue-50/50"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-blue-200 font-display text-sm focus:outline-none focus:border-blue-400 bg-blue-50/50"
                       />
                     </div>
                     <button
@@ -1007,7 +889,7 @@ export default function AdminOrdersPage() {
                         });
                       }}
                       disabled={updatingStatus}
-                      className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      className="w-full px-5 py-3 rounded-xl font-display text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                     >
                       {updatingStatus ? 'Updating...' : 'Mark as Shipped →'}
                     </button>
@@ -1019,7 +901,7 @@ export default function AdminOrdersPage() {
                   <button
                     onClick={() => updateOrderStatus(selectedOrder.id, 'delivered')}
                     disabled={updatingStatus}
-                    className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                    className="w-full px-5 py-3 rounded-xl font-display text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-colors"
                   >
                     {updatingStatus ? 'Updating...' : 'Confirm Delivered ✓'}
                   </button>
@@ -1034,7 +916,7 @@ export default function AdminOrdersPage() {
                       }
                     }}
                     disabled={updatingStatus}
-                    className="w-full px-5 py-3 rounded-xl font-mono text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                    className="w-full px-5 py-3 rounded-xl font-display text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
                   >
                     {updatingStatus ? 'Archiving...' : 'Archive This Order'}
                   </button>
@@ -1043,9 +925,9 @@ export default function AdminOrdersPage() {
                 {/* ARCHIVED → Done */}
                 {selectedOrder.status === 'archived' && (
                   <div className="text-center py-2">
-                    <p className="font-mono text-sm text-gray-500">This order has been archived.</p>
+                    <p className="font-display text-sm text-gray-500">This order has been archived.</p>
                     {selectedOrder.archived_at && (
-                      <p className="font-mono text-xs text-gray-400 mt-1">Archived on {fmtDateFull(selectedOrder.archived_at)}</p>
+                      <p className="font-display text-xs text-gray-400 mt-1">Archived on {fmtDateFull(selectedOrder.archived_at)}</p>
                     )}
                   </div>
                 )}

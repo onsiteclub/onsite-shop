@@ -1,60 +1,39 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { useCartStore } from '@/lib/store/cart';
 import { createClient } from '@/lib/supabase/client';
 import { STRIPE_PRODUCTS } from '@/lib/stripe-config';
+import { Navbar } from '@/components/shop/Navbar';
+import { Footer } from '@/components/shop/Footer';
+import { Hero } from '@/components/shop/Hero';
+import { Marquee } from '@/components/shop/Marquee';
+import { CategoriesGrid } from '@/components/shop/CategoriesGrid';
+import { ProductGridByCategory } from '@/components/shop/ProductGridByCategory';
+import { TrustBar } from '@/components/shop/TrustBar';
 import { ReviewsSection } from '@/components/ReviewsSection';
-import { BackgroundSystem } from '@/components/shop/BackgroundSystem';
-import { HeroCards } from '@/components/shop/HeroCards';
-import { CategoryCarousel } from '@/components/shop/CategoryCarousel';
-import { UniformProductCard } from '@/components/shop/ProductCard';
+import { Newsletter } from '@/components/shop/Newsletter';
+import { CategoryModal } from '@/components/shop/CategoryModal';
+import { MembershipModal } from '@/components/shop/MembershipModal';
 import type { Product } from '@/lib/types';
 
-// Lazy-loaded components (not needed on initial render)
-const CustomCursor = dynamic(() => import('@/components/shop/CustomCursor').then(m => ({ default: m.CustomCursor })), { ssr: false });
-const ScrollDust = dynamic(() => import('@/components/shop/ScrollDust').then(m => ({ default: m.ScrollDust })), { ssr: false });
-const ProductModal = dynamic(() => import('@/components/shop/ProductModal').then(m => ({ default: m.ProductModal })));
+// Lazy-loaded (not needed on initial render, client-only)
+const ProductModal = dynamic(
+  () => import('@/components/shop/ProductModal').then(m => ({ default: m.ProductModal })),
+  { ssr: false }
+);
 
 // ============================================================================
-// LAYOUT SYSTEM - OnSite Shop (Uniform Grid)
-// ============================================================================
-//
-// MOBILE: 1 col | TABLET: 2-3 cols | DESKTOP: 4 cols
-// Cards: uniform size, floating effect (shadow + hover + press)
-// Z-INDEX: z-[100] cursor > z-50 modals/banner > z-10 products > z-0 bg
+// PRODUCT LOADING — Same Supabase query as before, untouched logic
 // ============================================================================
 
-const SHOP_CATEGORIES = [
-  { key: 'cotton-tee', label: 'Cotton Tees' },
-  { key: 'hoodie', label: 'Hoodies' },
-  { key: 'sport-tee', label: 'Sport Tees' },
-  { key: 'cap', label: 'Caps' },
-  { key: 'sticker-kit', label: 'Stickers' },
-];
-
-// Members mockup products (coming soon placeholders)
 const MEMBERS_MOCKUPS: Product[] = [
-  { product_key: 'members-exclusive-tee', name: 'Members Exclusive Tee', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'Exclusive tee for OnSite Club members', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-premium-hoodie', name: 'Premium Hoodie', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'Premium hoodie for members only', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-limited-cap', name: 'Limited Edition Cap', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'Limited run cap for club members', sizes: ['One Size'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-crew-jacket', name: 'Crew Jacket', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'On-site crew jacket', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-safety-vest', name: 'Safety Vest', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'High-vis safety vest with OnSite branding', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
-  { product_key: 'members-work-pants', name: 'Work Pants', price: 0, price_id: '', category: 'members', product_type: '', image: '', images: [], description: 'Durable work pants for the job site', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-exclusive-tee', name: 'Members Tee — Founders Edition', price: 0, price_id: '', category: 'members', product_type: '', image: 'https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-members.webp&w=640&q=80', images: [], description: 'Exclusive tee for OnSite Club members', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-premium-hoodie', name: 'Members Hoodie — Built Different', price: 0, price_id: '', category: 'members', product_type: '', image: 'https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision3.png&w=640&q=80', images: [], description: 'Premium hoodie for members only', sizes: ['M', 'L', 'XL'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-limited-cap', name: 'Members Cap — OnSite Original', price: 0, price_id: '', category: 'members', product_type: '', image: 'https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fvision2.png&w=640&q=80', images: [], description: 'Limited run cap for club members', sizes: ['One Size'], colors: [], color_images: {}, sku: '' },
+  { product_key: 'members-sticker-pack', name: 'Members Sticker Pack — Vol. 1', price: 0, price_id: '', category: 'members', product_type: '', image: 'https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=640&q=80', images: [], description: 'Sticker pack for club members', sizes: [], colors: [], color_images: {}, sku: '' },
 ];
 
-// Fisher-Yates shuffle
-function shuffleArray<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-// Load products from Supabase + match Stripe prices
 async function loadProductsFromSupabase(): Promise<Product[]> {
   try {
     const supabase = createClient();
@@ -106,241 +85,279 @@ async function loadProductsFromSupabase(): Promise<Product[]> {
   }
 }
 
-// Main Page Component
+// ============================================================================
+// HOMEPAGE
+// ============================================================================
+
 export default function ShopPage() {
-  const [activeView, setActiveView] = useState<'all' | 'members'>('all');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const cartItems = useCartStore((state) => state.items);
-  const [isHoveringProduct, setIsHoveringProduct] = useState(false);
-  const [isModalOpening, setIsModalOpening] = useState(false);
-  const [tapCount, setTapCount] = useState(0);
-  const tapTimer = useRef<NodeJS.Timeout | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [categoryModal, setCategoryModal] = useState<{ category: string; label: string; items: Product[] } | null>(null);
+  const [showMemberModal, setShowMemberModal] = useState(false);
 
   // Load products from Supabase
   useEffect(() => {
-    loadProductsFromSupabase().then(p => { setProducts(p); setLoaded(true); });
+    loadProductsFromSupabase().then(p => {
+      console.log('[SHOP] Products loaded:', p.length, p.map(x => x.product_key));
+      setProducts(p);
+      setLoaded(true);
+    });
   }, []);
 
-  // Group products by product_type and shuffle each group
-  const shuffledByCategory = useMemo(() => {
-    const grouped: Record<string, Product[]> = {};
-    for (const p of products.filter(p => p.category !== 'members')) {
-      const type = p.product_type || '';
-      if (!type) continue;
-      if (!grouped[type]) grouped[type] = [];
-      grouped[type].push(p);
-    }
-    for (const key of Object.keys(grouped)) {
-      grouped[key] = shuffleArray(grouped[key]);
-    }
-    return grouped;
+  // Featured products (first 4 non-members)
+  const featuredProducts = useMemo(() => {
+    return products.filter(p => p.category !== 'members').slice(0, 4);
   }, [products]);
 
-  // Members view fallback
+  // Members products
   const membersFromDb = products.filter(p => p.category === 'members');
   const membersProducts = membersFromDb.length > 0 ? membersFromDb : MEMBERS_MOCKUPS;
 
-  // Active category row — scroll-based focus
-  const [activeCategoryKey, setActiveCategoryKey] = useState<string>(SHOP_CATEGORIES[0]?.key || '');
-
+  // Debug: log when selectedProduct changes
   useEffect(() => {
-    if (activeView !== 'all') return;
-    const observers: IntersectionObserver[] = [];
-    const timer = setTimeout(() => {
-      SHOP_CATEGORIES.forEach(cat => {
-        const el = document.getElementById(`row-${cat.key}`);
-        if (!el) return;
-        const observer = new IntersectionObserver(
-          (entries) => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting && entry.intersectionRatio >= 0.4) {
-                setActiveCategoryKey(cat.key);
-              }
-            });
-          },
-          { threshold: [0.4, 0.6], rootMargin: '-10% 0px -30% 0px' }
-        );
-        observer.observe(el);
-        observers.push(observer);
-      });
-    }, 200);
+    console.log('[SHOP] selectedProduct changed:', selectedProduct?.product_key ?? 'null');
+  }, [selectedProduct]);
 
-    return () => {
-      clearTimeout(timer);
-      observers.forEach(obs => obs.disconnect());
-    };
-  }, [activeView, products]);
-
-  // Modal opening handler
-  const handleProductClick = (product: Product) => {
-    setIsModalOpening(true);
-    setTimeout(() => {
-      setSelectedProduct(product);
-      setIsModalOpening(false);
-    }, 80);
-  };
+  const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
   return (
-    <div className="relative w-full min-h-screen overflow-y-auto">
-      {/* Custom Cursor - desktop only */}
-      <CustomCursor isHovering={isHoveringProduct} label={isHoveringProduct ? 'VIEW' : ''} />
+    <div className="min-h-screen">
+      {/* DEV-ONLY: floating admin button */}
+      {isDev && (
+        <a
+          href="/admin"
+          className="fixed bottom-5 right-5 z-[999] bg-charcoal text-white font-display text-[11px] font-bold tracking-[0.1em] uppercase py-2.5 px-5 rounded-full shadow-lg hover:bg-amber hover:text-charcoal-deep transition-all duration-200 flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          Admin
+        </a>
+      )}
+      <Navbar products={products} onProductClick={setSelectedProduct} />
+      <Hero />
+      <Marquee />
+      <CategoriesGrid />
 
-      {/* Grainy 3D Background */}
-      <div
-        className="fixed inset-0"
-        style={{ background: 'linear-gradient(135deg, #D4CFC4 0%, #C9C4B8 50%, #BEB9AD 100%)' }}
-      >
-        <svg className="absolute inset-0 w-full h-full opacity-40" xmlns="http://www.w3.org/2000/svg">
-          <filter id="noise">
-            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/>
-            <feColorMatrix type="saturate" values="0"/>
-          </filter>
-          <rect width="100%" height="100%" filter="url(#noise)"/>
-        </svg>
-        <BackgroundSystem />
+      {/* ===== MOBILE CATEGORY PILLS ===== */}
+      <div className="lg:hidden sticky top-[72px] z-[90] bg-white/95 backdrop-blur-[12px] border-b border-warm-200">
+        <div className="flex gap-2 overflow-x-auto px-4 py-3 no-scrollbar">
+          {[
+            { href: '#featured', label: 'Most Wanted' },
+            { href: '#products-cotton-tee', label: 'Cotton Tees' },
+            { href: '#products-hoodie', label: 'Hoodies' },
+            { href: '#products-sport-tee', label: 'Sport Tees' },
+            { href: '#products-cap-premium', label: 'Caps' },
+            { href: '#products-sticker-kit', label: 'Stickers' },
+            { href: '#members', label: 'Members' },
+          ].map(pill => (
+            <a
+              key={pill.href}
+              href={pill.href}
+              className="flex-shrink-0 font-display text-[11px] font-bold tracking-[0.06em] uppercase px-4 py-2 rounded-full bg-off-white text-text-secondary hover:bg-warm-100 hover:text-text-primary transition-colors whitespace-nowrap"
+            >
+              {pill.label}
+            </a>
+          ))}
+        </div>
       </div>
 
-      {/* Scroll Dust */}
-      <ScrollDust />
+      {/* ===== PRODUCTS AREA WITH SIDEBAR ===== */}
+      <div className="max-w-[1200px] mx-auto px-6 overflow-visible">
+        <div className="flex gap-10 items-start overflow-visible">
+          {/* Sidebar — sticky category nav (desktop only) */}
+          <aside className="hidden lg:block w-[200px] flex-shrink-0 sticky top-[92px]">
+            <h3 className="font-display text-[11px] font-bold tracking-[0.15em] uppercase text-warm-400 mb-5">
+              Categories
+            </h3>
+            <nav className="flex flex-col gap-1">
+              <SidebarLink href="#featured" label="Most Wanted" />
+              <SidebarLink href="#products-cotton-tee" label="Cotton Tees" />
+              <SidebarLink href="#products-hoodie" label="Hoodies" />
+              <SidebarLink href="#products-sport-tee" label="Sport Tees" />
+              <SidebarLink href="#products-cap-premium" label="Premium Caps" />
+              <SidebarLink href="#products-cap-classic" label="Classic Caps" />
+              <SidebarLink href="#products-sticker-kit" label="Stickers" />
+              <SidebarLink href="#members" label="Members Exclusive" />
+            </nav>
 
-      {/* TOP BANNER */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#D4CFC4]/70 backdrop-blur-md border-b border-[#1B2B27]/10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-2.5 flex items-center justify-between">
-          {/* Logo (5 rapid taps → /admin) */}
-          <div
-            className="flex-shrink-0 cursor-pointer"
-            onClick={() => {
-              const next = tapCount + 1;
-              if (tapTimer.current) clearTimeout(tapTimer.current);
-              if (next >= 5) {
-                setTapCount(0);
-                window.location.href = '/admin';
-                return;
-              }
-              setTapCount(next);
-              tapTimer.current = setTimeout(() => {
-                setTapCount(0);
-                window.location.href = 'https://onsiteclub.ca';
-              }, 800);
-            }}
-          >
-            <img src="/assets/logo-onsite-club.png" alt="OnSite Club" className="h-10 md:h-12 w-auto" />
-          </div>
-
-          {/* Tagline */}
-          <p className="hidden md:block font-mono text-[11px] text-[#1B2B27]/50 tracking-[0.3em] uppercase absolute left-1/2 -translate-x-1/2">
-            Built For Those Who Build
-          </p>
-
-          {/* Navigation */}
-          <nav className="flex items-center gap-4 md:gap-6">
-            <button
-              onClick={() => setActiveView('all')}
-              className={`group relative font-mono text-[10px] md:text-xs tracking-[0.2em] uppercase transition-all duration-300
-                ${activeView === 'all' ? 'text-[#1B2B27] font-bold' : 'text-[#1B2B27]/50 hover:text-[#1B2B27]'}`}
-            >
-              SHOP
-              <span className={`absolute -bottom-1 left-0 h-[2px] bg-[#B8860B] transition-all duration-300 origin-left rotate-[-4deg]
-                ${activeView === 'all' ? 'w-full' : 'w-0 group-hover:w-full'}`} />
-            </button>
-            <button
-              onClick={() => setActiveView('members')}
-              className={`group relative font-mono text-[10px] md:text-xs tracking-[0.2em] uppercase transition-all duration-300
-                ${activeView === 'members' ? 'text-[#1B2B27] font-bold' : 'text-[#1B2B27]/50 hover:text-[#1B2B27]'}`}
-            >
-              MEMBERS
-              <span className={`absolute -bottom-1 left-0 h-[2px] bg-[#B8860B] transition-all duration-300 origin-left rotate-[-4deg]
-                ${activeView === 'members' ? 'w-full' : 'w-0 group-hover:w-full'}`} />
-            </button>
-            <a
-              href="/cart"
-              className={`group relative font-mono text-[10px] md:text-xs tracking-[0.2em] uppercase transition-all duration-300
-                ${cartItems.length > 0 ? 'text-[#1B2B27] font-bold' : 'text-[#1B2B27]/50 hover:text-[#1B2B27]'}`}
-            >
-              BAG{cartItems.length > 0 && <span className="text-[#B8860B] ml-1">({cartItems.length})</span>}
-              <span className={`absolute -bottom-1 left-0 h-[2px] bg-[#B8860B] transition-all duration-300 origin-left rotate-[-4deg]
-                ${cartItems.length > 0 ? 'w-full' : 'w-0 group-hover:w-full'}`} />
-            </a>
-          </nav>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div
-        className="relative z-10 max-w-7xl mx-auto pt-24 md:pt-28 px-4 md:px-6 pb-12"
-        style={{
-          opacity: isModalOpening ? 0.95 : 1,
-          transform: isModalOpening ? 'scale(0.995)' : 'scale(1)',
-          transition: 'all 200ms',
-        }}
-      >
-        {activeView === 'members' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-6">
-            {membersProducts.map((product, i) => (
-              <UniformProductCard
-                key={`member-${product.product_key}-${i}`}
-                product={product}
-                onClick={() => handleProductClick(product)}
-                onHoverChange={setIsHoveringProduct}
-              />
-            ))}
-          </div>
-        ) : !loaded ? (
-          /* Skeleton loading state */
-          <>
-            <div className="flex justify-center gap-3 md:gap-5 px-4 mb-8 md:mb-12">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex flex-col items-center">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl bg-white/40 animate-pulse" />
-                  <div className="w-12 h-2 rounded bg-white/30 animate-pulse mt-2" />
-                </div>
-              ))}
+            <div className="mt-8 pt-6 border-t border-warm-200">
+              <h3 className="font-display text-[11px] font-bold tracking-[0.15em] uppercase text-warm-400 mb-5">
+                Quick Links
+              </h3>
+              <nav className="flex flex-col gap-1">
+                <SidebarLink href="#reviews" label="Reviews" />
+                <SidebarLink href="/blog" label="Blog" />
+                <SidebarLink href="#contact" label="Contact" />
+              </nav>
             </div>
-            {[1, 2, 3].map(row => (
-              <div key={row} className="mb-10 md:mb-14">
-                <div className="w-32 h-4 rounded bg-white/30 animate-pulse mb-4 md:mb-6 px-2" />
-                <div className="flex gap-4 md:gap-6 overflow-hidden px-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="flex-shrink-0 w-[75vw] sm:w-[200px] md:w-[220px] lg:w-[240px]">
-                      <div className="aspect-square rounded-xl bg-white/30 animate-pulse" />
-                      <div className="mt-2 flex flex-col items-center gap-1.5">
-                        <div className="w-24 h-3 rounded bg-white/20 animate-pulse" />
-                        <div className="w-16 h-3 rounded bg-white/20 animate-pulse" />
-                      </div>
+          </aside>
+
+          {/* Main product content */}
+          <div className="flex-1 min-w-0">
+            {/* ===== FEATURED PRODUCTS — Editorial Bento ===== */}
+            <section className="pb-28" id="featured">
+              <div className="flex justify-between items-end mb-12">
+                <div>
+                  <span className="section-label block">Featured</span>
+                  <h2 className="section-title">Most Wanted</h2>
+                </div>
+                <button
+                  onClick={() => setCategoryModal({ category: 'featured', label: 'Most Wanted', items: products.filter(p => p.category !== 'members') })}
+                  className="font-display font-bold text-[13px] text-charcoal tracking-[0.05em] uppercase hover:text-amber-dark transition-colors"
+                >
+                  View All &rarr;
+                </button>
+              </div>
+
+              {!loaded ? (
+                <div className="grid grid-cols-2 lg:grid-cols-12 gap-6">
+                  <div className="col-span-2 lg:col-span-7 lg:row-span-2 animate-pulse">
+                    <div className="aspect-[3/4] lg:aspect-auto lg:h-full lg:min-h-[520px] rounded-2xl bg-warm-200/40" />
+                  </div>
+                  {[1, 2].map(i => (
+                    <div key={i} className="col-span-1 lg:col-span-5 animate-pulse">
+                      <div className="aspect-[3/4] rounded-2xl bg-warm-200/40 mb-4" />
+                      <div className="h-3 w-3/4 bg-warm-200/40 rounded mb-2" />
+                      <div className="h-3 w-1/3 bg-warm-200/40 rounded" />
                     </div>
                   ))}
                 </div>
-              </div>
-            ))}
-          </>
-        ) : (
-          <>
-            <HeroCards productsByCategory={shuffledByCategory} />
-            {SHOP_CATEGORIES.map(cat => {
-              const catProducts = shuffledByCategory[cat.key] || [];
-              if (catProducts.length === 0) return null;
-              return (
-                <CategoryCarousel
-                  key={cat.key}
-                  id={`row-${cat.key}`}
-                  title={cat.label}
-                  products={catProducts}
-                  onProductClick={handleProductClick}
-                  onHoverChange={setIsHoveringProduct}
-                  isActive={activeCategoryKey === cat.key}
-                />
-              );
-            })}
-          </>
-        )}
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-12 gap-6">
+                  {/* Hero — first product, large */}
+                  {featuredProducts[0] && (
+                    <div className="col-span-2 lg:col-span-7 lg:row-span-2">
+                      <ProductCard
+                        product={featuredProducts[0]}
+                        badge="New"
+                        onClick={() => setSelectedProduct(featuredProducts[0])}
+                        isHero
+                        videoUrl="/videos/hero-favorite.mp4"
+                      />
+                    </div>
+                  )}
+                  {/* Side cards */}
+                  {featuredProducts.slice(1, 3).map((product, i) => (
+                    <div key={product.product_key} className="col-span-1 lg:col-span-5">
+                      <ProductCard
+                        product={product}
+                        onClick={() => setSelectedProduct(product)}
+                      />
+                    </div>
+                  ))}
+                  {/* Extra items below in full-width row */}
+                  {featuredProducts.slice(3).map((product) => (
+                    <div key={product.product_key} className="col-span-1 lg:col-span-4">
+                      <ProductCard
+                        product={product}
+                        badge="Best Seller"
+                        onClick={() => setSelectedProduct(product)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* ===== ALL PRODUCTS BY CATEGORY ===== */}
+            <ProductGridByCategory
+              products={products}
+              loaded={loaded}
+              onProductClick={setSelectedProduct}
+              onViewAll={(category, label, items) => setCategoryModal({ category, label, items })}
+            />
+
+          </div>
+        </div>
       </div>
 
-      {/* Reviews */}
-      {activeView === 'all' && <ReviewsSection />}
+      {/* ===== MEMBERS EXCLUSIVE — VIP ZONE (full-width, outside sidebar layout) ===== */}
+      <section className="py-20" id="members">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <div className="relative rounded-3xl overflow-hidden bg-[#1A1A18]">
+            {/* Ambient glow */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              background: 'radial-gradient(ellipse at 30% 0%, rgba(212,175,55,0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(212,175,55,0.05) 0%, transparent 40%)',
+            }} />
+            {/* Subtle top border accent */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber/40 to-transparent" />
 
-      {/* Product Modal */}
+            <div className="relative z-[1] px-8 sm:px-14 lg:px-20 py-14 sm:py-20">
+              {/* Header */}
+              <div className="text-center mb-12">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <svg className="w-5 h-5 text-amber" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z" />
+                  </svg>
+                  <span className="font-display text-[11px] font-bold tracking-[0.2em] uppercase text-amber/80">
+                    Members Only
+                  </span>
+                  <svg className="w-5 h-5 text-amber" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z" />
+                  </svg>
+                </div>
+                <h2 className="font-display font-extrabold text-3xl sm:text-4xl lg:text-[42px] text-white tracking-tight leading-[1.1] mb-5">
+                  Exclusive Gear
+                </h2>
+                <p className="text-white/45 text-[15px] sm:text-base max-w-[520px] mx-auto leading-relaxed font-body">
+                  Reserved for OnSite Club members. Browse the collection — join the crew to unlock pricing and checkout.
+                </p>
+              </div>
+
+              {/* Cards Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-12">
+                {membersProducts.slice(0, 4).map((product) => (
+                  <MembersCard key={product.product_key} product={product} onJoin={() => setShowMemberModal(true)} />
+                ))}
+              </div>
+
+              {/* Benefits */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 mb-10">
+                {['Exclusive member pricing', 'Early access to new drops', 'Free shipping on all orders'].map((benefit) => (
+                  <div key={benefit} className="flex items-center gap-2.5">
+                    <svg className="w-4 h-4 text-amber flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    <span className="text-white/60 text-sm font-body">{benefit}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button
+                  onClick={() => setShowMemberModal(true)}
+                  className="inline-flex items-center gap-2.5 bg-amber text-charcoal-deep py-3.5 px-8 rounded-lg font-display font-bold text-[12px] tracking-[0.08em] uppercase hover:bg-amber-light transition-all duration-300 shadow-[0_4px_20px_rgba(212,175,55,0.25)]"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Become a Member
+                </button>
+                <span className="text-white/30 text-[13px] font-body">
+                  Unlock exclusive pricing &amp; drops
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== TRUST BAR ===== */}
+      <TrustBar />
+
+      {/* ===== REVIEWS (from Supabase via /api/reviews) ===== */}
+      <ReviewsSection />
+
+      {/* ===== NEWSLETTER ===== */}
+      <Newsletter />
+
+      <Footer />
+
+      {/* Product Modal — same component, same logic */}
       {selectedProduct && (
         <ProductModal
           product={selectedProduct}
@@ -348,7 +365,211 @@ export default function ShopPage() {
         />
       )}
 
-      <div className="pb-6" />
+      {categoryModal && (
+        <CategoryModal
+          category={categoryModal.category}
+          label={categoryModal.label}
+          products={categoryModal.items}
+          onClose={() => setCategoryModal(null)}
+          onProductClick={(product) => {
+            setCategoryModal(null);
+            setSelectedProduct(product);
+          }}
+        />
+      )}
+
+      {showMemberModal && (
+        <MembershipModal onClose={() => setShowMemberModal(false)} />
+      )}
     </div>
+  );
+}
+
+// ============================================================================
+// PRODUCT CARD — New design matching homepage HTML
+// ============================================================================
+
+function ProductCard({
+  product,
+  badge,
+  onClick,
+  isHero = false,
+  videoUrl,
+}: {
+  product: Product;
+  badge?: string;
+  onClick: () => void;
+  isHero?: boolean;
+  videoUrl?: string;
+}) {
+  // Hero cards: full-bleed video/image, no info section
+  if (isHero) {
+    return (
+      <div
+        className="relative cursor-pointer group h-full rounded-2xl overflow-hidden bg-charcoal-deep shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
+        onClick={() => { console.log('[SHOP] ProductCard clicked:', product.product_key); onClick(); }}
+      >
+        {badge && (
+          <span className="absolute top-4 left-4 z-[2] bg-charcoal text-white font-display text-[11px] font-bold py-1.5 px-3.5 rounded-full">
+            {badge}
+          </span>
+        )}
+        <div className="aspect-[3/4] lg:aspect-auto lg:h-full lg:min-h-[480px] overflow-hidden relative">
+          {videoUrl ? (
+            <video
+              src={videoUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : product.isVideo && product.image ? (
+            <video
+              src={product.image}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-warm-300 bg-warm-100">
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+              </svg>
+            </div>
+          )}
+          {/* Product name overlay at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-6 pt-16">
+            <p className="font-display font-extrabold text-white text-lg lg:text-xl tracking-tight drop-shadow-sm">
+              {product.name}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular cards: image + info section
+  return (
+    <div
+      className="relative cursor-pointer group h-full rounded-2xl overflow-hidden bg-white shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
+      onClick={() => { console.log('[SHOP] ProductCard clicked:', product.product_key); onClick(); }}
+    >
+      {badge && (
+        <span className="absolute top-4 left-4 z-[2] bg-charcoal text-white font-display text-[11px] font-bold py-1.5 px-3.5 rounded-full">
+          {badge}
+        </span>
+      )}
+      <div className="aspect-[3/4] overflow-hidden relative">
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-warm-300 bg-warm-100">
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </div>
+        )}
+        <div className="absolute bottom-0 left-0 right-0 bg-charcoal/90 backdrop-blur-sm text-white text-center py-3.5 font-display text-[11px] font-bold tracking-[0.12em] uppercase translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+          Quick Add
+        </div>
+      </div>
+      <div className="p-4">
+        <div className="font-semibold text-[13px]">{product.name}</div>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-[15px] font-bold text-amber-dark">
+            CA${product.price.toFixed(2)}
+          </span>
+        </div>
+        {product.colors?.length > 0 && (
+          <div className="flex gap-1.5 mt-2.5">
+            {product.colors.slice(0, 5).map((color) => {
+              const colorImg = product.color_images?.[color]?.[0];
+              return (
+                <span
+                  key={color}
+                  className="w-3.5 h-3.5 rounded-full border-2 border-warm-200 hover:border-charcoal transition-colors"
+                  style={{
+                    backgroundImage: colorImg ? `url(${colorImg})` : undefined,
+                    backgroundSize: 'cover',
+                    backgroundColor: colorImg ? undefined : '#1A1A18',
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MEMBERS CARD — "Become a Member" CTA
+// ============================================================================
+
+function MembersCard({ product, onJoin }: { product: Product; onJoin?: () => void }) {
+  return (
+    <div className="relative rounded-2xl overflow-hidden bg-white/[0.07] border border-white/[0.08] group hover:bg-white/[0.10] transition-all duration-400">
+      {/* Free badge */}
+      <span className="absolute top-3 left-3 z-[2] bg-green-500/90 text-white font-display text-[10px] font-bold py-1 px-2.5 rounded-md">
+        FREE
+      </span>
+      <div className="aspect-[3/4] overflow-hidden relative">
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] brightness-90"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-white/20">
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </div>
+        )}
+        {/* Hover overlay */}
+        <button
+          onClick={onJoin}
+          className="absolute bottom-0 left-0 right-0 bg-amber/95 backdrop-blur-sm text-charcoal-deep text-center py-3.5 font-display text-[11px] font-bold tracking-[0.12em] uppercase translate-y-full group-hover:translate-y-0 transition-transform duration-300"
+        >
+          Join Free
+        </button>
+      </div>
+      <div className="p-4">
+        <div className="font-display font-semibold text-[13px] text-white/90">{product.name}</div>
+        <div className="text-[12px] text-green-400/80 font-display font-bold tracking-[0.03em] mt-1">
+          Free to join
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// SIDEBAR LINK
+// ============================================================================
+
+function SidebarLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      className="font-display text-[13px] font-semibold text-text-secondary py-2 px-3 rounded-lg hover:bg-warm-100 hover:text-text-primary transition-all duration-200"
+    >
+      {label}
+    </a>
   );
 }

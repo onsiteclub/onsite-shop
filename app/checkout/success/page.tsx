@@ -7,6 +7,7 @@ import { useCartStore } from '@/lib/store/cart';
 
 interface OrderSummary {
   email: string | null;
+  order_number?: string | null;
   items: Array<{ name: string; quantity: number; amount: number }>;
   subtotal: number;
   shipping_cost: number;
@@ -47,7 +48,7 @@ function SuccessContent() {
   const fmt = (cents: number) => `CA$${(cents / 100).toFixed(2)}`;
 
   return (
-    <div className="min-h-screen bg-grain flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
       <div className="relative z-10 w-full max-w-lg">
 
         {/* Success Header */}
@@ -57,10 +58,15 @@ function SuccessContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="font-mono text-2xl font-bold text-[#1B2B27] mb-2">
+          <h1 className="font-display text-2xl font-bold text-text-primary mb-2">
             Order Confirmed!
           </h1>
-          <p className="font-mono text-sm text-[#1B2B27]/60">
+          {order?.order_number && (
+            <p className="font-display text-sm font-bold text-amber-dark mb-2">
+              Order #{order.order_number}
+            </p>
+          )}
+          <p className="text-sm text-text-secondary">
             {order?.email
               ? `A confirmation email was sent to ${order.email}`
               : 'You will receive a confirmation email shortly'}
@@ -68,19 +74,19 @@ function SuccessContent() {
         </div>
 
         {/* Order Summary Card */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl overflow-hidden mb-6">
+        <div className="bg-white rounded-2xl overflow-hidden mb-6 border border-warm-200">
 
           {/* Delivery Banner */}
-          <div className="bg-[#1B2B27] px-6 py-4">
+          <div className="bg-charcoal-deep px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-[#B8860B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-amber-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" />
                 </svg>
               </div>
               <div>
-                <p className="font-mono text-sm font-bold text-white">Shipping in 3-10 business days</p>
-                <p className="font-mono text-xs text-white/60">We will notify you when it ships</p>
+                <p className="font-display text-sm font-bold text-white">Shipping in 3-10 business days</p>
+                <p className="text-xs text-white/60">We will notify you when it ships</p>
               </div>
             </div>
           </div>
@@ -88,34 +94,34 @@ function SuccessContent() {
           {/* Items */}
           {loading ? (
             <div className="p-6 text-center">
-              <p className="font-mono text-sm text-[#1B2B27]/40">Loading order details...</p>
+              <p className="text-sm text-text-secondary">Loading order details...</p>
             </div>
           ) : order ? (
             <div className="p-6">
-              <p className="font-mono text-xs text-[#1B2B27]/50 uppercase tracking-wider mb-3">Order Summary</p>
+              <p className="font-display text-xs text-text-secondary uppercase tracking-wider mb-3">Order Summary</p>
               <div className="space-y-3 mb-4">
                 {order.items.map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center">
                     <div>
-                      <p className="font-mono text-sm text-[#1B2B27]">{item.name}</p>
-                      <p className="font-mono text-xs text-[#1B2B27]/50">Qty: {item.quantity}</p>
+                      <p className="text-sm text-text-primary">{item.name}</p>
+                      <p className="text-xs text-text-secondary">Qty: {item.quantity}</p>
                     </div>
-                    <p className="font-mono text-sm font-medium text-[#1B2B27]">{fmt(item.amount)}</p>
+                    <p className="text-sm font-medium text-text-primary">{fmt(item.amount)}</p>
                   </div>
                 ))}
               </div>
 
               {/* Totals */}
-              <div className="border-t border-stone-200 pt-3 space-y-1">
-                <div className="flex justify-between font-mono text-xs text-[#1B2B27]/60">
+              <div className="border-t border-warm-200 pt-3 space-y-1">
+                <div className="flex justify-between text-xs text-text-secondary">
                   <span>Subtotal</span>
                   <span>{fmt(order.subtotal)}</span>
                 </div>
-                <div className="flex justify-between font-mono text-xs text-[#1B2B27]/60">
+                <div className="flex justify-between text-xs text-text-secondary">
                   <span>Shipping</span>
                   <span>{order.shipping_cost === 0 ? 'FREE' : fmt(order.shipping_cost)}</span>
                 </div>
-                <div className="flex justify-between font-mono text-sm font-bold text-[#1B2B27] pt-2 border-t border-stone-200">
+                <div className="flex justify-between text-sm font-bold text-text-primary pt-2 border-t border-warm-200">
                   <span>Total</span>
                   <span>{fmt(order.total)}</span>
                 </div>
@@ -123,9 +129,9 @@ function SuccessContent() {
 
               {/* Shipping Address */}
               {order.shipping_address && (
-                <div className="mt-4 pt-4 border-t border-stone-200">
-                  <p className="font-mono text-xs text-[#1B2B27]/50 uppercase tracking-wider mb-2">Shipping To</p>
-                  <div className="font-mono text-sm text-[#1B2B27] leading-relaxed">
+                <div className="mt-4 pt-4 border-t border-warm-200">
+                  <p className="font-display text-xs text-text-secondary uppercase tracking-wider mb-2">Shipping To</p>
+                  <div className="text-sm text-text-primary leading-relaxed">
                     {order.shipping_name && <p className="font-medium">{order.shipping_name}</p>}
                     <p>{order.shipping_address.line1}</p>
                     {order.shipping_address.line2 && <p>{order.shipping_address.line2}</p>}
@@ -136,8 +142,8 @@ function SuccessContent() {
             </div>
           ) : (
             <div className="p-6">
-              <p className="font-mono text-xs text-[#1B2B27]/50 mb-2">Reference:</p>
-              <p className="font-mono text-xs text-[#1B2B27] break-all">{sessionId}</p>
+              <p className="text-xs text-text-secondary mb-2">Reference:</p>
+              <p className="text-xs text-text-primary break-all">{sessionId}</p>
             </div>
           )}
         </div>
@@ -146,7 +152,7 @@ function SuccessContent() {
         <div className="space-y-3">
           <Link
             href="/"
-            className="block w-full text-center font-mono py-3 px-4 rounded-xl bg-[#1B2B27] text-white hover:bg-[#2a3f39] transition-colors uppercase tracking-wider text-sm font-bold"
+            className="block w-full text-center font-display py-3 px-4 rounded-xl bg-charcoal-deep text-white hover:bg-charcoal-light transition-colors uppercase tracking-wider text-sm font-bold"
           >
             Continue Shopping
           </Link>
@@ -155,14 +161,14 @@ function SuccessContent() {
             href="https://onsiteclub.ca"
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full text-center font-mono py-3 px-4 rounded-xl bg-[#B8860B] text-white hover:bg-[#9A7209] transition-colors text-sm font-bold"
+            className="block w-full text-center font-display py-3 px-4 rounded-xl bg-amber-dark text-white hover:bg-amber transition-colors text-sm font-bold"
           >
             Discover what OnSite Club can do for you
           </a>
         </div>
 
         {/* Footer */}
-        <p className="text-center font-mono text-xs text-[#1B2B27]/40 mt-8">
+        <p className="text-center text-xs text-warm-400 mt-8">
           Questions? Contact us at contact@onsiteclub.ca
         </p>
       </div>
@@ -173,8 +179,8 @@ function SuccessContent() {
 export default function CheckoutSuccessPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-grain flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#1B2B27] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-charcoal-deep border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <SuccessContent />

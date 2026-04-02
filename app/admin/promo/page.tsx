@@ -91,11 +91,12 @@ export default function AdminPromoPage() {
   // Auth gate
   if (!authed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1B2B27]">
-        <div className="bg-white rounded-2xl p-10 w-[340px]">
-          <h1 className="font-mono text-xl font-bold text-[#1B2B27] mb-6">
-            OnSite Admin
-          </h1>
+      <div className="flex items-center justify-center min-h-[60vh] px-4">
+        <div className="bg-white rounded-2xl p-8 w-[340px] shadow-sm border border-warm-200/60">
+          <div className="text-center mb-6">
+            <img src="/assets/logo-onsite-club.png" alt="OnSite Club" className="h-7 mx-auto mb-3 brightness-0" />
+            <h1 className="font-display text-lg font-bold text-text-primary">Promo Access</h1>
+          </div>
           <div className="relative mb-3">
             <input
               type={showPassword ? 'text' : 'password'}
@@ -108,18 +109,18 @@ export default function AdminPromoPage() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-xs text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 font-display text-xs text-warm-400 hover:text-text-primary"
             >
               {showPassword ? 'Hide' : 'Show'}
             </button>
           </div>
           {authError && (
-            <p className="font-mono text-xs text-red-500 mb-3">{authError}</p>
+            <p className="font-display text-xs text-red-500 mb-3">{authError}</p>
           )}
           <button
             onClick={handleAuth}
             disabled={authLoading}
-            className="w-full py-3 bg-[#1B2B27] text-[#B8860B] rounded-xl font-mono font-bold text-sm uppercase tracking-wider hover:bg-[#2a3f39] transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-amber hover:bg-amber-dark text-charcoal-deep rounded-xl font-display font-bold text-sm transition-colors disabled:opacity-50"
           >
             {authLoading ? 'Verifying...' : 'Enter'}
           </button>
@@ -130,21 +131,21 @@ export default function AdminPromoPage() {
 
   // Admin panel
   return (
-    <div className="min-h-screen bg-[#f4f3ef] p-8">
-      <div className="max-w-lg mx-auto">
-        <div className="mb-8">
-          <h1 className="font-mono text-2xl font-bold text-[#1B2B27]">
-            Generate Promo Code
+    <div>
+      <div className="max-w-lg">
+        <div className="mb-6">
+          <h1 className="font-display text-2xl font-extrabold tracking-tight text-text-primary">
+            Promo Codes
           </h1>
-          <p className="font-mono text-xs text-[#6B7280] mt-1">
+          <p className="font-body text-sm text-text-secondary mt-0.5">
             Generate a single-use code with free shipping.
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 border border-gray-200">
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-warm-200/60">
           {/* Email */}
           <div className="mb-4">
-            <label className="block font-mono text-xs text-[#1B2B27] mb-1.5 uppercase tracking-wider">
+            <label className="block font-display text-xs font-bold text-text-secondary mb-1.5 uppercase tracking-wide">
               Recipient Email
             </label>
             <input
@@ -158,7 +159,7 @@ export default function AdminPromoPage() {
 
           {/* Discount Type */}
           <div className="mb-4">
-            <label className="block font-mono text-xs text-[#1B2B27] mb-1.5 uppercase tracking-wider">
+            <label className="block font-display text-xs font-bold text-text-secondary mb-1.5 uppercase tracking-wide">
               Discount
             </label>
             <select
@@ -177,7 +178,7 @@ export default function AdminPromoPage() {
 
           {/* Notes */}
           <div className="mb-4">
-            <label className="block font-mono text-xs text-[#1B2B27] mb-1.5 uppercase tracking-wider">
+            <label className="block font-display text-xs font-bold text-text-secondary mb-1.5 uppercase tracking-wide">
               Internal Note <span className="text-gray-400">(who is this for?)</span>
             </label>
             <input
@@ -191,7 +192,7 @@ export default function AdminPromoPage() {
 
           {/* Expiry */}
           <div className="mb-6">
-            <label className="block font-mono text-xs text-[#1B2B27] mb-1.5 uppercase tracking-wider">
+            <label className="block font-display text-xs font-bold text-text-secondary mb-1.5 uppercase tracking-wide">
               Validity (days)
             </label>
             <select
@@ -208,16 +209,16 @@ export default function AdminPromoPage() {
           </div>
 
           {error && (
-            <p className="font-mono text-xs text-red-500 mb-4">{error}</p>
+            <p className="font-display text-xs text-red-500 mb-4">{error}</p>
           )}
 
           <button
             onClick={handleGenerate}
             disabled={loading || !email}
-            className={`w-full py-3 rounded-xl font-mono font-bold text-sm uppercase tracking-wider transition-colors ${
+            className={`w-full py-3 rounded-xl font-display font-bold text-sm transition-colors ${
               loading || !email
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-[#1B2B27] text-[#B8860B] hover:bg-[#2a3f39] cursor-pointer'
+                ? 'bg-warm-200 text-warm-400 cursor-not-allowed'
+                : 'bg-amber hover:bg-amber-dark text-charcoal-deep cursor-pointer'
             }`}
           >
             {loading ? 'Generating...' : 'Generate & Send Code'}
@@ -226,12 +227,12 @@ export default function AdminPromoPage() {
 
         {/* Success */}
         {result && (
-          <div className="mt-6 bg-green-50 border border-green-400 rounded-2xl p-6">
-            <p className="font-mono text-sm font-bold text-green-800 mb-3">
+          <div className="mt-6 bg-amber-light border border-amber rounded-2xl p-6">
+            <p className="font-display text-sm font-bold text-text-primary mb-3">
               Code generated and sent!
             </p>
-            <div className="bg-[#1B2B27] rounded-xl p-4 text-center">
-              <span className="font-mono text-2xl font-bold text-[#B8860B] tracking-[4px]">
+            <div className="bg-charcoal-deep rounded-xl p-4 text-center">
+              <span className="font-display text-2xl font-bold text-amber tracking-[4px]">
                 {result.code}
               </span>
             </div>
@@ -242,7 +243,7 @@ export default function AdminPromoPage() {
                   setCopied(true)
                   setTimeout(() => setCopied(false), 2000)
                 }}
-                className="flex-1 font-mono text-xs font-bold py-2.5 rounded-xl bg-[#1B2B27] text-white hover:bg-[#2a3f39] transition-colors"
+                className="flex-1 font-display text-xs font-bold py-2.5 rounded-xl bg-charcoal-deep text-white hover:bg-charcoal transition-colors"
               >
                 {copied ? 'Copied!' : 'Copy Code'}
               </button>
@@ -260,13 +261,13 @@ export default function AdminPromoPage() {
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 font-mono text-xs font-bold py-2.5 rounded-xl bg-[#25D366] text-white text-center hover:bg-[#1da851] transition-colors"
+                className="flex-1 font-display text-xs font-bold py-2.5 rounded-xl bg-[#25D366] text-white text-center hover:bg-[#1da851] transition-colors"
               >
                 WhatsApp
               </a>
             </div>
             {email && (
-              <p className="font-mono text-xs text-green-700 mt-2">
+              <p className="font-display text-xs text-amber-dark mt-2">
                 Email sent to {email}. Single use only.
               </p>
             )}

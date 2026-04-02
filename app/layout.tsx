@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://shop.onsiteclub.ca'),
 
   title: {
-    default: 'OnSite Club | Construction Worker Clothing Canada',
+    default: 'OnSite Club Shop | Construction Worker Clothing Canada',
     template: '%s | OnSite Club Canada',
   },
 
@@ -46,14 +46,14 @@ export const metadata: Metadata = {
     locale: 'en_CA',
     url: 'https://shop.onsiteclub.ca',
     siteName: 'OnSite Club',
-    title: 'OnSite Club | Construction Worker Clothing Canada',
+    title: 'OnSite Club Shop | Construction Worker Clothing Canada',
     description:
       'Premium apparel built for the trades. Worn by framers, carpenters, and crews across Canada.',
   },
 
   twitter: {
     card: 'summary_large_image',
-    title: 'OnSite Club | Construction Worker Clothing Canada',
+    title: 'OnSite Club Shop | Construction Worker Clothing Canada',
     description: 'Premium apparel built for the trades.',
   },
 }
@@ -69,11 +69,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="bg-grain min-h-screen">
+      <body className="min-h-screen bg-[#F3F2EF] font-body text-text-primary">
         <OrganizationSchema />
         {children}
       </body>
