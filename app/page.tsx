@@ -212,23 +212,20 @@ export default function ShopPage() {
               </div>
 
               {!loaded ? (
-                <div className="grid grid-cols-2 lg:grid-cols-12 gap-6">
-                  <div className="col-span-2 lg:col-span-7 lg:row-span-2 animate-pulse">
-                    <div className="aspect-[3/4] lg:aspect-auto lg:h-full lg:min-h-[520px] rounded-2xl bg-warm-200/40" />
-                  </div>
-                  {[1, 2].map(i => (
-                    <div key={i} className="col-span-1 lg:col-span-5 animate-pulse">
-                      <div className="aspect-[3/4] rounded-2xl bg-warm-200/40 mb-4" />
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="animate-pulse">
+                      <div className="aspect-[5/4] rounded-2xl bg-warm-200/40 mb-4" />
                       <div className="h-3 w-3/4 bg-warm-200/40 rounded mb-2" />
                       <div className="h-3 w-1/3 bg-warm-200/40 rounded" />
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-12 gap-6">
-                  {/* Hero — first product, large */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                  {/* Hero — same width, spans 2 rows */}
                   {featuredProducts[0] && (
-                    <div className="col-span-2 lg:col-span-7 lg:row-span-2">
+                    <div className="col-span-1 row-span-2">
                       <ProductCard
                         product={featuredProducts[0]}
                         badge="New"
@@ -238,21 +235,12 @@ export default function ShopPage() {
                       />
                     </div>
                   )}
-                  {/* Side cards */}
-                  {featuredProducts.slice(1, 3).map((product, i) => (
-                    <div key={product.product_key} className="col-span-1 lg:col-span-5">
+                  {/* Remaining cards fill the other 2 columns */}
+                  {featuredProducts.slice(1).map((product, i) => (
+                    <div key={product.product_key} className="col-span-1">
                       <ProductCard
                         product={product}
-                        onClick={() => setSelectedProduct(product)}
-                      />
-                    </div>
-                  ))}
-                  {/* Extra items below in full-width row */}
-                  {featuredProducts.slice(3).map((product) => (
-                    <div key={product.product_key} className="col-span-1 lg:col-span-4">
-                      <ProductCard
-                        product={product}
-                        badge="Best Seller"
+                        badge={i === 0 ? undefined : 'Best Seller'}
                         onClick={() => setSelectedProduct(product)}
                       />
                     </div>
@@ -284,62 +272,32 @@ export default function ShopPage() {
             {/* Subtle top border accent */}
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber/40 to-transparent" />
 
-            <div className="relative z-[1] px-8 sm:px-14 lg:px-20 py-14 sm:py-20">
+            <div className="relative z-[1] px-8 sm:px-14 lg:px-20 py-16 sm:py-24">
               {/* Header */}
-              <div className="text-center mb-12">
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <svg className="w-5 h-5 text-amber" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z" />
-                  </svg>
-                  <span className="font-display text-[11px] font-bold tracking-[0.2em] uppercase text-amber/80">
-                    Members Only
-                  </span>
-                  <svg className="w-5 h-5 text-amber" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z" />
-                  </svg>
-                </div>
-                <h2 className="font-display font-extrabold text-3xl sm:text-4xl lg:text-[42px] text-white tracking-tight leading-[1.1] mb-5">
+              <div className="text-center mb-14">
+                <h2 className="font-body font-light text-2xl sm:text-3xl text-amber tracking-wide leading-[1.2] mb-3">
                   Exclusive Gear
                 </h2>
-                <p className="text-white/45 text-[15px] sm:text-base max-w-[520px] mx-auto leading-relaxed font-body">
-                  Reserved for OnSite Club members. Browse the collection — join the crew to unlock pricing and checkout.
+                <p className="text-white/35 text-sm max-w-[360px] mx-auto font-body">
+                  Sign up to see prices. It&apos;s free.
                 </p>
               </div>
 
               {/* Cards Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-12">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-14">
                 {membersProducts.slice(0, 4).map((product) => (
                   <MembersCard key={product.product_key} product={product} onJoin={() => setShowMemberModal(true)} />
                 ))}
               </div>
 
-              {/* Benefits */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 mb-10">
-                {['Exclusive member pricing', 'Early access to new drops', 'Free shipping on all orders'].map((benefit) => (
-                  <div key={benefit} className="flex items-center gap-2.5">
-                    <svg className="w-4 h-4 text-amber flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    <span className="text-white/60 text-sm font-body">{benefit}</span>
-                  </div>
-                ))}
-              </div>
-
               {/* CTA */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="text-center">
                 <button
                   onClick={() => setShowMemberModal(true)}
-                  className="inline-flex items-center gap-2.5 bg-amber text-charcoal-deep py-3.5 px-8 rounded-lg font-display font-bold text-[12px] tracking-[0.08em] uppercase hover:bg-amber-light transition-all duration-300 shadow-[0_4px_20px_rgba(212,175,55,0.25)]"
+                  className="bg-amber text-charcoal-deep py-3.5 px-10 rounded-lg font-body font-light text-sm tracking-wide hover:bg-amber-light transition-all duration-300"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
                   Become a Member
                 </button>
-                <span className="text-white/30 text-[13px] font-body">
-                  Unlock exclusive pricing &amp; drops
-                </span>
               </div>
             </div>
           </div>
@@ -362,6 +320,7 @@ export default function ShopPage() {
         <ProductModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+          onJoinMember={() => setShowMemberModal(true)}
         />
       )}
 
@@ -406,15 +365,14 @@ function ProductCard({
   if (isHero) {
     return (
       <div
-        className="relative cursor-pointer group h-full rounded-2xl overflow-hidden bg-charcoal-deep shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
-        onClick={() => { console.log('[SHOP] ProductCard clicked:', product.product_key); onClick(); }}
+        className="relative group h-full rounded-2xl overflow-hidden bg-charcoal-deep shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
       >
         {badge && (
           <span className="absolute top-4 left-4 z-[2] bg-charcoal text-white font-display text-[11px] font-bold py-1.5 px-3.5 rounded-full">
             {badge}
           </span>
         )}
-        <div className="aspect-[3/4] lg:aspect-auto lg:h-full lg:min-h-[480px] overflow-hidden relative">
+        <div className="h-full overflow-hidden relative">
           {videoUrl ? (
             <video
               src={videoUrl}
@@ -468,7 +426,7 @@ function ProductCard({
           {badge}
         </span>
       )}
-      <div className="aspect-[3/4] overflow-hidden relative">
+      <div className="aspect-[10/11] overflow-hidden relative">
         {product.image ? (
           <img
             src={product.image}
@@ -482,35 +440,15 @@ function ProductCard({
             </svg>
           </div>
         )}
-        <div className="absolute bottom-0 left-0 right-0 bg-charcoal/90 backdrop-blur-sm text-white text-center py-3.5 font-display text-[11px] font-bold tracking-[0.12em] uppercase translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+        {/* Name + price overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-4 pt-10">
+          <p className="font-display font-bold text-white text-[13px] leading-tight drop-shadow-sm truncate">{product.name}</p>
+          <span className="text-amber text-[13px] font-bold">CA${product.price.toFixed(2)}</span>
+        </div>
+        {/* Quick Add hover */}
+        <div className="absolute bottom-0 left-0 right-0 bg-charcoal/90 backdrop-blur-sm text-white text-center py-3 font-display text-[11px] font-bold tracking-[0.12em] uppercase translate-y-full group-hover:translate-y-0 transition-transform duration-300">
           Quick Add
         </div>
-      </div>
-      <div className="p-4">
-        <div className="font-semibold text-[13px]">{product.name}</div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-[15px] font-bold text-amber-dark">
-            CA${product.price.toFixed(2)}
-          </span>
-        </div>
-        {product.colors?.length > 0 && (
-          <div className="flex gap-1.5 mt-2.5">
-            {product.colors.slice(0, 5).map((color) => {
-              const colorImg = product.color_images?.[color]?.[0];
-              return (
-                <span
-                  key={color}
-                  className="w-3.5 h-3.5 rounded-full border-2 border-warm-200 hover:border-charcoal transition-colors"
-                  style={{
-                    backgroundImage: colorImg ? `url(${colorImg})` : undefined,
-                    backgroundSize: 'cover',
-                    backgroundColor: colorImg ? undefined : '#1A1A18',
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -522,37 +460,32 @@ function ProductCard({
 
 function MembersCard({ product, onJoin }: { product: Product; onJoin?: () => void }) {
   return (
-    <div className="relative rounded-2xl overflow-hidden bg-white/[0.07] border border-white/[0.08] group hover:bg-white/[0.10] transition-all duration-400">
-      {/* Free badge */}
-      <span className="absolute top-3 left-3 z-[2] bg-green-500/90 text-white font-display text-[10px] font-bold py-1 px-2.5 rounded-md">
-        FREE
-      </span>
+    <div
+      className="relative rounded-2xl overflow-hidden bg-white/[0.04] group cursor-pointer"
+      onClick={onJoin}
+    >
       <div className="aspect-[3/4] overflow-hidden relative">
         {product.image ? (
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] brightness-90"
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] brightness-[0.85] group-hover:brightness-100"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-white/20">
-            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1}>
+          <div className="w-full h-full flex items-center justify-center text-white/10 bg-white/[0.03]">
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
             </svg>
           </div>
         )}
-        {/* Hover overlay */}
-        <button
-          onClick={onJoin}
-          className="absolute bottom-0 left-0 right-0 bg-amber/95 backdrop-blur-sm text-charcoal-deep text-center py-3.5 font-display text-[11px] font-bold tracking-[0.12em] uppercase translate-y-full group-hover:translate-y-0 transition-transform duration-300"
-        >
-          Join Free
-        </button>
-      </div>
-      <div className="p-4">
-        <div className="font-display font-semibold text-[13px] text-white/90">{product.name}</div>
-        <div className="text-[12px] text-green-400/80 font-display font-bold tracking-[0.03em] mt-1">
-          Free to join
+        {/* Hover overlay — arrow + text */}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3">
+          <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+          <span className="text-white/80 text-xs font-body text-center px-4 leading-relaxed">
+            Join free to see prices
+          </span>
         </div>
       </div>
     </div>

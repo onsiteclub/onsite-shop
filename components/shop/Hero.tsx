@@ -76,14 +76,14 @@ export function Hero() {
       <div className="relative z-[3] max-w-[1200px] mx-auto px-6 py-[60px] grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-[40px] items-center">
         {/* Text */}
         <div className="text-white lg:text-left text-center">
-          <span className="font-display text-xs font-bold tracking-[0.2em] uppercase text-warm-300 mb-5 inline-block">
+          <span className="font-display text-xs font-bold tracking-[0.2em] uppercase text-amber mb-5 inline-block">
             OnSite Club Gear
           </span>
           <h1 className="font-display text-[clamp(40px,5vw,64px)] font-black leading-[1.05] mb-6 tracking-tight">
-            Built for Those<br />Who <span className="text-white">Build.</span>
+            Built for Those<br />Who <span className="text-amber">Build.</span>
           </h1>
           <p className="text-lg text-white/70 max-w-[440px] mb-10 leading-relaxed lg:mx-0 mx-auto">
-            Tees, hoodies, and jobsite essentials made for the crew that wakes up before the sun and builds something real.
+            Jobsite essentials made for the crew that wakes up before the sun and builds something real.
           </p>
           <div className="flex gap-4 flex-wrap lg:justify-start justify-center">
             <a href="#shop" className="inline-flex items-center justify-center px-9 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-wider transition-all duration-300 bg-amber text-charcoal-deep hover:bg-white hover:shadow-lg hover:-translate-y-0.5">
@@ -94,7 +94,7 @@ export function Hero() {
 
         {/* Images */}
         <div className="grid grid-cols-2 gap-5 relative max-w-[560px] lg:max-w-none mx-auto">
-          <div className="rounded-[10px] overflow-hidden relative aspect-[2/3] bg-charcoal-light mt-10 group">
+          <a href="#products-cotton-tee" className="rounded-[10px] overflow-hidden relative aspect-[2/3] bg-charcoal-light mt-10 group cursor-pointer block">
             {heroImages[0]?.image && (
               <img
                 src={heroImages[0].image}
@@ -102,11 +102,8 @@ export function Hero() {
                 className="w-full h-full object-cover transition-transform duration-[600ms] group-hover:scale-105"
               />
             )}
-            <span className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-lg text-white py-2 px-4 rounded-lg text-xs font-display font-semibold tracking-[0.05em] uppercase">
-              {heroImages[0]?.label}
-            </span>
-          </div>
-          <div className="rounded-[10px] overflow-hidden relative aspect-[2/3] bg-charcoal-light -mt-10 group">
+          </a>
+          <a href="#products-hoodie" className="rounded-[10px] overflow-hidden relative aspect-[2/3] bg-charcoal-light -mt-10 group cursor-pointer block">
             {heroImages[1]?.image && (
               <img
                 src={heroImages[1].image}
@@ -114,10 +111,7 @@ export function Hero() {
                 className="w-full h-full object-cover transition-transform duration-[600ms] group-hover:scale-105"
               />
             )}
-            <span className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-lg text-white py-2 px-4 rounded-lg text-xs font-display font-semibold tracking-[0.05em] uppercase">
-              {heroImages[1]?.label}
-            </span>
-          </div>
+          </a>
         </div>
       </div>
     </section>

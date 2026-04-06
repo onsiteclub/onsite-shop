@@ -69,13 +69,13 @@ export function ProductGridByCategory({ products, loaded, onProductClick, onView
         {[1, 2].map((row) => (
           <div key={row} className="mb-20">
             <div className="h-5 w-40 bg-warm-200/40 rounded-lg animate-pulse mb-10" />
-            <div className="grid grid-cols-2 lg:grid-cols-12 gap-6">
-              <div className="col-span-2 lg:col-span-7 lg:row-span-2 animate-pulse">
-                <div className="aspect-[3/4] lg:aspect-auto lg:h-full lg:min-h-[520px] rounded-2xl bg-warm-200/40" />
-              </div>
-              {[1, 2].map(i => (
-                <div key={i} className="col-span-1 lg:col-span-5 animate-pulse">
-                  <div className="aspect-[3/4] rounded-2xl bg-warm-200/40 mb-4" />
+            <div className="animate-pulse mb-6">
+              <div className="aspect-[5/4] lg:aspect-[2/1] rounded-2xl bg-warm-200/40" />
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="animate-pulse">
+                  <div className="aspect-square rounded-2xl bg-warm-200/40 mb-4" />
                   <div className="h-3 w-3/4 bg-warm-200/40 rounded mb-2" />
                   <div className="h-3 w-1/3 bg-warm-200/40 rounded" />
                 </div>
@@ -191,58 +191,21 @@ function EditorialBento({ items, onProductClick, patternIndex, categoryKey }: {
 
   return (
     <div>
-      {/* Bento — hero + 2 side cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-12 gap-6">
-        {isReversed ? (
-          <>
-            {/* Hero on RIGHT (desktop), first on mobile via order */}
-            <div className="order-1 lg:order-2 col-span-2 lg:col-span-7 lg:row-span-2 fade-in">
-              <EditorialCard product={hero} onClick={() => onProductClick(hero)} variant="hero" videoUrl={heroVideo} />
-            </div>
-            {sideItems[0] && (
-              <div className="order-2 lg:order-1 col-span-1 lg:col-span-5 fade-in fade-in-delay-1">
-                <EditorialCard product={sideItems[0]} onClick={() => onProductClick(sideItems[0])} variant="side" />
-              </div>
-            )}
-            {sideItems[1] && (
-              <div className="order-3 col-span-1 lg:col-span-5 fade-in fade-in-delay-2">
-                <EditorialCard product={sideItems[1]} onClick={() => onProductClick(sideItems[1])} variant="side" />
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            {/* Hero on LEFT */}
-            <div className="col-span-2 lg:col-span-7 lg:row-span-2 fade-in">
-              <EditorialCard product={hero} onClick={() => onProductClick(hero)} variant="hero" videoUrl={heroVideo} />
-            </div>
-            {sideItems[0] && (
-              <div className="col-span-1 lg:col-span-5 fade-in fade-in-delay-1">
-                <EditorialCard product={sideItems[0]} onClick={() => onProductClick(sideItems[0])} variant="side" />
-              </div>
-            )}
-            {sideItems[1] && (
-              <div className="col-span-1 lg:col-span-5 fade-in fade-in-delay-2">
-                <EditorialCard product={sideItems[1]} onClick={() => onProductClick(sideItems[1])} variant="side" />
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Extra items — clean 3-col grid below */}
-      {extraItems.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {extraItems.map((product, i) => (
-            <div
-              key={product.product_key}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+        {/* Hero — same width, spans 2 rows */}
+        <div className="col-span-1 row-span-2 fade-in">
+          <EditorialCard product={hero} onClick={() => onProductClick(hero)} variant="hero" videoUrl={heroVideo} />
+        </div>
+        {/* Remaining cards fill the other columns */}
+        {rest.map((product, i) => (
+          <div
+            key={product.product_key}
               className={`fade-in ${i === 0 ? 'fade-in-delay-1' : i === 1 ? 'fade-in-delay-2' : 'fade-in-delay-3'}`}
             >
               <EditorialCard product={product} onClick={() => onProductClick(product)} variant="normal" />
             </div>
           ))}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -288,10 +251,9 @@ function EditorialCard({
   if (isHero) {
     return (
       <div
-        className="relative cursor-pointer group h-full rounded-2xl overflow-hidden bg-charcoal-deep shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
-        onClick={onClick}
+        className="relative group h-full rounded-2xl overflow-hidden bg-charcoal-deep shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
       >
-        <div className="aspect-[3/4] lg:aspect-auto lg:h-full lg:min-h-[480px] overflow-hidden relative">
+        <div className="h-full overflow-hidden relative">
           {videoUrl ? (
             <video
               src={videoUrl}
@@ -334,17 +296,13 @@ function EditorialCard({
     );
   }
 
-  // Regular / side / compact cards: image + info section
-  const imageClass = isCompact ? 'aspect-square' : 'aspect-[3/4]';
-  const nameClass = isCompact ? 'font-semibold text-xs' : 'font-semibold text-[13px]';
-  const priceClass = isCompact ? 'text-[13px]' : 'text-[15px]';
-
+  // Regular / side / compact cards: image with overlay info
   return (
     <div
-      className="relative cursor-pointer group h-full rounded-2xl overflow-hidden bg-white shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
+      className="relative cursor-pointer group h-full rounded-2xl overflow-hidden bg-charcoal-deep shadow-[0_2px_16px_rgba(0,0,0,0.06)]"
       onClick={onClick}
     >
-      <div className={`${imageClass} overflow-hidden relative`}>
+      <div className="aspect-square overflow-hidden relative">
         {product.image ? (
           <img
             src={product.image}
@@ -352,45 +310,21 @@ function EditorialCard({
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-warm-300">
+          <div className="w-full h-full flex items-center justify-center text-warm-300 bg-warm-100">
             <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
             </svg>
           </div>
         )}
-        {/* Quick Add overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-charcoal/90 backdrop-blur-sm text-white text-center py-3.5 font-display text-[11px] font-bold tracking-[0.12em] uppercase translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+        {/* Name + price overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-3 sm:p-4 pt-10">
+          <p className="font-display font-bold text-white text-xs sm:text-[13px] leading-tight drop-shadow-sm truncate">{product.name}</p>
+          <span className="text-amber text-xs sm:text-[13px] font-bold">CA${product.price.toFixed(2)}</span>
+        </div>
+        {/* Quick Add hover */}
+        <div className="absolute bottom-0 left-0 right-0 bg-charcoal/90 backdrop-blur-sm text-white text-center py-3 font-display text-[11px] font-bold tracking-[0.12em] uppercase translate-y-full group-hover:translate-y-0 transition-transform duration-300">
           Quick Add
         </div>
-      </div>
-
-      <div className={isCompact ? 'p-3' : 'p-4'}>
-        <div className={nameClass}>{product.name}</div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className={`${priceClass} font-bold text-amber-dark`}>
-            CA${product.price.toFixed(2)}
-          </span>
-        </div>
-
-        {product.colors?.length > 0 && !isCompact && (
-          <div className="flex gap-1.5 mt-2.5">
-            {product.colors.slice(0, 5).map((color) => {
-              const colorImg = product.color_images?.[color]?.[0];
-              return (
-                <span
-                  key={color}
-                  className="w-3.5 h-3.5 rounded-full border-2 border-warm-200 hover:border-charcoal transition-colors"
-                  title={color}
-                  style={{
-                    backgroundImage: colorImg ? `url(${colorImg})` : undefined,
-                    backgroundSize: 'cover',
-                    backgroundColor: colorImg ? undefined : '#1A1A18',
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );

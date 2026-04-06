@@ -7,10 +7,12 @@ import type { Product } from '@/lib/types';
 
 export function ProductModal({
   product,
-  onClose
+  onClose,
+  onJoinMember,
 }: {
   product: Product | null;
   onClose: () => void;
+  onJoinMember?: () => void;
 }) {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
@@ -158,7 +160,12 @@ export function ProductModal({
   };
 
   const handleJoinWaitlist = () => {
-    window.location.href = '/login';
+    if (onJoinMember) {
+      onClose();
+      onJoinMember();
+    } else {
+      window.location.href = '/login';
+    }
   };
 
   const handlePrevImage = () => {
@@ -442,9 +449,9 @@ export function ProductModal({
               {product.category === 'members' ? (
                 <button
                   onClick={handleJoinWaitlist}
-                  className="w-full bg-amber-dark text-white font-display py-2.5 md:py-3 px-3 rounded-lg hover:bg-amber transition-colors uppercase tracking-wider text-xs md:text-sm font-bold"
+                  className="w-full bg-amber text-charcoal-deep font-body font-medium py-2.5 md:py-3 px-3 rounded-lg hover:bg-amber-light transition-colors text-sm tracking-wide"
                 >
-                  Join Waitlist
+                  Become a Member
                 </button>
               ) : !product.price_id ? (
                 <button

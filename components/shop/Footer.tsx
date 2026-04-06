@@ -69,6 +69,8 @@ export function Footer() {
               <li><a href="/size-guide" className="text-sm text-white/50 hover:text-white transition-colors">Size Guide</a></li>
               <li><a href="/faq" className="text-sm text-white/50 hover:text-white transition-colors">FAQ</a></li>
               <li><a href="/blog" className="text-sm text-white/50 hover:text-white transition-colors">Blog</a></li>
+              <li><a href="#reviews" className="text-sm text-white/50 hover:text-white transition-colors">Reviews</a></li>
+              <li><a href="https://www.instagram.com/onsite.club/" target="_blank" rel="noopener noreferrer" className="text-sm text-white/50 hover:text-white transition-colors">Instagram</a></li>
               <li><a href="mailto:info@onsiteclub.ca" className="text-sm text-white/50 hover:text-white transition-colors">Contact Us</a></li>
             </ul>
           </div>

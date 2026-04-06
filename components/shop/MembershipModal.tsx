@@ -3,21 +3,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
+type Step = 'email' | 'password' | 'signup' | 'welcome';
+
 interface MembershipModalProps {
   onClose: () => void;
 }
 
 export function MembershipModal({ onClose }: MembershipModalProps) {
-  const [step, setStep] = useState<'form' | 'welcome'>('form');
-  const [isLogin, setIsLogin] = useState(false);
+  const [step, setStep] = useState<Step>('email');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const backdropRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
-  // Escape to close
+  // Escape to close + lock body scroll
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -30,37 +35,78 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
     };
   }, [onClose]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Autofocus on step change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (step === 'email') emailRef.current?.focus();
+      else if (step === 'password') passwordRef.current?.focus();
+      else if (step === 'signup') nameRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [step]);
+
+  // Step 1: Check if email exists
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    const supabase = createClient();
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      setError('Please enter your email.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          setError(error.message.includes('Invalid login credentials')
-            ? 'Invalid email or password'
-            : error.message);
-          return;
-        }
-        if (data.user) setStep('welcome');
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: name } },
-        });
-        if (error) {
-          setError(error.message.includes('already registered')
-            ? 'This email is already registered. Try signing in.'
-            : error.message);
-          return;
-        }
-        if (data.user) setStep('welcome');
+      const supabase = createClient();
+      const { data, error: rpcError } = await supabase.rpc('check_email_exists', {
+        p_email: trimmed,
+      });
+
+      if (rpcError) {
+        // If RPC doesn't exist yet, fall back to signup
+        console.warn('check_email_exists RPC error:', rpcError.message);
+        setStep('signup');
+        return;
       }
+
+      if (data === true) {
+        setStep('password');
+      } else {
+        setStep('signup');
+      }
+    } catch {
+      // Fallback: go to signup
+      setStep('signup');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 2A: Sign in (existing user)
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (error) {
+        setError(
+          error.message.includes('Invalid login credentials')
+            ? 'Wrong password. Try again.'
+            : error.message
+        );
+        return;
+      }
+
+      if (data.user) setStep('welcome');
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -68,6 +114,44 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
     }
   };
 
+  // Step 2B: Sign up (new user)
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: {
+            full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+          },
+        },
+      });
+
+      if (error) {
+        setError(
+          error.message.includes('already registered')
+            ? 'This email is already registered. Try signing in.'
+            : error.message
+        );
+        return;
+      }
+
+      if (data.user) setStep('welcome');
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Google OAuth
   const handleGoogleLogin = async () => {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
@@ -77,6 +161,16 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
       },
     });
   };
+
+  // Go back to email step
+  const handleBack = () => {
+    setError(null);
+    setPassword('');
+    setStep('email');
+  };
+
+  const INPUT_CLASS =
+    'w-full px-4 py-3 rounded-xl border border-warm-200 bg-white text-sm font-body text-charcoal placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-amber/40 focus:border-amber transition-colors';
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -89,7 +183,6 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
 
       {/* Modal */}
       <div className="relative z-[1] w-full max-w-[440px] rounded-2xl bg-off-white shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-
         {/* Close button */}
         <button
           onClick={onClose}
@@ -100,25 +193,23 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
           </svg>
         </button>
 
-        {step === 'form' ? (
-          /* ===== STEP 1: SIGNUP / LOGIN FORM ===== */
+        {/* ===== EMAIL STEP ===== */}
+        {step === 'email' && (
           <div className="p-8 sm:p-10">
-            {/* Header */}
             <div className="text-center mb-8">
               <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-amber/10 flex items-center justify-center">
                 <svg className="w-6 h-6 text-amber" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z" />
                 </svg>
               </div>
-              <h2 className="font-display font-extrabold text-2xl text-charcoal-deep tracking-tight">
-                {isLogin ? 'Welcome Back' : 'Join the Crew'}
+              <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
+                Join the Crew
               </h2>
               <p className="text-text-secondary text-sm mt-2 font-body">
-                {isLogin ? 'Sign in to access member perks' : 'Unlock exclusive gear & member pricing'}
+                Enter your email to get started
               </p>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl">
                 <p className="text-sm text-red-600 font-body">{error}</p>
@@ -129,7 +220,7 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
             <button
               onClick={handleGoogleLogin}
               type="button"
-              className="w-full flex items-center justify-center gap-3 bg-white border border-warm-200 rounded-xl py-3 px-4 text-sm font-display font-semibold text-charcoal hover:bg-warm-50 transition-colors mb-5"
+              className="w-full flex items-center justify-center gap-3 bg-white border border-warm-200 rounded-xl py-3 px-4 text-sm font-body text-charcoal hover:bg-warm-50 transition-colors mb-5"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -145,117 +236,193 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
                 <div className="w-full border-t border-warm-200" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="px-3 bg-off-white text-warm-400 font-display font-semibold uppercase tracking-wider">or</span>
+                <span className="px-3 bg-off-white text-warm-400 font-body tracking-wider">or</span>
               </div>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
-                <div>
-                  <label className="block text-xs font-display font-bold text-charcoal uppercase tracking-wider mb-1.5">
-                    Full name
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-warm-200 bg-white text-sm font-body text-charcoal placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-amber/40 focus:border-amber transition-colors"
-                    placeholder="Your name"
-                    required={!isLogin}
-                  />
-                </div>
-              )}
+            <form onSubmit={handleEmailSubmit}>
+              <input
+                ref={emailRef}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={INPUT_CLASS}
+                placeholder="your@email.com"
+                required
+                autoComplete="email"
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-4 bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300 disabled:opacity-50"
+              >
+                {isLoading ? 'Checking...' : 'Continue'}
+              </button>
+            </form>
+          </div>
+        )}
 
-              <div>
-                <label className="block text-xs font-display font-bold text-charcoal uppercase tracking-wider mb-1.5">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-warm-200 bg-white text-sm font-body text-charcoal placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-amber/40 focus:border-amber transition-colors"
-                  placeholder="your@email.com"
-                  required
-                />
+        {/* ===== PASSWORD STEP (existing user) ===== */}
+        {step === 'password' && (
+          <div className="p-8 sm:p-10">
+            <div className="text-center mb-8">
+              <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
+                Welcome Back
+              </h2>
+              <p className="text-text-secondary text-sm mt-2 font-body">
+                {email}
+              </p>
+            </div>
+
+            {error && (
+              <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-600 font-body">{error}</p>
               </div>
+            )}
 
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-display font-bold text-charcoal uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
                   Password
                 </label>
                 <input
+                  ref={passwordRef}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-warm-200 bg-white text-sm font-body text-charcoal placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-amber/40 focus:border-amber transition-colors"
-                  placeholder="Min. 6 characters"
+                  className={INPUT_CLASS}
+                  placeholder="Enter your password"
                   required
-                  minLength={6}
+                  autoComplete="current-password"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-display font-bold text-[13px] tracking-[0.06em] uppercase hover:bg-amber-light transition-all duration-300 shadow-[0_4px_20px_rgba(212,175,55,0.25)] disabled:opacity-50"
+                className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300 disabled:opacity-50"
               >
-                {isLoading ? 'Loading...' : isLogin ? 'Sign In' : 'Join the Crew'}
+                {isLoading ? 'Signing in...' : 'Sign In'}
               </button>
             </form>
 
-            {/* Toggle */}
-            <p className="text-center text-sm text-text-secondary mt-6 font-body">
-              {isLogin ? "Don't have an account?" : 'Already a member?'}{' '}
-              <button
-                onClick={() => { setIsLogin(!isLogin); setError(null); }}
-                className="text-amber-dark font-bold hover:underline"
-              >
-                {isLogin ? 'Create account' : 'Sign in'}
-              </button>
-            </p>
+            <button
+              onClick={handleBack}
+              className="w-full mt-4 text-center text-sm text-warm-400 font-body hover:text-charcoal transition-colors"
+            >
+              &larr; Use a different email
+            </button>
           </div>
-        ) : (
-          /* ===== STEP 2: WELCOME CONFIRMATION ===== */
+        )}
+
+        {/* ===== SIGNUP STEP (new user) ===== */}
+        {step === 'signup' && (
           <div className="p-8 sm:p-10">
-            {/* Success icon */}
+            <div className="text-center mb-8">
+              <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
+                Create Account
+              </h2>
+              <p className="text-text-secondary text-sm mt-2 font-body">
+                {email}
+              </p>
+            </div>
+
+            {error && (
+              <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-600 font-body">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSignupSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
+                    First name
+                  </label>
+                  <input
+                    ref={nameRef}
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className={INPUT_CLASS}
+                    placeholder="First"
+                    required
+                    autoComplete="given-name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
+                    Last name
+                  </label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className={INPUT_CLASS}
+                    placeholder="Last"
+                    required
+                    autoComplete="family-name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={INPUT_CLASS}
+                  placeholder="Min. 6 characters"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300 disabled:opacity-50"
+              >
+                {isLoading ? 'Creating account...' : 'Join the Crew'}
+              </button>
+            </form>
+
+            <button
+              onClick={handleBack}
+              className="w-full mt-4 text-center text-sm text-warm-400 font-body hover:text-charcoal transition-colors"
+            >
+              &larr; Use a different email
+            </button>
+          </div>
+        )}
+
+        {/* ===== WELCOME STEP ===== */}
+        {step === 'welcome' && (
+          <div className="p-8 sm:p-10">
             <div className="text-center mb-8">
               <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-amber/15 flex items-center justify-center">
                 <svg className="w-8 h-8 text-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
               </div>
-              <h2 className="font-display font-extrabold text-2xl sm:text-[28px] text-charcoal-deep tracking-tight">
+              <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
                 Welcome to the Crew
               </h2>
-              <p className="text-text-secondary text-sm mt-2 font-body max-w-[320px] mx-auto">
-                You're in. Here's everything your membership unlocks:
+              <p className="text-text-secondary text-sm mt-3 font-body max-w-[300px] mx-auto leading-relaxed">
+                You now have access to exclusive member pricing and early drops.
               </p>
             </div>
 
-            {/* Benefits list */}
-            <div className="space-y-3 mb-8">
-              {[
-                { icon: 'tag', text: 'Exclusive member pricing on all gear' },
-                { icon: 'zap', text: 'Early access to new drops & limited editions' },
-                { icon: 'truck', text: 'Free shipping on every order' },
-                { icon: 'gift', text: 'Members-only sticker packs & surprises' },
-                { icon: 'users', text: 'Access to the OnSite Club community' },
-              ].map((item) => (
-                <div key={item.text} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-warm-100">
-                  <div className="w-8 h-8 rounded-lg bg-amber/10 flex items-center justify-center flex-shrink-0">
-                    <BenefitIcon type={item.icon} />
-                  </div>
-                  <span className="text-sm font-body text-charcoal font-medium">{item.text}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* CTA */}
             <button
-              onClick={onClose}
-              className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-display font-bold text-[13px] tracking-[0.06em] uppercase hover:bg-amber-light transition-all duration-300 shadow-[0_4px_20px_rgba(212,175,55,0.25)]"
+              onClick={() => {
+                onClose();
+                window.location.reload();
+              }}
+              className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300"
             >
               Start Shopping
             </button>
@@ -264,43 +431,4 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
       </div>
     </div>
   );
-}
-
-function BenefitIcon({ type }: { type: string }) {
-  const cls = "w-4 h-4 text-amber";
-  switch (type) {
-    case 'tag':
-      return (
-        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
-        </svg>
-      );
-    case 'zap':
-      return (
-        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-        </svg>
-      );
-    case 'truck':
-      return (
-        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-        </svg>
-      );
-    case 'gift':
-      return (
-        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-        </svg>
-      );
-    case 'users':
-      return (
-        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-        </svg>
-      );
-    default:
-      return null;
-  }
 }

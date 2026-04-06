@@ -83,7 +83,7 @@ export function CategoriesGrid({ onCategoryClick, productImages }: CategoriesGri
                   onCategoryClick(cat.key);
                 }
               }}
-              className={`fade-in ${i === 1 ? 'fade-in-delay-1' : i === 2 ? 'fade-in-delay-2' : i >= 3 ? 'fade-in-delay-3' : ''} relative rounded-[10px] overflow-hidden aspect-[3/4] bg-charcoal-deep cursor-pointer group`}
+              className={`fade-in ${i === 1 ? 'fade-in-delay-1' : i === 2 ? 'fade-in-delay-2' : i >= 3 ? 'fade-in-delay-3' : ''} relative rounded-[10px] overflow-hidden aspect-square bg-charcoal-deep cursor-pointer group`}
             >
               {!failedImages.has(cat.key) ? (
                 <img
