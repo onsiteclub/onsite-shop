@@ -7,9 +7,11 @@ type Step = 'email' | 'password' | 'signup' | 'welcome';
 
 interface MembershipModalProps {
   onClose: () => void;
+  onAuthSuccess?: () => void;
+  source?: 'members' | 'newsletter';
 }
 
-export function MembershipModal({ onClose }: MembershipModalProps) {
+export function MembershipModal({ onClose, onAuthSuccess, source }: MembershipModalProps) {
   const [step, setStep] = useState<Step>('email');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +19,10 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [birthday, setBirthday] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+  const [promoCode, setPromoCode] = useState<string | null>(null);
+  const [isNewMember, setIsNewMember] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -45,6 +51,20 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
     return () => clearTimeout(timer);
   }, [step]);
 
+  // Fetch welcome promo after auth
+  const fetchWelcomePromo = async () => {
+    try {
+      const res = await fetch('/api/member/welcome-promo', { method: 'POST' });
+      const data = await res.json();
+      if (data.code) {
+        setPromoCode(data.code);
+        setIsNewMember(!data.alreadyExists);
+      }
+    } catch {
+      // Non-fatal
+    }
+  };
+
   // Step 1: Check if email exists
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +85,6 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
       });
 
       if (rpcError) {
-        // If RPC doesn't exist yet, fall back to signup
         console.warn('check_email_exists RPC error:', rpcError.message);
         setStep('signup');
         return;
@@ -77,7 +96,6 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
         setStep('signup');
       }
     } catch {
-      // Fallback: go to signup
       setStep('signup');
     } finally {
       setIsLoading(false);
@@ -106,7 +124,10 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
         return;
       }
 
-      if (data.user) setStep('welcome');
+      if (data.user) {
+        await fetchWelcomePromo();
+        setStep('welcome');
+      }
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -130,6 +151,7 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
             full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
             first_name: firstName.trim(),
             last_name: lastName.trim(),
+            birthday: birthday || undefined,
           },
         },
       });
@@ -143,7 +165,10 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
         return;
       }
 
-      if (data.user) setStep('welcome');
+      if (data.user) {
+        await fetchWelcomePromo();
+        setStep('welcome');
+      }
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -151,22 +176,39 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
     }
   };
 
-  // Google OAuth
-  const handleGoogleLogin = async () => {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?return=${encodeURIComponent('/')}`,
-      },
-    });
+  // Forgot password
+  const handleForgotPassword = async () => {
+    setError(null);
+    setResetSent(false);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        { redirectTo: `${window.location.origin}/auth/callback?return=/` }
+      );
+      if (error) {
+        setError('Could not send reset email. Try again.');
+      } else {
+        setResetSent(true);
+      }
+    } catch {
+      setError('Could not send reset email. Try again.');
+    }
   };
 
   // Go back to email step
   const handleBack = () => {
     setError(null);
     setPassword('');
+    setResetSent(false);
     setStep('email');
+  };
+
+  // Start shopping — close modal, notify parent
+  const handleStartShopping = () => {
+    onAuthSuccess?.();
+    onClose();
   };
 
   const INPUT_CLASS =
@@ -216,30 +258,6 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
               </div>
             )}
 
-            {/* Google */}
-            <button
-              onClick={handleGoogleLogin}
-              type="button"
-              className="w-full flex items-center justify-center gap-3 bg-white border border-warm-200 rounded-xl py-3 px-4 text-sm font-body text-charcoal hover:bg-warm-50 transition-colors mb-5"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Continue with Google
-            </button>
-
-            <div className="relative mb-5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-warm-200" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="px-3 bg-off-white text-warm-400 font-body tracking-wider">or</span>
-              </div>
-            </div>
-
             <form onSubmit={handleEmailSubmit}>
               <input
                 ref={emailRef}
@@ -280,6 +298,12 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
               </div>
             )}
 
+            {resetSent && (
+              <div className="mb-5 p-3 bg-green-50 border border-green-200 rounded-xl">
+                <p className="text-sm text-green-600 font-body">Password reset email sent! Check your inbox.</p>
+              </div>
+            )}
+
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
@@ -307,8 +331,15 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
             </form>
 
             <button
+              onClick={handleForgotPassword}
+              className="w-full mt-3 text-center text-sm text-amber font-body hover:text-amber-dark transition-colors"
+            >
+              Forgot your password?
+            </button>
+
+            <button
               onClick={handleBack}
-              className="w-full mt-4 text-center text-sm text-warm-400 font-body hover:text-charcoal transition-colors"
+              className="w-full mt-2 text-center text-sm text-warm-400 font-body hover:text-charcoal transition-colors"
             >
               &larr; Use a different email
             </button>
@@ -368,6 +399,20 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
 
               <div>
                 <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
+                  Birthday
+                </label>
+                <input
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  className={INPUT_CLASS}
+                  max={new Date().toISOString().split('T')[0]}
+                  autoComplete="bday"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
                   Password
                 </label>
                 <input
@@ -412,16 +457,30 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
               <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
                 Welcome to the Crew
               </h2>
-              <p className="text-text-secondary text-sm mt-3 font-body max-w-[300px] mx-auto leading-relaxed">
-                You now have access to exclusive member pricing and early drops.
-              </p>
+
+              {isNewMember && promoCode ? (
+                <>
+                  <p className="text-text-secondary text-sm mt-3 font-body max-w-[300px] mx-auto leading-relaxed">
+                    Here&apos;s your 10% off welcome code:
+                  </p>
+                  <div className="bg-amber/15 rounded-xl p-5 my-5">
+                    <span className="font-display font-bold text-2xl tracking-[0.2em] text-amber-dark">
+                      {promoCode}
+                    </span>
+                  </div>
+                  <p className="text-text-secondary text-xs font-body leading-relaxed">
+                    Use it at checkout. Valid for 30 days. We also sent it to your email.
+                  </p>
+                </>
+              ) : (
+                <p className="text-text-secondary text-sm mt-3 font-body max-w-[300px] mx-auto leading-relaxed">
+                  You now have access to exclusive member pricing and early drops.
+                </p>
+              )}
             </div>
 
             <button
-              onClick={() => {
-                onClose();
-                window.location.reload();
-              }}
+              onClick={handleStartShopping}
               className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300"
             >
               Start Shopping

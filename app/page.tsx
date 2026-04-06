@@ -15,6 +15,7 @@ import { ReviewsSection } from '@/components/ReviewsSection';
 import { Newsletter } from '@/components/shop/Newsletter';
 import { CategoryModal } from '@/components/shop/CategoryModal';
 import { MembershipModal } from '@/components/shop/MembershipModal';
+import { useAuthStore } from '@/lib/store/auth';
 import type { Product } from '@/lib/types';
 
 // Lazy-loaded (not needed on initial render, client-only)
@@ -95,6 +96,10 @@ export default function ShopPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [categoryModal, setCategoryModal] = useState<{ category: string; label: string; items: Product[] } | null>(null);
   const [showMemberModal, setShowMemberModal] = useState(false);
+  const { user, initialize } = useAuthStore();
+
+  // Initialize auth store
+  useEffect(() => { initialize(); }, [initialize]);
 
   // Load products from Supabase
   useEffect(() => {
@@ -279,25 +284,33 @@ export default function ShopPage() {
                   Exclusive Gear
                 </h2>
                 <p className="text-white/35 text-sm max-w-[360px] mx-auto font-body">
-                  Sign up to see prices. It&apos;s free.
+                  {user
+                    ? `Welcome, ${user.user_metadata?.first_name || 'member'}. Exclusive gear is on the way.`
+                    : "Sign up to see prices. It\u2019s free."}
                 </p>
               </div>
 
               {/* Cards Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-14">
                 {membersProducts.slice(0, 4).map((product) => (
-                  <MembersCard key={product.product_key} product={product} onJoin={() => setShowMemberModal(true)} />
+                  <MembersCard key={product.product_key} product={product} onJoin={() => setShowMemberModal(true)} isMember={!!user} />
                 ))}
               </div>
 
               {/* CTA */}
               <div className="text-center">
-                <button
-                  onClick={() => setShowMemberModal(true)}
-                  className="bg-amber text-charcoal-deep py-3.5 px-10 rounded-lg font-body font-light text-sm tracking-wide hover:bg-amber-light transition-all duration-300"
-                >
-                  Become a Member
-                </button>
+                {!user ? (
+                  <button
+                    onClick={() => setShowMemberModal(true)}
+                    className="bg-amber text-charcoal-deep py-3.5 px-10 rounded-lg font-body font-light text-sm tracking-wide hover:bg-amber-light transition-all duration-300"
+                  >
+                    Become a Member
+                  </button>
+                ) : (
+                  <p className="text-white/25 text-sm font-body">
+                    Stay tuned for exclusive drops.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -337,8 +350,11 @@ export default function ShopPage() {
         />
       )}
 
-      {showMemberModal && (
-        <MembershipModal onClose={() => setShowMemberModal(false)} />
+      {showMemberModal && !user && (
+        <MembershipModal
+          onClose={() => setShowMemberModal(false)}
+          onAuthSuccess={() => setShowMemberModal(false)}
+        />
       )}
     </div>
   );
@@ -458,11 +474,11 @@ function ProductCard({
 // MEMBERS CARD — "Become a Member" CTA
 // ============================================================================
 
-function MembersCard({ product, onJoin }: { product: Product; onJoin?: () => void }) {
+function MembersCard({ product, onJoin, isMember }: { product: Product; onJoin?: () => void; isMember?: boolean }) {
   return (
     <div
       className="relative rounded-2xl overflow-hidden bg-white/[0.04] group cursor-pointer"
-      onClick={onJoin}
+      onClick={isMember ? undefined : onJoin}
     >
       <div className="aspect-[3/4] overflow-hidden relative">
         {product.image ? (
@@ -484,7 +500,7 @@ function MembersCard({ product, onJoin }: { product: Product; onJoin?: () => voi
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
           </svg>
           <span className="text-white/80 text-xs font-body text-center px-4 leading-relaxed">
-            Join free to see prices
+            {isMember ? 'Coming soon' : 'Join free to see prices'}
           </span>
         </div>
       </div>
