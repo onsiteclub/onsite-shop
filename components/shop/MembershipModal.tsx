@@ -182,7 +182,7 @@ export function MembershipModal({ onClose }: MembershipModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative z-[1] w-full max-w-[440px] rounded-2xl bg-off-white shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="relative z-[1] w-full max-w-[440px] rounded-2xl bg-off-white shadow-2xl overflow-hidden" style={{ animation: 'modalIn 0.2s ease-out' }}>
         {/* Close button */}
         <button
           onClick={onClose}
