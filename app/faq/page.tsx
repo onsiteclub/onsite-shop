@@ -27,7 +27,7 @@ const FAQS = [
   },
   {
     q: 'What is your return policy?',
-    a: 'We accept returns within 30 days of delivery for unused, unwashed items with original tags attached. Email contact@onsiteclub.ca with your order number to start a return. See our Shipping & Returns page for full details.',
+    a: 'We accept returns within 30 days of delivery for unused, unwashed items with original tags attached. Email <a href="mailto:contact@onsiteclub.ca" class="text-amber-dark hover:underline">contact@onsiteclub.ca</a> with your order number to start a return. See our Shipping & Returns page for full details.',
   },
   {
     q: 'How do promo codes work?',
@@ -43,7 +43,7 @@ const FAQS = [
   },
   {
     q: 'How do I contact you?',
-    a: 'Email us at contact@onsiteclub.ca — we typically respond within 24 hours on business days. You can also reach us through Instagram @onsite.club.',
+    a: 'Email us at <a href="mailto:contact@onsiteclub.ca" class="text-amber-dark hover:underline">contact@onsiteclub.ca</a> — we typically respond within 24 hours on business days. You can also reach us through Instagram @onsite.club.',
   },
 ];
 
@@ -68,7 +68,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
       </button>
       {open && (
         <div className="pb-5 pr-8">
-          <p className="font-body text-sm text-text-secondary leading-relaxed">{a}</p>
+          <p className="font-body text-sm text-text-secondary leading-relaxed" dangerouslySetInnerHTML={{ __html: a }} />
         </div>
       )}
     </div>

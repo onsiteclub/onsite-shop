@@ -169,7 +169,7 @@ function SuccessContent() {
 
         {/* Footer */}
         <p className="text-center text-xs text-warm-400 mt-8">
-          Questions? Contact us at contact@onsiteclub.ca
+          Questions? Contact us at <a href="mailto:contact@onsiteclub.ca" className="text-amber-dark hover:underline">contact@onsiteclub.ca</a>
         </p>
       </div>
     </div>
