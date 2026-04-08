@@ -1,14 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuthStore } from '@/lib/store/auth';
-import { MembershipModal } from './MembershipModal';
+
+const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL || 'https://auth.onsiteclub.ca';
 
 export function Newsletter() {
   const { user, isLoading, initialize, signOut } = useAuthStore();
-  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => { initialize(); }, [initialize]);
+
+  const handleSignOut = () => {
+    signOut();
+    window.location.href = `${AUTH_URL}/logout?return_to=${encodeURIComponent(window.location.origin)}`;
+  };
+
+  const handleJoin = () => {
+    const returnTo = window.location.href;
+    window.location.href = `${AUTH_URL}/login?return_to=${encodeURIComponent(returnTo)}`;
+  };
 
   // Logged-in state
   if (!isLoading && user) {
@@ -26,7 +36,7 @@ export function Newsletter() {
           </p>
           <p className="text-white/30 text-[13px] font-body mt-3">
             Not {user.user_metadata?.first_name || 'you'}?{' '}
-            <button onClick={signOut} className="underline hover:text-amber transition-colors">
+            <button onClick={handleSignOut} className="underline hover:text-amber transition-colors">
               Sign out
             </button>
           </p>
@@ -36,31 +46,22 @@ export function Newsletter() {
   }
 
   return (
-    <>
-      <section className="py-20 bg-charcoal" id="contact">
-        <div className="max-w-[1200px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-10">
-          <div className="max-w-[500px] md:text-left text-center">
-            <h2 className="section-title !text-white !mb-2">Get 10% Off Your First Order</h2>
-            <p className="text-white/60 text-[15px]">
-              Join the crew. Get early drops, jobsite stories, and exclusive deals.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn-amber whitespace-nowrap !py-4 !px-8"
-          >
-            Join the Crew
-          </button>
+    <section className="py-20 bg-charcoal" id="contact">
+      <div className="max-w-[1200px] mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-10">
+        <div className="max-w-[500px] md:text-left text-center">
+          <h2 className="section-title !text-white !mb-2">Get 10% Off Your First Order</h2>
+          <p className="text-white/60 text-[15px]">
+            Join the crew. Get early drops, jobsite stories, and exclusive deals.
+          </p>
         </div>
-      </section>
 
-      {showModal && (
-        <MembershipModal
-          onClose={() => setShowModal(false)}
-          source="newsletter"
-        />
-      )}
-    </>
+        <button
+          onClick={handleJoin}
+          className="btn-amber whitespace-nowrap !py-4 !px-8"
+        >
+          Join the Crew
+        </button>
+      </div>
+    </section>
   );
 }

@@ -2,6 +2,9 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const cookieDomain = isProduction ? '.onsiteclub.ca' : undefined;
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
@@ -21,7 +24,10 @@ export async function GET(request: Request) {
           setAll(cookiesToSet) {
             try {
               cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
+                cookieStore.set(name, value, {
+                  ...options,
+                  ...(cookieDomain && { domain: cookieDomain }),
+                })
               );
             } catch {
               // The `setAll` method was called from a Server Component.
@@ -38,6 +44,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Redirect to login with error
-  return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+  // Redirect to auth hub on failure
+  const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://auth.onsiteclub.ca';
+  return NextResponse.redirect(`${authUrl}/login?error=auth_failed`);
 }

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useEffect, useRef } from 'react';
 
-type Step = 'email' | 'password' | 'signup' | 'welcome';
+const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL || 'https://auth.onsiteclub.ca';
 
 interface MembershipModalProps {
   onClose: () => void;
@@ -11,22 +10,13 @@ interface MembershipModalProps {
   source?: 'members' | 'newsletter';
 }
 
-export function MembershipModal({ onClose, onAuthSuccess, source }: MembershipModalProps) {
-  const [step, setStep] = useState<Step>('email');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [birthday, setBirthday] = useState('');
-  const [resetSent, setResetSent] = useState(false);
-  const [promoCode, setPromoCode] = useState<string | null>(null);
-  const [isNewMember, setIsNewMember] = useState(false);
+/**
+ * MembershipModal — Now redirects to the centralized Auth Hub.
+ * Login/signup is handled by auth.onsiteclub.ca. This modal is a
+ * branded transition screen before the redirect.
+ */
+export function MembershipModal({ onClose, source }: MembershipModalProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
-  const emailRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
 
   // Escape to close + lock body scroll
   useEffect(() => {
@@ -41,178 +31,10 @@ export function MembershipModal({ onClose, onAuthSuccess, source }: MembershipMo
     };
   }, [onClose]);
 
-  // Autofocus on step change
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (step === 'email') emailRef.current?.focus();
-      else if (step === 'password') passwordRef.current?.focus();
-      else if (step === 'signup') nameRef.current?.focus();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [step]);
-
-  // Fetch welcome promo after auth
-  const fetchWelcomePromo = async () => {
-    try {
-      const res = await fetch('/api/member/welcome-promo', { method: 'POST' });
-      const data = await res.json();
-      if (data.code) {
-        setPromoCode(data.code);
-        setIsNewMember(!data.alreadyExists);
-      }
-    } catch {
-      // Non-fatal
-    }
+  const handleContinue = () => {
+    const returnTo = window.location.href;
+    window.location.href = `${AUTH_URL}/login?return_to=${encodeURIComponent(returnTo)}`;
   };
-
-  // Step 1: Check if email exists
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed) {
-      setError('Please enter your email.');
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const supabase = createClient();
-      const { data, error: rpcError } = await supabase.rpc('check_email_exists', {
-        p_email: trimmed,
-      });
-
-      if (rpcError) {
-        console.warn('check_email_exists RPC error:', rpcError.message);
-        setStep('signup');
-        return;
-      }
-
-      if (data === true) {
-        setStep('password');
-      } else {
-        setStep('signup');
-      }
-    } catch {
-      setStep('signup');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Step 2A: Sign in (existing user)
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
-
-      if (error) {
-        setError(
-          error.message.includes('Invalid login credentials')
-            ? 'Wrong password. Try again.'
-            : error.message
-        );
-        return;
-      }
-
-      if (data.user) {
-        await fetchWelcomePromo();
-        setStep('welcome');
-      }
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Step 2B: Sign up (new user)
-  const handleSignupSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          data: {
-            full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            birthday: birthday || undefined,
-          },
-        },
-      });
-
-      if (error) {
-        setError(
-          error.message.includes('already registered')
-            ? 'This email is already registered. Try signing in.'
-            : error.message
-        );
-        return;
-      }
-
-      if (data.user) {
-        await fetchWelcomePromo();
-        setStep('welcome');
-      }
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Forgot password
-  const handleForgotPassword = async () => {
-    setError(null);
-    setResetSent(false);
-
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.trim().toLowerCase(),
-        { redirectTo: `${window.location.origin}/auth/callback?return=/` }
-      );
-      if (error) {
-        setError('Could not send reset email. Try again.');
-      } else {
-        setResetSent(true);
-      }
-    } catch {
-      setError('Could not send reset email. Try again.');
-    }
-  };
-
-  // Go back to email step
-  const handleBack = () => {
-    setError(null);
-    setPassword('');
-    setResetSent(false);
-    setStep('email');
-  };
-
-  // Start shopping — close modal, notify parent
-  const handleStartShopping = () => {
-    onAuthSuccess?.();
-    onClose();
-  };
-
-  const INPUT_CLASS =
-    'w-full px-4 py-3 rounded-xl border border-warm-200 bg-white text-sm font-body text-charcoal placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-amber/40 focus:border-amber transition-colors';
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -235,258 +57,32 @@ export function MembershipModal({ onClose, onAuthSuccess, source }: MembershipMo
           </svg>
         </button>
 
-        {/* ===== EMAIL STEP ===== */}
-        {step === 'email' && (
-          <div className="p-8 sm:p-10">
-            <div className="text-center mb-8">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-amber/10 flex items-center justify-center">
-                <svg className="w-6 h-6 text-amber" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z" />
-                </svg>
-              </div>
-              <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
-                Join the Crew
-              </h2>
-              <p className="text-text-secondary text-sm mt-2 font-body">
-                Enter your email to get started
-              </p>
+        <div className="p-8 sm:p-10">
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-amber/10 flex items-center justify-center">
+              <svg className="w-6 h-6 text-amber" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z" />
+              </svg>
             </div>
-
-            {error && (
-              <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-sm text-red-600 font-body">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleEmailSubmit}>
-              <input
-                ref={emailRef}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={INPUT_CLASS}
-                placeholder="your@email.com"
-                required
-                autoComplete="email"
-              />
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-4 bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300 disabled:opacity-50"
-              >
-                {isLoading ? 'Checking...' : 'Continue'}
-              </button>
-            </form>
+            <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
+              Join the Crew
+            </h2>
+            <p className="text-text-secondary text-sm mt-2 font-body max-w-[300px] mx-auto leading-relaxed">
+              Sign in or create your OnSite Club account to access exclusive member pricing and early drops.
+            </p>
           </div>
-        )}
 
-        {/* ===== PASSWORD STEP (existing user) ===== */}
-        {step === 'password' && (
-          <div className="p-8 sm:p-10">
-            <div className="text-center mb-8">
-              <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
-                Welcome Back
-              </h2>
-              <p className="text-text-secondary text-sm mt-2 font-body">
-                {email}
-              </p>
-            </div>
+          <button
+            onClick={handleContinue}
+            className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300"
+          >
+            Continue to Sign In
+          </button>
 
-            {error && (
-              <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-sm text-red-600 font-body">{error}</p>
-              </div>
-            )}
-
-            {resetSent && (
-              <div className="mb-5 p-3 bg-green-50 border border-green-200 rounded-xl">
-                <p className="text-sm text-green-600 font-body">Password reset email sent! Check your inbox.</p>
-              </div>
-            )}
-
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
-                  Password
-                </label>
-                <input
-                  ref={passwordRef}
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={INPUT_CLASS}
-                  placeholder="Enter your password"
-                  required
-                  autoComplete="current-password"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300 disabled:opacity-50"
-              >
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </button>
-            </form>
-
-            <button
-              onClick={handleForgotPassword}
-              className="w-full mt-3 text-center text-sm text-amber font-body hover:text-amber-dark transition-colors"
-            >
-              Forgot your password?
-            </button>
-
-            <button
-              onClick={handleBack}
-              className="w-full mt-2 text-center text-sm text-warm-400 font-body hover:text-charcoal transition-colors"
-            >
-              &larr; Use a different email
-            </button>
-          </div>
-        )}
-
-        {/* ===== SIGNUP STEP (new user) ===== */}
-        {step === 'signup' && (
-          <div className="p-8 sm:p-10">
-            <div className="text-center mb-8">
-              <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
-                Create Account
-              </h2>
-              <p className="text-text-secondary text-sm mt-2 font-body">
-                {email}
-              </p>
-            </div>
-
-            {error && (
-              <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-sm text-red-600 font-body">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSignupSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
-                    First name
-                  </label>
-                  <input
-                    ref={nameRef}
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className={INPUT_CLASS}
-                    placeholder="First"
-                    required
-                    autoComplete="given-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
-                    Last name
-                  </label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className={INPUT_CLASS}
-                    placeholder="Last"
-                    required
-                    autoComplete="family-name"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
-                  Birthday
-                </label>
-                <input
-                  type="date"
-                  value={birthday}
-                  onChange={(e) => setBirthday(e.target.value)}
-                  className={INPUT_CLASS}
-                  max={new Date().toISOString().split('T')[0]}
-                  autoComplete="bday"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-body font-medium text-charcoal/70 mb-1.5">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={INPUT_CLASS}
-                  placeholder="Min. 6 characters"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300 disabled:opacity-50"
-              >
-                {isLoading ? 'Creating account...' : 'Join the Crew'}
-              </button>
-            </form>
-
-            <button
-              onClick={handleBack}
-              className="w-full mt-4 text-center text-sm text-warm-400 font-body hover:text-charcoal transition-colors"
-            >
-              &larr; Use a different email
-            </button>
-          </div>
-        )}
-
-        {/* ===== WELCOME STEP ===== */}
-        {step === 'welcome' && (
-          <div className="p-8 sm:p-10">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-amber/15 flex items-center justify-center">
-                <svg className="w-8 h-8 text-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
-              <h2 className="font-body font-light text-2xl text-charcoal-deep tracking-wide">
-                Welcome to the Crew
-              </h2>
-
-              {isNewMember && promoCode ? (
-                <>
-                  <p className="text-text-secondary text-sm mt-3 font-body max-w-[300px] mx-auto leading-relaxed">
-                    Here&apos;s your 10% off welcome code:
-                  </p>
-                  <div className="bg-amber/15 rounded-xl p-5 my-5">
-                    <span className="font-display font-bold text-2xl tracking-[0.2em] text-amber-dark">
-                      {promoCode}
-                    </span>
-                  </div>
-                  <p className="text-text-secondary text-xs font-body leading-relaxed">
-                    Use it at checkout. Valid for 30 days. We also sent it to your email.
-                  </p>
-                </>
-              ) : (
-                <p className="text-text-secondary text-sm mt-3 font-body max-w-[300px] mx-auto leading-relaxed">
-                  You now have access to exclusive member pricing and early drops.
-                </p>
-              )}
-            </div>
-
-            <button
-              onClick={handleStartShopping}
-              className="w-full bg-amber text-charcoal-deep py-3.5 rounded-xl font-body font-medium text-sm tracking-wide hover:bg-amber-light transition-all duration-300"
-            >
-              Start Shopping
-            </button>
-          </div>
-        )}
+          <p className="text-center text-text-secondary text-xs mt-4 font-body">
+            You&apos;ll be redirected to our secure login page
+          </p>
+        </div>
       </div>
     </div>
   );

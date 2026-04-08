@@ -1,5 +1,7 @@
 import { createBrowserClient } from '@supabase/ssr'
 
+const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+
 let client: ReturnType<typeof createBrowserClient> | null = null;
 
 export function createClient() {
@@ -15,6 +17,7 @@ export function createClient() {
         signUp: async () => ({ data: { user: null }, error: { message: 'Supabase not configured' } }),
         signInWithOAuth: async () => ({ data: { url: null }, error: { message: 'Supabase not configured' } }),
         signOut: async () => ({ error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       },
       from: () => ({
         insert: () => ({ select: () => ({ single: async () => ({ data: null, error: { message: 'Supabase not configured' } }) }) }),
@@ -26,11 +29,9 @@ export function createClient() {
 
   if (!client) {
     client = createBrowserClient(url, key, {
-      cookieOptions: {
-        domain: '.onsiteclub.ca',
-        sameSite: 'lax',
-        secure: true,
-      },
+      cookieOptions: isProduction
+        ? { domain: '.onsiteclub.ca', sameSite: 'lax' as const, secure: true }
+        : { sameSite: 'lax' as const, secure: false },
     });
   }
 

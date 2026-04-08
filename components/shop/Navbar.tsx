@@ -9,6 +9,7 @@ import { MembershipModal } from '@/components/shop/MembershipModal';
 import type { Product } from '@/lib/types';
 
 const NAV_LINK = 'font-display font-semibold text-[13px] tracking-[0.08em] uppercase text-text-primary hover:text-warm-500 transition-colors';
+const AUTH_URL = process.env.NEXT_PUBLIC_AUTH_URL || 'https://auth.onsiteclub.ca';
 
 export function Navbar({ products = [], onProductClick }: { products?: Product[]; onProductClick?: (p: Product) => void }) {
   const cartItems = useCartStore((state) => state.items);
@@ -206,7 +207,11 @@ export function Navbar({ products = [], onProductClick }: { products?: Product[]
                   {/* Sign out */}
                   <div className="border-t border-warm-100 py-1.5">
                     <button
-                      onClick={() => { signOut(); setUserMenuOpen(false); }}
+                      onClick={() => {
+                        signOut();
+                        setUserMenuOpen(false);
+                        window.location.href = `${AUTH_URL}/logout?return_to=${encodeURIComponent(window.location.origin)}`;
+                      }}
                       className="flex items-center gap-3 px-5 py-2.5 w-full hover:bg-off-white transition-colors"
                     >
                       <svg className="w-4 h-4 text-warm-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

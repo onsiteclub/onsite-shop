@@ -1,6 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const isProduction = process.env.NODE_ENV === 'production'
+const cookieDomain = isProduction ? '.onsiteclub.ca' : undefined
+const AUTH_LOGIN_URL = process.env.NEXT_PUBLIC_AUTH_URL
+  ? `${process.env.NEXT_PUBLIC_AUTH_URL}/login`
+  : 'https://auth.onsiteclub.ca/login'
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -22,7 +28,10 @@ export async function middleware(request: NextRequest) {
             request,
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              ...(cookieDomain && { domain: cookieDomain }),
+            })
           )
         },
       },
@@ -34,16 +43,17 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect /admin routes — redirect unauthenticated users
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('return', request.nextUrl.pathname)
-      return NextResponse.redirect(url)
-    }
+  const pathname = request.nextUrl.pathname
 
-    // Verify admin status
+  // Protected routes — redirect to Auth Hub
+  if (isProtectedRoute(pathname) && !user) {
+    const loginUrl = new URL(AUTH_LOGIN_URL)
+    loginUrl.searchParams.set('return_to', request.nextUrl.href)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Admin routes — verify admin status
+  if (pathname.startsWith('/admin') && user) {
     const { data: admin } = await supabase
       .from('admin_users')
       .select('email')
@@ -67,6 +77,10 @@ export async function middleware(request: NextRequest) {
   )
 
   return supabaseResponse
+}
+
+function isProtectedRoute(pathname: string): boolean {
+  return pathname.startsWith('/account') || pathname.startsWith('/admin')
 }
 
 export const config = {
