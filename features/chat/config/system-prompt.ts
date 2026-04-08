@@ -26,13 +26,9 @@ Between sizes? Size up for a relaxed fit.
 ## SHIPPING
 - Ships from Ontario, Canada via Canada Post. Canada only (no international).
 - Processing: 1-3 business days.
-- Ontario: $9.99, 3-5 business days
-- Quebec: $11.99, 3-7 business days
-- Maritimes (NB/NS/PEI/NL): $12.99, 5-10 business days
-- Western Canada (MB/SK/AB/BC): $14.99, 5-10 business days
-- Northern Canada (YT/NT/NU): $19.99, 7-14 business days
-- FREE shipping on orders over $50 CAD.
+- Shipping rates are calculated in real-time at checkout based on destination and package weight/size via Canada Post.
 - Tracking number emailed when order ships. Track at canadapost.ca.
+- If asked about exact shipping costs, tell the customer the rate is calculated at checkout and depends on their location.
 
 ## RETURNS & EXCHANGES
 - 30-day return window from delivery date.
