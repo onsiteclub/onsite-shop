@@ -104,6 +104,12 @@ export async function POST(req: NextRequest) {
     )
 
     // 7. Create the shipment
+    console.log('[create-label] ENV CHECK:', {
+      baseUrl: process.env.CANADAPOST_BASE_URL || 'MISSING — using fallback ct.soa-gw',
+      apiUser: process.env.CANADAPOST_API_USER ? `${process.env.CANADAPOST_API_USER.slice(0, 6)}...` : 'MISSING',
+      customerNumber: process.env.CANADAPOST_CUSTOMER_NUMBER || 'MISSING',
+      contractId: process.env.CANADAPOST_CONTRACT_ID || 'MISSING',
+    })
     const shipmentResult = await createShipment({
       serviceCode,
       sender,
