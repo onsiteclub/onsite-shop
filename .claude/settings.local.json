@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix: handle undefined base_price with nullish coalescing\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix: add optional chaining to sizes[0]/colors[0] access\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(findstr:*)",
+      "Bash(git log:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix table names: use ''orders'' and ''order_items'' \\(per Blue directive\\)\n\n- checkout/route.ts: app_shop_orders → orders\n- webhook/route.ts: app_shop_orders → orders\n- webhook/route.ts: app_shop_order_items → order_items\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(npx next dev:*)",
+      "Bash(timeout:*)",
+      "Bash(nslookup:*)",
+      "Bash(python:*)",
+      "WebFetch(domain:www.canadapost-postescanada.ca)",
+      "Bash(for port in 3000 3001 3002)",
+      "Bash(do echo \"=== Port $port ===\")",
+      "Bash(done)",
+      "Read(//c/Dev/Onsite-club/onsite-shop/**)",
+      "Bash(while read pid)",
+      "Bash(do echo \"Killing PID $pid\")",
+      "Bash(npm ls:*)",
+      "Bash(npm uninstall:*)",
+      "WebFetch(domain:www.canadapost.ca)",
+      "Bash(npx vercel logs:*)",
+      "Bash(pip install:*)",
+      "Bash(tesseract:*)",
+      "Bash(npx --yes pdf-parse:*)",
+      "Bash(OPENAI_API_KEY=fake-key node:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Dev\\Onsite-club\\onsite-shop\\.claude",
+      "C:\\Users\\crist\\OneDrive\\Desktop",
+      "C:\\Dev\\Onsite-club\\onsite-shop\\features\\chat"
+    ]
+  }
+}
