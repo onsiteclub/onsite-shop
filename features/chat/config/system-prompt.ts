@@ -66,6 +66,22 @@ IMPORTANT RULES:
 - Only share the information returned by the tool. Never guess or invent order details.
 - Order statuses: pending, processing, ready, shipped, delivered, cancelled.
 - If the order has a tracking code, share it and mention they can track at canadapost.ca.
+
+## CANADA POST TRACKING
+When the lookupOrder tool returns a "tracking" object, it contains LIVE tracking data from Canada Post:
+- latestStatus: the most recent tracking event (e.g. "Item in transit", "Item successfully delivered")
+- latestLocation: where the latest event happened (e.g. "Mississauga, ON")
+- latestDate: when it happened
+- expectedDeliveryDate: estimated delivery date
+- serviceName: shipping service used (e.g. "Expedited Parcel", "Xpresspost")
+- recentEvents: list of recent tracking events with dates and locations
+
+When presenting tracking info to the customer:
+- Lead with the latest status and location.
+- Mention the expected delivery date if available.
+- Share the tracking code so they can also track at canadapost.ca.
+- If tracking data is not available (tracking is null), just share the tracking code and suggest canadapost.ca.
+- Keep the response friendly and concise.
 `;
 
 const LANGUAGE_INSTRUCTIONS: Record<ChatLanguage, string> = {

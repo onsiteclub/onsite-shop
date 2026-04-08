@@ -1,8 +1,9 @@
-import { streamText, convertToModelMessages } from 'ai';
+import { streamText, convertToModelMessages, tool, jsonSchema } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@supabase/supabase-js';
 import { getSystemPrompt } from '@/features/chat/config/system-prompt';
 import { rateLimit } from '@/features/chat/lib/rate-limit';
+import { getTracking } from '@/lib/canada-post/tracking';
 import type { ChatLanguage } from '@/features/chat/types';
 
 export const maxDuration = 30;
@@ -33,6 +34,28 @@ async function lookupOrder(orderNumber: string, email: string) {
       .map((i: any) => `${i.name} (x${i.qty || 1})`)
       .join(', ');
 
+    // If order has a tracking code, fetch live tracking from Canada Post
+    let tracking = null;
+    if (order.tracking_code) {
+      try {
+        const trackingResult = await getTracking(order.tracking_code);
+        if (trackingResult.found) {
+          tracking = {
+            latestStatus: trackingResult.latestStatus,
+            latestLocation: trackingResult.latestLocation,
+            latestDate: trackingResult.latestDate,
+            expectedDeliveryDate: trackingResult.expectedDeliveryDate,
+            serviceName: trackingResult.serviceName,
+            recentEvents: (trackingResult.events || []).map(e =>
+              `${e.date} — ${e.description}${e.location ? ` (${e.location})` : ''}`
+            ),
+          };
+        }
+      } catch (err) {
+        console.error('[chat] Tracking lookup error:', err);
+      }
+    }
+
     return {
       found: true,
       orderNumber: order.order_number,
@@ -41,6 +64,7 @@ async function lookupOrder(orderNumber: string, email: string) {
       createdAt: order.created_at,
       shippedAt: order.shipped_at || null,
       items: itemNames || 'N/A',
+      tracking,
     };
   } catch (err) {
     console.error('[chat] Order lookup error:', err);
@@ -92,23 +116,24 @@ export async function POST(req: Request) {
       maxOutputTokens: 500,
       temperature: 0.3,
       tools: {
-        lookupOrder: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        lookupOrder: tool({
           description:
             'Look up an order status by order number and customer email. ' +
             'Both fields are required for security verification. ' +
             'Ask the customer for both before calling this tool.',
-          parameters: {
-            type: 'object' as const,
+          parameters: jsonSchema({
+            type: 'object',
             properties: {
-              orderNumber: { type: 'string' as const, description: 'The order number (e.g. OS-MNPLDM10)' },
-              email: { type: 'string' as const, description: 'The customer email used when placing the order' },
+              orderNumber: { type: 'string', description: 'The order number (e.g. OS-MNPLDM10)' },
+              email: { type: 'string', description: 'The customer email used when placing the order' },
             },
             required: ['orderNumber', 'email'],
-          },
+          }),
           execute: async ({ orderNumber, email }: { orderNumber: string; email: string }) => {
             return lookupOrder(orderNumber, email);
           },
-        } as any,
+        } as any),
       },
     });
 
