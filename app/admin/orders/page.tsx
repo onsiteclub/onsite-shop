@@ -7,6 +7,14 @@ import { createClient } from '@/lib/supabase/client';
 // TYPES
 // ============================================
 
+interface LabelResult {
+  type: 'success' | 'error' | 'warning';
+  title: string;
+  message: string;
+  labelUrl?: string;
+  trackingPin?: string;
+}
+
 interface OrderItem {
   sku?: string;
   name?: string;
@@ -255,6 +263,7 @@ export default function AdminOrdersPage() {
   const [uploadingLabel, setUploadingLabel] = useState(false);
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [selectedService, setSelectedService] = useState('DOM.EP');
+  const [labelResult, setLabelResult] = useState<LabelResult | null>(null);
 
 
   const supabase = createClient();
@@ -408,8 +417,8 @@ export default function AdminOrdersPage() {
 
   async function handleCreateLabel(orderId: string, orderNumber: string) {
     setCreatingLabel(true);
+    setLabelResult(null);
     try {
-      // Use customer's chosen service if available, otherwise admin's selection
       const order = orders.find(o => o.id === orderId);
       const serviceCode = order?.shipping_service || selectedService;
 
@@ -421,11 +430,36 @@ export default function AdminOrdersPage() {
 
       const data = await res.json();
 
+      // Full error — shipment not created
       if (data.error && !data.trackingPin) {
-        throw new Error(data.error);
+        setLabelResult({
+          type: 'error',
+          title: 'Label Creation Failed',
+          message: formatCPError(data.error),
+        });
+        setCreatingLabel(false);
+        return;
       }
 
-      // Update local state
+      // Warning — shipment created but label download/upload failed
+      if (data.error && data.trackingPin) {
+        await loadOrders();
+        setSelectedOrder(prev => {
+          if (!prev || prev.id !== orderId) return prev;
+          return { ...prev, tracking_code: data.trackingPin };
+        });
+        setEditTrackingCode(data.trackingPin);
+        setLabelResult({
+          type: 'warning',
+          title: 'Shipment Created — Label Failed',
+          message: `Tracking: ${data.trackingPin}\n\n${formatCPError(data.error)}\n\nThe shipment was purchased but the label PDF could not be downloaded. Try "Replace" to upload manually.`,
+          trackingPin: data.trackingPin,
+        });
+        setCreatingLabel(false);
+        return;
+      }
+
+      // Success — auto-open label PDF
       await loadOrders();
       setSelectedOrder(prev => {
         if (!prev || prev.id !== orderId) return prev;
@@ -437,14 +471,42 @@ export default function AdminOrdersPage() {
       });
       setEditTrackingCode(data.trackingPin || '');
 
-      if (data.error) {
-        alert(`Label created with warning: ${data.error}`);
+      // Auto-open label in new tab for printing
+      if (data.labelUrl) {
+        window.open(data.labelUrl, '_blank');
       }
+
+      setLabelResult({
+        type: 'success',
+        title: 'Label Created Successfully',
+        message: `Tracking: ${data.trackingPin}`,
+        labelUrl: data.labelUrl,
+        trackingPin: data.trackingPin,
+      });
     } catch (err: any) {
       console.error('Create label failed:', err);
-      alert(`Failed to create label: ${err.message}`);
+      setLabelResult({
+        type: 'error',
+        title: 'Connection Error',
+        message: formatCPError(err.message || 'Could not reach Canada Post. Check your internet connection and try again.'),
+      });
     }
     setCreatingLabel(false);
+  }
+
+  function formatCPError(msg: string): string {
+    if (!msg) return 'Unknown error occurred.';
+    if (msg.includes('payment') || msg.includes('Payment') || msg.includes('credit'))
+      return `Payment issue: ${msg}\n\nCheck your Canada Post account billing settings.`;
+    if (msg.includes('address') || msg.includes('Address') || msg.includes('postal'))
+      return `Address issue: ${msg}\n\nVerify the shipping address is correct.`;
+    if (msg.includes('401') || msg.includes('Unauthorized'))
+      return 'Authentication failed. Your Canada Post API credentials may be invalid or expired.';
+    if (msg.includes('403') || msg.includes('Forbidden'))
+      return 'Access denied. Your Canada Post account may not have permission for this operation.';
+    if (msg.includes('500') || msg.includes('503') || msg.includes('timeout'))
+      return `Canada Post service is temporarily unavailable: ${msg}\n\nPlease try again in a few minutes.`;
+    return msg;
   }
 
   // ---- Filtering ----
@@ -754,27 +816,45 @@ export default function AdminOrdersPage() {
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="font-display text-xs font-bold text-text-primary/40 uppercase tracking-wider mb-3">Shipping Label</p>
                   {selectedOrder.label_url ? (
-                    <div className="flex items-center gap-3">
-                      <a
-                        href={selectedOrder.label_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 px-4 py-2.5 rounded-xl bg-charcoal-deep text-white font-display text-xs font-bold text-center hover:bg-charcoal transition-colors"
-                      >
-                        Download Label PDF
-                      </a>
-                      <label className="px-4 py-2.5 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-display text-xs font-bold text-center hover:border-gray-400 cursor-pointer transition-colors">
-                        Replace
-                        <input
-                          type="file"
-                          accept=".pdf,.png,.jpg,.jpeg"
-                          className="hidden"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) handleLabelUpload(selectedOrder.id, selectedOrder.order_number, file);
-                          }}
-                        />
-                      </label>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={selectedOrder.label_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-charcoal-deep text-white font-display text-xs font-bold text-center hover:bg-charcoal transition-colors"
+                        >
+                          Download Label PDF
+                        </a>
+                        <label className="px-4 py-2.5 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-display text-xs font-bold text-center hover:border-gray-400 cursor-pointer transition-colors">
+                          Replace
+                          <input
+                            type="file"
+                            accept=".pdf,.png,.jpg,.jpeg"
+                            className="hidden"
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) handleLabelUpload(selectedOrder.id, selectedOrder.order_number, file);
+                            }}
+                          />
+                        </label>
+                      </div>
+                      {selectedOrder.status === 'processing' && (
+                        <button
+                          onClick={() => handleCreateLabel(selectedOrder.id, selectedOrder.order_number)}
+                          disabled={creatingLabel}
+                          className="w-full px-4 py-2.5 rounded-xl bg-red-600 text-white font-display text-xs font-bold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                        >
+                          {creatingLabel ? (
+                            <>
+                              <span className="animate-spin inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+                              Re-creating Label...
+                            </>
+                          ) : (
+                            'Re-create Label via Canada Post'
+                          )}
+                        </button>
+                      )}
                     </div>
                   ) : selectedOrder.status === 'processing' ? (
                     <div className="space-y-3">
@@ -933,6 +1013,82 @@ export default function AdminOrdersPage() {
                 )}
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Label Result Modal ===== */}
+      {labelResult && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setLabelResult(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            {/* Icon */}
+            <div className="flex justify-center">
+              {labelResult.type === 'success' && (
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                </div>
+              )}
+              {labelResult.type === 'error' && (
+                <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </div>
+              )}
+              {labelResult.type === 'warning' && (
+                <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                </div>
+              )}
+            </div>
+
+            {/* Title */}
+            <h3 className={`font-display text-lg font-bold text-center ${
+              labelResult.type === 'success' ? 'text-green-800' :
+              labelResult.type === 'error' ? 'text-red-800' : 'text-yellow-800'
+            }`}>
+              {labelResult.title}
+            </h3>
+
+            {/* Message */}
+            <p className="font-display text-sm text-text-primary/70 text-center whitespace-pre-line">
+              {labelResult.message}
+            </p>
+
+            {/* Tracking pin highlight */}
+            {labelResult.trackingPin && (
+              <div className="bg-blue-50 rounded-xl p-3 text-center">
+                <p className="font-display text-[10px] text-blue-500 uppercase tracking-wider mb-1">Tracking Number</p>
+                <code className="font-display text-base font-bold text-blue-800">{labelResult.trackingPin}</code>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              {labelResult.type === 'success' && labelResult.labelUrl && (
+                <button
+                  onClick={() => window.open(labelResult.labelUrl, '_blank')}
+                  className="flex-1 px-4 py-3 rounded-xl bg-charcoal-deep text-white font-display text-xs font-bold hover:bg-charcoal transition-colors"
+                >
+                  Print Label
+                </button>
+              )}
+              {labelResult.type === 'error' && selectedOrder && (
+                <button
+                  onClick={() => {
+                    setLabelResult(null);
+                    handleCreateLabel(selectedOrder.id, selectedOrder.order_number);
+                  }}
+                  className="flex-1 px-4 py-3 rounded-xl bg-red-600 text-white font-display text-xs font-bold hover:bg-red-700 transition-colors"
+                >
+                  Try Again
+                </button>
+              )}
+              <button
+                onClick={() => setLabelResult(null)}
+                className={`${labelResult.type !== 'warning' ? '' : 'flex-1'} px-4 py-3 rounded-xl border-2 border-gray-200 text-text-primary/70 font-display text-xs font-bold hover:bg-gray-50 transition-colors`}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
