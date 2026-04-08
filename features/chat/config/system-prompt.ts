@@ -56,6 +56,16 @@ New members get 10% off welcome code when signing up.
 ## MEMBERSHIP
 Free to join at shop.onsiteclub.ca. Benefits: exclusive gear, member-only pricing, early access to drops.
 Sign up with email, get a 10% off welcome promo code.
+
+## ORDER STATUS LOOKUP
+You have access to a tool called "lookupOrder" that can check order status.
+IMPORTANT RULES:
+- You MUST collect BOTH the order number AND the customer's email before calling the tool.
+- Never skip email verification — it is required for security.
+- If the customer only provides the order number, ask for their email before looking it up.
+- Only share the information returned by the tool. Never guess or invent order details.
+- Order statuses: pending, processing, ready, shipped, delivered, cancelled.
+- If the order has a tracking code, share it and mention they can track at canadapost.ca.
 `;
 
 const LANGUAGE_INSTRUCTIONS: Record<ChatLanguage, string> = {
@@ -64,7 +74,7 @@ Respond in English. Be concise but warm — match the brand's blue-collar, no-no
 Use "we" when referring to OnSite Club. Address the customer directly.
 If you cannot answer something, suggest they email contact@onsiteclub.ca.
 Never invent information not in the business context above.
-If asked about order status and you don't have their order info, ask them to email contact@onsiteclub.ca with their order number.
+When asked about order status, use the lookupOrder tool — but always ask for both order number AND email first.
 Keep responses under 150 words unless more detail is specifically needed.`,
 
   fr: `Tu es un assistant de support client amical et serviable pour OnSite Club Shop.

@@ -1,10 +1,52 @@
 import { streamText, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
+import { createClient } from '@supabase/supabase-js';
 import { getSystemPrompt } from '@/features/chat/config/system-prompt';
 import { rateLimit } from '@/features/chat/lib/rate-limit';
 import type { ChatLanguage } from '@/features/chat/types';
 
 export const maxDuration = 30;
+
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+async function lookupOrder(orderNumber: string, email: string) {
+  try {
+    const supabase = getServiceClient();
+
+    const { data: order, error } = await supabase
+      .from('app_shop_orders')
+      .select('order_number, status, tracking_code, created_at, shipped_at, items')
+      .eq('order_number', orderNumber.trim().toUpperCase())
+      .eq('email', email.trim().toLowerCase())
+      .single();
+
+    if (error || !order) {
+      return { found: false, message: 'No order found with that number and email combination.' };
+    }
+
+    const itemNames = (order.items || [])
+      .map((i: any) => `${i.name} (x${i.qty || 1})`)
+      .join(', ');
+
+    return {
+      found: true,
+      orderNumber: order.order_number,
+      status: order.status,
+      trackingCode: order.tracking_code || null,
+      createdAt: order.created_at,
+      shippedAt: order.shipped_at || null,
+      items: itemNames || 'N/A',
+    };
+  } catch (err) {
+    console.error('[chat] Order lookup error:', err);
+    return { found: false, message: 'Could not look up order at this time.' };
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -49,6 +91,25 @@ export async function POST(req: Request) {
       messages: modelMessages,
       maxOutputTokens: 500,
       temperature: 0.3,
+      tools: {
+        lookupOrder: {
+          description:
+            'Look up an order status by order number and customer email. ' +
+            'Both fields are required for security verification. ' +
+            'Ask the customer for both before calling this tool.',
+          parameters: {
+            type: 'object' as const,
+            properties: {
+              orderNumber: { type: 'string' as const, description: 'The order number (e.g. OS-MNPLDM10)' },
+              email: { type: 'string' as const, description: 'The customer email used when placing the order' },
+            },
+            required: ['orderNumber', 'email'],
+          },
+          execute: async ({ orderNumber, email }: { orderNumber: string; email: string }) => {
+            return lookupOrder(orderNumber, email);
+          },
+        } as any,
+      },
     });
 
     return result.toUIMessageStreamResponse();
