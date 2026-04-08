@@ -1,7 +1,6 @@
-import { streamText, convertToModelMessages, tool } from 'ai';
+import { streamText, convertToModelMessages, jsonSchema } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { createClient } from '@supabase/supabase-js';
-import { z } from 'zod';
 import { getSystemPrompt } from '@/features/chat/config/system-prompt';
 import { rateLimit } from '@/features/chat/lib/rate-limit';
 import { getTracking } from '@/lib/canada-post/tracking';
@@ -125,21 +124,25 @@ export async function POST(req: Request) {
       maxOutputTokens: 500,
       temperature: 0.3,
       tools: {
-        lookupOrder: tool({
+        lookupOrder: {
           description:
             'Look up an order status by order number and customer email. ' +
             'Both fields are required for security verification. ' +
             'Ask the customer for both before calling this tool.',
-          parameters: z.object({
-            orderNumber: z.string().describe('The order number (e.g. OS-MNPLDM10)'),
-            email: z.string().describe('The customer email used when placing the order'),
+          inputSchema: jsonSchema<{ orderNumber: string; email: string }>({
+            type: 'object',
+            properties: {
+              orderNumber: { type: 'string', description: 'The order number (e.g. OS-MNPLDM10)' },
+              email: { type: 'string', description: 'The customer email used when placing the order' },
+            },
+            required: ['orderNumber', 'email'],
+            additionalProperties: false,
           }),
-          // @ts-expect-error zod v4 makes execute typed as undefined
           execute: async ({ orderNumber, email }: { orderNumber: string; email: string }) => {
             console.log('[chat] lookupOrder called:', orderNumber, email);
             return lookupOrder(orderNumber, email);
           },
-        }),
+        } as any,
       },
       onError: ({ error }) => {
         console.error('[chat] streamText onError:', error);
