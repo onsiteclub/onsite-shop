@@ -64,6 +64,7 @@ export interface CreateShipmentResponse {
   shipmentId: string
   trackingPin: string
   labelUrl: string             // URL to download PDF label
+  groupId?: string             // group-id used for transmit (contract only)
   links: { rel: string; href: string; mediaType: string }[]
   error?: string
 }

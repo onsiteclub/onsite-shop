@@ -494,18 +494,69 @@ export default function AdminOrdersPage() {
     setCreatingLabel(false);
   }
 
+  // Canada Post error codes → readable messages (see docs/canada-post-errors.md)
   function formatCPError(msg: string): string {
     if (!msg) return 'Unknown error occurred.';
-    if (msg.includes('payment') || msg.includes('Payment') || msg.includes('credit'))
-      return `Payment issue: ${msg}\n\nCheck your Canada Post account billing settings.`;
-    if (msg.includes('address') || msg.includes('Address') || msg.includes('postal'))
-      return `Address issue: ${msg}\n\nVerify the shipping address is correct.`;
-    if (msg.includes('401') || msg.includes('Unauthorized'))
-      return 'Authentication failed. Your Canada Post API credentials may be invalid or expired.';
-    if (msg.includes('403') || msg.includes('Forbidden'))
-      return 'Access denied. Your Canada Post account may not have permission for this operation.';
-    if (msg.includes('500') || msg.includes('503') || msg.includes('timeout'))
-      return `Canada Post service is temporarily unavailable: ${msg}\n\nPlease try again in a few minutes.`;
+    const m = msg.toLowerCase();
+
+    // Credit card / payment errors
+    if (m.includes('1162') || m.includes('could not be authorized') || m.includes('credit card'))
+      return 'Credit card declined or insufficient funds.\n\nGo to canadapost.ca → My Profile → Payment → Manage credit cards and update your card.';
+    if (m.includes('9174') || m.includes('default payment card'))
+      return 'No credit card on file.\n\nGo to canadapost.ca → My Profile → Payment → Manage credit cards and add a default card.';
+    if (m.includes('1653') || (m.includes('account') && m.includes('not available')))
+      return 'Payment method "Account" not available for your account type.\n\nContact developer to switch payment method to CreditCard.';
+    if (m.includes('1711') || m.includes('method of payment'))
+      return 'Invalid payment method. Valid options: CreditCard or Account.';
+
+    // Address errors
+    if (m.includes('1156') || m.includes('address line'))
+      return 'Missing address line 1.\n\nVerify the shipping address is complete.';
+    if (m.includes('1157') || (m.includes('city') && m.includes('mandatory')))
+      return 'Missing city in the shipping address.';
+    if (m.includes('1159') || (m.includes('province') && m.includes('mandatory')))
+      return 'Missing province/state in the shipping address.';
+    if (m.includes('8534') || m.includes('destination country'))
+      return 'Invalid or missing destination country.';
+    if (m.includes('10033') || m.includes('invalid country'))
+      return 'Invalid country code in the destination address.';
+
+    // Service / parcel errors
+    if (m.includes('9111') || m.includes('no services'))
+      return 'No shipping services available for this parcel.\n\nCheck the weight and dimensions — they may exceed Canada Post limits.';
+    if (m.includes('3000') || m.includes('service not available'))
+      return 'Selected shipping service not available for this destination.\n\nTry a different service.';
+    if (m.includes('10028') || m.includes('invalid product'))
+      return 'Invalid service code selected.\n\nTry a different shipping service.';
+    if (m.includes('8034') || m.includes('already been processed'))
+      return 'This shipment was already processed.\n\nA refund must be requested to re-create it.';
+
+    // Contract / account errors
+    if (m.includes('2500') || m.includes('2550') || (m.includes('contract') && m.includes('not valid')))
+      return 'Contract number is invalid.\n\nVerify Canada Post contract ID in settings.';
+    if (m.includes('9173') || m.includes('parcel agreement'))
+      return 'Your account requires Contract Shipping.\n\nThis is already configured — contact support if this persists.';
+
+    // Auth errors
+    if (m.includes('aa01') || m.includes('deactivated'))
+      return 'API key has been deactivated.\n\nRe-join the Developer Program at canadapost.ca.';
+    if (m.includes('aa02') || m.includes('do not match the endpoint'))
+      return 'Using dev credentials on production (or vice versa).\n\nCheck that API keys match the environment.';
+    if (m.includes('aa03') || m.includes('does not match'))
+      return 'API key does not match the customer number.\n\nVerify API credentials.';
+    if (m.includes('401') || m.includes('unauthorized'))
+      return 'Authentication failed.\n\nCanada Post API credentials may be invalid or expired.';
+    if (m.includes('403') || m.includes('forbidden'))
+      return 'Access denied.\n\nYour Canada Post account may not have permission for this.';
+
+    // System errors
+    if (m.includes('9150') || m.includes('9151') || m.includes('9155'))
+      return 'Canada Post system error (PDF rendering failed).\n\nTry again in a few minutes.';
+    if (m.includes('9153'))
+      return 'Transmit process not ready yet.\n\nWait a few seconds and try again.';
+    if (m.includes('500') || m.includes('503') || m.includes('timeout'))
+      return 'Canada Post service temporarily unavailable.\n\nPlease try again in a few minutes.';
+
     return msg;
   }
 

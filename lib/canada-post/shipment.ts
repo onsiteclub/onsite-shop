@@ -1,4 +1,7 @@
-/** Canada Post Shipment API — create shipments & download labels */
+/**
+ * Canada Post Shipment API — create shipments & download labels
+ * Error codes reference: docs/canada-post-errors.md
+ */
 
 import { XMLParser } from 'fast-xml-parser'
 import { cpFetch } from './client'
@@ -117,7 +120,9 @@ ${req.orderNumber ? `    <references>
     return { shipmentId: '', trackingPin: '', labelUrl: '', links: [], error: errorMsg }
   }
 
-  return parseShipmentResponse(text, 'shipment-info')
+  const result = parseShipmentResponse(text, 'shipment-info')
+  result.groupId = groupId
+  return result
 }
 
 // ============================================
@@ -230,6 +235,74 @@ export async function downloadLabel(labelUrl: string): Promise<{ pdf: Buffer; er
 
   const arrayBuffer = await res.arrayBuffer()
   return { pdf: Buffer.from(arrayBuffer) }
+}
+
+/**
+ * Transmit shipments to finalize them and generate a manifest.
+ * Required for contract shipments — without this, tracking won't activate
+ * and labels show "MANIFEST REQ". See docs/canada-post-use-cases.md
+ */
+export async function transmitShipments(groupIds: string[]): Promise<{ manifestUrl: string; error?: string }> {
+  const customerNumber = process.env.CANADAPOST_CUSTOMER_NUMBER!
+
+  const groupElements = groupIds.map(id => `    <group-id>${escapeXml(id)}</group-id>`).join('\n')
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<transmit-set xmlns="http://www.canadapost.ca/ws/manifest-v8">
+  <group-ids>
+${groupElements}
+  </group-ids>
+  <requested-shipping-point>${(process.env.CANADAPOST_ORIGIN_POSTAL || '').replace(/\s/g, '').toUpperCase()}</requested-shipping-point>
+  <cpc-pickup-indicator>true</cpc-pickup-indicator>
+  <detailed-manifests>true</detailed-manifests>
+  <method-of-payment>CreditCard</method-of-payment>
+  <manifest-address>
+    <manifest-company>${escapeXml(process.env.CANADAPOST_SENDER_COMPANY || 'Onsite Club')}</manifest-company>
+    <phone-number>${escapeXml(process.env.CANADAPOST_SENDER_PHONE || '000-000-0000')}</phone-number>
+    <address-details>
+      <address-line-1>${escapeXml(process.env.CANADAPOST_SENDER_ADDRESS || '')}</address-line-1>
+      <city>${escapeXml(process.env.CANADAPOST_SENDER_CITY || '')}</city>
+      <prov-state>${process.env.CANADAPOST_SENDER_PROVINCE || 'ON'}</prov-state>
+      <postal-zip-code>${(process.env.CANADAPOST_ORIGIN_POSTAL || '').replace(/\s/g, '').toUpperCase()}</postal-zip-code>
+    </address-details>
+  </manifest-address>
+</transmit-set>`
+
+  const { status, text } = await cpFetch(
+    `/rs/${customerNumber}/${customerNumber}/manifest`,
+    {
+      method: 'POST',
+      body: xml,
+      contentType: 'application/vnd.cpc.manifest-v8+xml',
+      accept: 'application/vnd.cpc.manifest-v8+xml',
+    }
+  )
+
+  if (status !== 200) {
+    console.error(`[Canada Post] Transmit API ${status}:`, text)
+    const errorMsg = parseErrorMessage(text) || `Transmit failed (${status})`
+    return { manifestUrl: '', error: errorMsg }
+  }
+
+  try {
+    const parsed = parser.parse(text)
+    const manifests = parsed.manifests
+    if (!manifests) {
+      console.log('[Canada Post] Transmit response:', text)
+      return { manifestUrl: '', error: 'Unexpected transmit response format' }
+    }
+
+    // Extract manifest links
+    const rawLinks = manifests.link || manifests.links?.link
+    const linksArr = Array.isArray(rawLinks) ? rawLinks : rawLinks ? [rawLinks] : []
+    const manifestLink = linksArr.find((l: any) => l['@_rel'] === 'manifest')
+
+    return {
+      manifestUrl: manifestLink?.['@_href'] || '',
+    }
+  } catch (err) {
+    console.error('[Canada Post] Transmit parse error:', err)
+    return { manifestUrl: '', error: 'Failed to parse transmit response' }
+  }
 }
 
 // ---- Helpers ----

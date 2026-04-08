@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createShipment, downloadLabel } from '@/lib/canada-post/shipment'
+import { createShipment, downloadLabel, transmitShipments } from '@/lib/canada-post/shipment'
 import { calculatePackage } from '@/lib/stripe-config'
 import type { ShipmentAddress } from '@/lib/canada-post/types'
 
@@ -124,7 +124,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: shipmentResult.error }, { status: 502 })
     }
 
-    // 8. Download the PDF label
+    // 8. Transmit shipment to finalize (contract only — generates manifest, activates tracking)
+    if (shipmentResult.groupId) {
+      const transmitResult = await transmitShipments([shipmentResult.groupId])
+      if (transmitResult.error) {
+        console.warn('[create-label] Transmit warning (non-blocking):', transmitResult.error)
+        // Don't fail the whole flow — shipment + label still work, manifest can be done later
+      } else {
+        console.log('[create-label] Shipment transmitted successfully, manifest:', transmitResult.manifestUrl)
+      }
+    }
+
+    // 9. Download the PDF label
     const { pdf, error: labelError } = await downloadLabel(shipmentResult.labelUrl)
     if (labelError || !pdf.length) {
       // Still save tracking even if label download fails
