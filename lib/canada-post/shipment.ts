@@ -96,7 +96,7 @@ ${req.orderNumber ? `    <references>
     </references>` : ''}
     <settlement-info>
       <contract-id>${contractId}</contract-id>
-      <intended-method-of-payment>Account</intended-method-of-payment>
+      <intended-method-of-payment>CreditCard</intended-method-of-payment>
     </settlement-info>
   </delivery-spec>
 </shipment>`
