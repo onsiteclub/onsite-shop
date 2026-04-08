@@ -74,6 +74,8 @@ async function lookupOrder(orderNumber: string, email: string) {
 
 export async function POST(req: Request) {
   try {
+    console.log('[chat] === REQUEST START ===');
+
     const ip =
       req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       req.headers.get('x-real-ip') ||
@@ -87,6 +89,7 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log('[chat] OPENAI_API_KEY set:', !!process.env.OPENAI_API_KEY);
     if (!process.env.OPENAI_API_KEY) {
       console.error('[chat] OPENAI_API_KEY not configured');
       return new Response(
@@ -95,7 +98,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const { messages, language = 'en' } = await req.json();
+    const body = await req.json();
+    const { messages, language = 'en' } = body;
+    console.log('[chat] messages count:', messages?.length, 'language:', language);
 
     const validLangs: ChatLanguage[] = ['en', 'fr', 'pt'];
     const lang = validLangs.includes(language) ? language : 'en';
@@ -107,8 +112,11 @@ export async function POST(req: Request) {
       );
     }
 
+    console.log('[chat] Converting messages...');
     const modelMessages = await convertToModelMessages(messages);
+    console.log('[chat] Converted OK, modelMessages count:', modelMessages.length);
 
+    console.log('[chat] Calling streamText...');
     const result = streamText({
       model: openai('gpt-4o-mini'),
       system: getSystemPrompt(lang as ChatLanguage),
@@ -131,15 +139,21 @@ export async function POST(req: Request) {
             required: ['orderNumber', 'email'],
           }),
           execute: async ({ orderNumber, email }: { orderNumber: string; email: string }) => {
+            console.log('[chat] lookupOrder called:', orderNumber, email);
             return lookupOrder(orderNumber, email);
           },
         } as any),
       },
+      onError: ({ error }) => {
+        console.error('[chat] streamText onError:', error);
+      },
     });
+    console.log('[chat] streamText created OK, returning stream...');
 
     return result.toUIMessageStreamResponse();
   } catch (err: any) {
-    console.error('[chat] Error:', err?.message || err);
+    console.error('[chat] CATCH Error:', err?.message || err);
+    console.error('[chat] Stack:', err?.stack);
     return new Response(
       JSON.stringify({ error: err?.message || 'Chat failed' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
