@@ -1,9 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useCartStore } from '@/lib/store/cart';
+import { useAuthStore } from '@/lib/store/auth';
 import { BLOG_POSTS } from '@/lib/blog-data';
 import { SearchOverlay } from '@/components/shop/SearchOverlay';
+import { MembershipModal } from '@/components/shop/MembershipModal';
 import type { Product } from '@/lib/types';
 
 const NAV_LINK = 'font-display font-semibold text-[13px] tracking-[0.08em] uppercase text-text-primary hover:text-warm-500 transition-colors';
@@ -11,7 +13,11 @@ const NAV_LINK = 'font-display font-semibold text-[13px] tracking-[0.08em] upper
 export function Navbar({ products = [], onProductClick }: { products?: Product[]; onProductClick?: (p: Product) => void }) {
   const cartItems = useCartStore((state) => state.items);
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const { user, initialize, signOut } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [blogOpen, setBlogOpen] = useState(false);
   const [mobileBlogOpen, setMobileBlogOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -45,6 +51,21 @@ export function Navbar({ products = [], onProductClick }: { products?: Product[]
     blogTimeout.current = setTimeout(() => setBlogOpen(false), 200);
   };
 
+  useEffect(() => { initialize(); }, [initialize]);
+
+  // Close user menu on click outside
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [userMenuOpen]);
+
+  const firstName = user?.user_metadata?.first_name || '';
   const recentPosts = BLOG_POSTS.slice(0, 3);
 
   return (
@@ -123,6 +144,86 @@ export function Navbar({ products = [], onProductClick }: { products?: Product[]
 
         {/* Right: Search + Cart + Mobile Menu */}
         <div className="flex items-center gap-5">
+          {/* User */}
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => {
+                if (user) {
+                  setUserMenuOpen(!userMenuOpen);
+                } else {
+                  setShowMemberModal(true);
+                }
+              }}
+              className="flex items-center gap-1.5 group bg-transparent"
+              aria-label="Account"
+            >
+              <svg className="w-[20px] h-[20px] text-text-primary group-hover:text-amber-dark transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              {firstName ? (
+                <span className="hidden sm:inline font-display text-[12px] font-semibold text-text-primary group-hover:text-amber-dark transition-colors">
+                  {firstName}
+                </span>
+              ) : null}
+            </button>
+
+            {/* User dropdown */}
+            {userMenuOpen && user && (
+              <div className="absolute top-full right-0 pt-3 z-50">
+                <div className="bg-white rounded-xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-warm-200 w-[220px] overflow-hidden">
+                  {/* User info */}
+                  <div className="px-5 pt-4 pb-3 border-b border-warm-100">
+                    <p className="font-display text-sm font-bold text-text-primary truncate">
+                      {firstName || 'Member'}
+                    </p>
+                    <p className="font-body text-[11px] text-warm-400 truncate">
+                      {user.email}
+                    </p>
+                  </div>
+
+                  {/* Links */}
+                  <div className="py-1.5">
+                    <a
+                      href="https://dashboard.onsiteclub.ca"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-5 py-2.5 hover:bg-off-white transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-warm-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                      </svg>
+                      <span className="font-display text-[13px] font-semibold text-text-primary">
+                        My Dashboard
+                      </span>
+                    </a>
+                  </div>
+
+                  {/* Sign out */}
+                  <div className="border-t border-warm-100 py-1.5">
+                    <button
+                      onClick={() => { signOut(); setUserMenuOpen(false); }}
+                      className="flex items-center gap-3 px-5 py-2.5 w-full hover:bg-off-white transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-warm-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                      </svg>
+                      <span className="font-display text-[13px] font-semibold text-text-secondary">
+                        Sign Out
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Search */}
           <button onClick={() => setSearchOpen(true)} aria-label="Search" className="bg-transparent">
             <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -232,6 +333,14 @@ export function Navbar({ products = [], onProductClick }: { products?: Product[]
         onProductClick?.(p);
       }}
     />
+
+    {/* Membership Modal (triggered from user icon when not logged in) */}
+    {showMemberModal && !user && (
+      <MembershipModal
+        onClose={() => setShowMemberModal(false)}
+        onAuthSuccess={() => setShowMemberModal(false)}
+      />
+    )}
     </>
   );
 }

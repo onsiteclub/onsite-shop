@@ -3,15 +3,8 @@
 import { useState } from 'react'
 
 export default function AdminPromoPage() {
-  const [authed, setAuthed] = useState(false)
-  const [secret, setSecret] = useState('')
-  const [authError, setAuthError] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [authLoading, setAuthLoading] = useState(false)
-
   const [email, setEmail] = useState('')
   const [discountType, setDiscountType] = useState('item_050')
-
   const [notes, setNotes] = useState('')
   const [expiresInDays, setExpiresInDays] = useState(30)
   const [loading, setLoading] = useState(false)
@@ -19,45 +12,15 @@ export default function AdminPromoPage() {
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
 
-  async function handleAuth() {
-    if (secret.length < 4) {
-      setAuthError('Enter the admin password')
-      return
-    }
-    setAuthLoading(true)
-    setAuthError('')
-    try {
-      const res = await fetch('/api/admin/verify', {
-        method: 'POST',
-        headers: { 'x-admin-secret': secret },
-      })
-      if (res.status === 401) {
-        setAuthError('Wrong password')
-        setAuthLoading(false)
-        return
-      }
-      sessionStorage.setItem('admin_secret', secret)
-      setAuthed(true)
-    } catch {
-      setAuthError('Connection error')
-    }
-    setAuthLoading(false)
-  }
-
   async function handleGenerate() {
     setLoading(true)
     setResult(null)
     setError('')
 
-    const storedSecret = sessionStorage.getItem('admin_secret') ?? secret
-
     try {
       const res = await fetch('/api/promo/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-secret': storedSecret,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email || undefined,
           discountType,
@@ -69,11 +32,6 @@ export default function AdminPromoPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        if (res.status === 401) {
-          setAuthed(false)
-          setAuthError('Wrong password')
-          return
-        }
         setError(data.error ?? 'Something went wrong')
         return
       }
@@ -88,48 +46,6 @@ export default function AdminPromoPage() {
     }
   }
 
-  // Auth gate
-  if (!authed) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] px-4">
-        <div className="bg-white rounded-2xl p-8 w-[340px] shadow-sm border border-warm-200/60">
-          <div className="text-center mb-6">
-            <img src="/assets/logo-onsite-club.png" alt="OnSite Club" className="h-7 mx-auto mb-3 brightness-0" />
-            <h1 className="font-display text-lg font-bold text-text-primary">Promo Access</h1>
-          </div>
-          <div className="relative mb-3">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Admin password"
-              value={secret}
-              onChange={(e) => setSecret(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-              className="input w-full pr-12"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 font-display text-xs text-warm-400 hover:text-text-primary"
-            >
-              {showPassword ? 'Hide' : 'Show'}
-            </button>
-          </div>
-          {authError && (
-            <p className="font-display text-xs text-red-500 mb-3">{authError}</p>
-          )}
-          <button
-            onClick={handleAuth}
-            disabled={authLoading}
-            className="w-full py-3 bg-amber hover:bg-amber-dark text-charcoal-deep rounded-xl font-display font-bold text-sm transition-colors disabled:opacity-50"
-          >
-            {authLoading ? 'Verifying...' : 'Enter'}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Admin panel
   return (
     <div>
       <div className="max-w-lg">

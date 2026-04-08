@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('x-internal-secret')
@@ -14,6 +16,7 @@ export async function POST(req: NextRequest) {
 
   const { code, orderId, ip } = await req.json()
 
+  const supabase = getServiceClient()
   const { error } = await supabase
     .from('promo_codes')
     .update({

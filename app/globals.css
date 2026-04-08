@@ -209,6 +209,11 @@ button { cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; }
   to { opacity: 1; transform: scale(1); }
 }
 
+/* Chat widget slide-up animation */
+.animate-in {
+  animation: slideUp 0.25s ease-out;
+}
+
 /* Hide scrollbar but keep functionality */
 .no-scrollbar,
 .scrollbar-hide {

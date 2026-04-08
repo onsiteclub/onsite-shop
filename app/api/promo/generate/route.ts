@@ -1,18 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { Resend } from 'resend'
 import { generatePromoCode } from '@/lib/promo/generateCode'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+async function verifyAdmin() {
+  const cookieStore = cookies()
+  const authClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll() {},
+      },
+    }
+  )
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user?.email) return null
+  const { data: admin } = await authClient
+    .from('admin_users')
+    .select('email')
+    .eq('email', user.email)
+    .single()
+  return admin ? user : null
+}
 
 export async function POST(req: NextRequest) {
-  const adminSecret = req.headers.get('x-admin-secret')
-  if (adminSecret !== process.env.ADMIN_SECRET) {
+  const adminUser = await verifyAdmin()
+  if (!adminUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -29,6 +53,7 @@ export async function POST(req: NextRequest) {
     ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
     : null
 
+  const supabase = getServiceClient()
   const { error: dbError } = await supabase.from('promo_codes').insert({
     code,
     email: email ?? null,
@@ -49,6 +74,7 @@ export async function POST(req: NextRequest) {
 
   if (email) {
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'https://shop.onsiteclub.ca'
+    const resend = new Resend(process.env.RESEND_API_KEY)
     const { error: emailError } = await resend.emails.send({
       from: 'OnSite Club <contact@onsiteclub.ca>',
       to: email,

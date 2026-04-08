@@ -25,7 +25,13 @@ export function createClient() {
   }
 
   if (!client) {
-    client = createBrowserClient(url, key);
+    client = createBrowserClient(url, key, {
+      cookieOptions: {
+        domain: '.onsiteclub.ca',
+        sameSite: 'lax',
+        secure: true,
+      },
+    });
   }
 
   return client;

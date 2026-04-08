@@ -1,6 +1,12 @@
 import type { Metadata } from 'next'
+import dynamic from 'next/dynamic'
 import { OrganizationSchema } from '@/components/OrganizationSchema'
 import './globals.css'
+
+const ChatWidget = dynamic(
+  () => import('@/features/chat').then((m) => ({ default: m.ChatWidget })),
+  { ssr: false }
+)
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://shop.onsiteclub.ca'),
@@ -76,6 +82,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-[#F3F2EF] font-body text-text-primary">
         <OrganizationSchema />
         {children}
+        <ChatWidget />
       </body>
     </html>
   )

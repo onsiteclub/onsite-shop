@@ -9,9 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.51",
+    "@ai-sdk/react": "^3.0.153",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.45.0",
+    "ai": "^6.0.151",
     "fast-xml-parser": "^5.5.9",
+    "lucide-react": "^1.7.0",
     "nanoid": "^5.1.6",
     "next": "14.2.21",
     "react": "^18.2.0",

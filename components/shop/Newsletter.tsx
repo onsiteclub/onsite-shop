@@ -5,7 +5,7 @@ import { useAuthStore } from '@/lib/store/auth';
 import { MembershipModal } from './MembershipModal';
 
 export function Newsletter() {
-  const { user, isLoading, initialize } = useAuthStore();
+  const { user, isLoading, initialize, signOut } = useAuthStore();
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => { initialize(); }, [initialize]);
@@ -23,6 +23,12 @@ export function Newsletter() {
           </div>
           <p className="text-white/60 text-[15px] font-body">
             Welcome back, {user.user_metadata?.first_name || 'member'}. You get exclusive deals and early drops.
+          </p>
+          <p className="text-white/30 text-[13px] font-body mt-3">
+            Not {user.user_metadata?.first_name || 'you'}?{' '}
+            <button onClick={signOut} className="underline hover:text-amber transition-colors">
+              Sign out
+            </button>
           </p>
         </div>
       </section>

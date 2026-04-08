@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 10 attempts per minute per IP
+  const ip = getClientIp(req.headers)
+  const rl = rateLimit(ip, 'promo-validate', { limit: 10, windowSeconds: 60 })
+  if (!rl.success) {
+    return NextResponse.json({ valid: false, error: 'Too many attempts. Try again later.' }, { status: 429 })
+  }
+
   const { code } = await req.json()
 
   if (!code || typeof code !== 'string') {
     return NextResponse.json({ valid: false, error: 'No code provided' })
   }
 
+  const supabase = getServiceClient()
   const { data, error } = await supabase
     .from('promo_codes')
     .select('*')

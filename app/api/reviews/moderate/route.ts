@@ -1,14 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
+async function verifyAdmin() {
+  const cookieStore = cookies()
+  const authClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll() {},
+      },
+    }
+  )
+  const { data: { user } } = await authClient.auth.getUser()
+  if (!user?.email) return null
+  const { data: admin } = await authClient
+    .from('admin_users')
+    .select('email')
+    .eq('email', user.email)
+    .single()
+  return admin ? user : null
+}
 
 export async function POST(req: NextRequest) {
-  const adminSecret = req.headers.get('x-admin-secret')
-  if (adminSecret !== process.env.ADMIN_SECRET) {
+  const adminUser = await verifyAdmin()
+  if (!adminUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -30,6 +56,7 @@ export async function POST(req: NextRequest) {
     update.moderator_notes = moderator_notes
   }
 
+  const supabase = getServiceClient()
   const { error } = await supabase
     .from('app_shop_reviews')
     .update(update)

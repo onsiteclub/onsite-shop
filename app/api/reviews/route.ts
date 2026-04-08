@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 const ALLOWED_ORIGINS = [
   'https://onsiteclub.ca',
@@ -32,6 +35,7 @@ export async function OPTIONS(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const origin = req.headers.get('origin')
 
+  const supabase = getServiceClient()
   const { data, error } = await supabase
     .from('app_shop_reviews')
     .select('id, customer_name, rating, title, comment, product_names, created_at')
@@ -48,6 +52,13 @@ export async function GET(req: NextRequest) {
 
 // POST — submit a new review (public)
 export async function POST(req: NextRequest) {
+  // Rate limit: 5 reviews per hour per IP
+  const ip = getClientIp(req.headers)
+  const rl = rateLimit(ip, 'review-submit', { limit: 5, windowSeconds: 3600 })
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Too many reviews. Try again later.' }, { status: 429 })
+  }
+
   const body = await req.json()
   const { order_number, customer_name, email, rating, title, comment } = body
 
@@ -56,6 +67,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Verify order exists
+  const supabase = getServiceClient()
   const { data: order, error: orderError } = await supabase
     .from('app_shop_orders')
     .select('order_number, items, email')

@@ -8,9 +8,8 @@ import { Navbar } from '@/components/shop/Navbar';
 import { Footer } from '@/components/shop/Footer';
 import { Hero } from '@/components/shop/Hero';
 import { Marquee } from '@/components/shop/Marquee';
-import { CategoriesGrid } from '@/components/shop/CategoriesGrid';
 import { ProductGridByCategory } from '@/components/shop/ProductGridByCategory';
-import { TrustBar } from '@/components/shop/TrustBar';
+import { TrustBadges } from '@/components/trust-badges/TrustBadges';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { Newsletter } from '@/components/shop/Newsletter';
 import { CategoryModal } from '@/components/shop/CategoryModal';
@@ -124,26 +123,11 @@ export default function ShopPage() {
     console.log('[SHOP] selectedProduct changed:', selectedProduct?.product_key ?? 'null');
   }, [selectedProduct]);
 
-  const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-
   return (
     <div className="min-h-screen">
-      {/* DEV-ONLY: floating admin button */}
-      {isDev && (
-        <a
-          href="/admin"
-          className="fixed bottom-5 right-5 z-[999] bg-charcoal text-white font-display text-[11px] font-bold tracking-[0.1em] uppercase py-2.5 px-5 rounded-full shadow-lg hover:bg-amber hover:text-charcoal-deep transition-all duration-200 flex items-center gap-2"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-          Admin
-        </a>
-      )}
       <Navbar products={products} onProductClick={setSelectedProduct} />
       <Hero />
       <Marquee />
-      <CategoriesGrid />
 
       {/* ===== MOBILE CATEGORY PILLS ===== */}
       <div className="lg:hidden sticky top-[72px] z-[90] bg-white/95 backdrop-blur-[12px] border-b border-warm-200">
@@ -317,8 +301,8 @@ export default function ShopPage() {
         </div>
       </section>
 
-      {/* ===== TRUST BAR ===== */}
-      <TrustBar />
+      {/* ===== TRUST BADGES (components/trust-badges/ — remove import to disable) ===== */}
+      <TrustBadges />
 
       {/* ===== REVIEWS (from Supabase via /api/reviews) ===== */}
       <ReviewsSection />

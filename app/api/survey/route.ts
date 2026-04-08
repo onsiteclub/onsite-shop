@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'crypto'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -14,6 +16,7 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
   const ipHash = createHash('sha256').update(ip).digest('hex').slice(0, 16)
 
+  const supabase = getServiceClient()
   const { error } = await supabase.from('pre_checkout_responses').insert({
     session_id: sessionId,
     q1_satisfaction: q1 ?? null,
