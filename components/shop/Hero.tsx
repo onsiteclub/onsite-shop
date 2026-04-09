@@ -57,7 +57,7 @@ export function Hero({ featured = [] }: HeroProps) {
             Jobsite essentials made for the crew that wakes up before the sun and builds something real.
           </p>
           <div className="flex gap-4 flex-wrap lg:justify-start justify-center">
-            <a href="#shop" className="inline-flex items-center justify-center px-9 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-wider transition-all duration-300 bg-amber text-charcoal-deep hover:bg-white hover:shadow-lg hover:-translate-y-0.5">
+            <a href="#featured" className="inline-flex items-center justify-center px-9 py-4 rounded-lg font-display font-bold text-sm uppercase tracking-wider transition-all duration-300 bg-amber text-charcoal-deep hover:bg-white hover:shadow-lg hover:-translate-y-0.5">
               Shop Collection
             </a>
           </div>

@@ -5,7 +5,7 @@ import { useCartStore } from '@/lib/store/cart';
 import { useAuthStore } from '@/lib/store/auth';
 import { BLOG_POSTS } from '@/lib/blog-data';
 import { SearchOverlay } from '@/components/shop/SearchOverlay';
-import { MembershipModal } from '@/components/shop/MembershipModal';
+
 import type { Product } from '@/lib/types';
 
 const NAV_LINK = 'font-display font-semibold text-[13px] tracking-[0.08em] uppercase text-text-primary hover:text-warm-500 transition-colors';
@@ -17,7 +17,7 @@ export function Navbar({ products = [], onProductClick }: { products?: Product[]
   const { user, initialize, signOut } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [showMemberModal, setShowMemberModal] = useState(false);
+
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [blogOpen, setBlogOpen] = useState(false);
   const [mobileBlogOpen, setMobileBlogOpen] = useState(false);
@@ -152,7 +152,7 @@ export function Navbar({ products = [], onProductClick }: { products?: Product[]
                 if (user) {
                   setUserMenuOpen(!userMenuOpen);
                 } else {
-                  setShowMemberModal(true);
+                  window.location.href = `${AUTH_URL}/login?return_to=https://member.onsiteclub.ca`;
                 }
               }}
               className="flex items-center gap-1.5 group bg-transparent"
@@ -339,13 +339,6 @@ export function Navbar({ products = [], onProductClick }: { products?: Product[]
       }}
     />
 
-    {/* Membership Modal (triggered from user icon when not logged in) */}
-    {showMemberModal && !user && (
-      <MembershipModal
-        onClose={() => setShowMemberModal(false)}
-        onAuthSuccess={() => setShowMemberModal(false)}
-      />
-    )}
     </>
   );
 }
