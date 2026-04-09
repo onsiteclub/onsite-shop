@@ -70,11 +70,11 @@ export default function ShopPage() {
     return products.filter(p => p.category !== 'members').slice(0, 4);
   }, [products]);
 
-  // Hero featured images (from is_featured flag or first 2 products)
+  // Hero featured images (only from is_featured flag — otherwise Hero uses its static fallbacks)
   const heroFeatured = useMemo(() => {
     const feat = products.filter((p: any) => p.is_featured);
-    const src = feat.length >= 2 ? feat.slice(0, 2) : products.filter(p => p.category !== 'members').slice(0, 2);
-    return src.map(p => ({
+    if (feat.length < 2) return []; // Let Hero use its static fallback images
+    return feat.slice(0, 2).map(p => ({
       name: p.name,
       image: p.image,
       label: p.name.split('—')[1]?.trim() || p.name.split('-')[1]?.trim() || p.name,

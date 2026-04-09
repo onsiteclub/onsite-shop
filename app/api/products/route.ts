@@ -36,7 +36,8 @@ export async function GET() {
       const skuPrefix = (p.sku || '').split('-')[0];
       const skuType = SKU_PREFIX_MAP[skuPrefix];
       const skuPrefixMatch = skuType ? STRIPE_PRODUCTS[skuType] : null;
-      const priceId = p.stripe_price_id || typeMatch?.priceId || skuPrefixMatch?.priceId || '';
+      // Prefer known-good STRIPE_PRODUCTS priceId over DB stripe_price_id (may be stale/deleted)
+      const priceId = typeMatch?.priceId || skuPrefixMatch?.priceId || p.stripe_price_id || '';
 
       return {
         product_key: p.sku || p.id,
