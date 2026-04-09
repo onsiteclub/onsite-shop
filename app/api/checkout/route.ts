@@ -116,9 +116,20 @@ export async function POST(req: NextRequest) {
           },
           quantity: item.quantity,
         });
-      } else {
+      } else if (resolved.price > 0) {
+        // Known product from STRIPE_PRODUCTS — use server-enforced price
         line_items.push({
           price: resolved.priceId,
+          quantity: item.quantity,
+        });
+      } else {
+        // DB product (no STRIPE_PRODUCTS match) — use price_data to avoid stale priceIds
+        line_items.push({
+          price_data: {
+            currency: 'cad',
+            product_data: { name: item.name },
+            unit_amount: item.price,
+          },
           quantity: item.quantity,
         });
       }
@@ -134,7 +145,7 @@ export async function POST(req: NextRequest) {
         image: item.image || null,
       });
 
-      subtotal += resolved.price * item.quantity;
+      subtotal += (resolved.price || item.price) * item.quantity;
     }
 
     // Calculate shipping: prefer Canada Post quote, fallback to province rates
