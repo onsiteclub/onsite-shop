@@ -38,32 +38,33 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session — keeps auth alive by refreshing expired tokens
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
   const pathname = request.nextUrl.pathname
 
-  // Protected routes — redirect to Auth Hub
-  if (isProtectedRoute(pathname) && !user) {
-    const loginUrl = new URL(AUTH_LOGIN_URL)
-    loginUrl.searchParams.set('return_to', request.nextUrl.href)
-    return NextResponse.redirect(loginUrl)
-  }
+  // Only call Supabase auth for protected/admin routes (saves API quota on public pages)
+  if (isProtectedRoute(pathname)) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  // Admin routes — verify admin status
-  if (pathname.startsWith('/admin') && user) {
-    const { data: admin } = await supabase
-      .from('admin_users')
-      .select('email')
-      .eq('email', user.email!)
-      .single()
+    if (!user) {
+      const loginUrl = new URL(AUTH_LOGIN_URL)
+      loginUrl.searchParams.set('return_to', request.nextUrl.href)
+      return NextResponse.redirect(loginUrl)
+    }
 
-    if (!admin) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
+    // Admin routes — verify admin status
+    if (pathname.startsWith('/admin')) {
+      const { data: admin } = await supabase
+        .from('admin_users')
+        .select('email')
+        .eq('email', user.email!)
+        .single()
+
+      if (!admin) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
+      }
     }
   }
 
@@ -85,6 +86,6 @@ function isProtectedRoute(pathname: string): boolean {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/chat|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)',
   ],
 }
