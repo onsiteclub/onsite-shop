@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { createClient } from '@/lib/supabase/client';
-import { STRIPE_PRODUCTS } from '@/lib/stripe-config';
 import { Navbar } from '@/components/shop/Navbar';
 import { Footer } from '@/components/shop/Footer';
 import { Hero } from '@/components/shop/Hero';
@@ -24,7 +22,7 @@ const ProductModal = dynamic(
 );
 
 // ============================================================================
-// PRODUCT LOADING — Same Supabase query as before, untouched logic
+// PRODUCT LOADING — Via cached API route (avoids direct Supabase client calls)
 // ============================================================================
 
 const MEMBERS_MOCKUPS: Product[] = [
@@ -34,52 +32,11 @@ const MEMBERS_MOCKUPS: Product[] = [
   { product_key: 'members-sticker-pack', name: 'Members Sticker Pack — Vol. 1', price: 0, price_id: '', category: 'members', product_type: '', image: 'https://www.onsiteclub.ca/_next/image?url=%2Fimages%2Fproduct-men.webp&w=640&q=80', images: [], description: 'Sticker pack for club members', sizes: [], colors: [], color_images: {}, sku: '' },
 ];
 
-async function loadProductsFromSupabase(): Promise<Product[]> {
+async function loadProducts(): Promise<Product[]> {
   try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('app_shop_products')
-      .select('*, category:categories(slug)')
-      .eq('is_active', true)
-      .order('sort_order');
-
-    if (error || !data || data.length === 0) {
-      console.error('[SHOP] Error or no products:', error);
-      return [];
-    }
-
-    const SKU_PREFIX_MAP: Record<string, keyof typeof STRIPE_PRODUCTS> = {
-      'CTEE': 'cotton-tee',
-      'STEE': 'sport-tee',
-      'HOOD': 'hoodie',
-      'CPPRM': 'cap-premium',
-      'CPCLS': 'cap-classic',
-      'STK': 'sticker-kit',
-    };
-
-    return data.map((p: any) => {
-      const typeMatch = p.product_type ? STRIPE_PRODUCTS[p.product_type as keyof typeof STRIPE_PRODUCTS] : null;
-      const skuPrefix = (p.sku || '').split('-')[0];
-      const skuType = SKU_PREFIX_MAP[skuPrefix];
-      const skuPrefixMatch = skuType ? STRIPE_PRODUCTS[skuType] : null;
-      const priceId = p.stripe_price_id || typeMatch?.priceId || skuPrefixMatch?.priceId || '';
-
-      return {
-        product_key: p.sku || p.id,
-        name: p.name,
-        price: p.base_price ?? (typeMatch?.price || skuPrefixMatch?.price || 0) / 100,
-        price_id: priceId,
-        category: p.category?.slug || 'mens',
-        product_type: p.product_type || skuType || '',
-        image: p.primary_image || p.images?.[0] || '',
-        images: p.images || [],
-        description: p.description || '',
-        sizes: p.sizes || [],
-        colors: p.colors || [],
-        color_images: p.color_images || {},
-        sku: p.sku || '',
-      };
-    });
+    const res = await fetch('/api/products');
+    const data = await res.json();
+    return data.products || [];
   } catch {
     return [];
   }
@@ -100,10 +57,9 @@ export default function ShopPage() {
   // Initialize auth store
   useEffect(() => { initialize(); }, [initialize]);
 
-  // Load products from Supabase
+  // Load products via cached API route
   useEffect(() => {
-    loadProductsFromSupabase().then(p => {
-      console.log('[SHOP] Products loaded:', p.length, p.map(x => x.product_key));
+    loadProducts().then(p => {
       setProducts(p);
       setLoaded(true);
     });
@@ -112,6 +68,17 @@ export default function ShopPage() {
   // Featured products (first 4 non-members)
   const featuredProducts = useMemo(() => {
     return products.filter(p => p.category !== 'members').slice(0, 4);
+  }, [products]);
+
+  // Hero featured images (from is_featured flag or first 2 products)
+  const heroFeatured = useMemo(() => {
+    const feat = products.filter((p: any) => p.is_featured);
+    const src = feat.length >= 2 ? feat.slice(0, 2) : products.filter(p => p.category !== 'members').slice(0, 2);
+    return src.map(p => ({
+      name: p.name,
+      image: p.image,
+      label: p.name.split('—')[1]?.trim() || p.name.split('-')[1]?.trim() || p.name,
+    }));
   }, [products]);
 
   // Members products
@@ -126,7 +93,7 @@ export default function ShopPage() {
   return (
     <div className="min-h-screen">
       <Navbar products={products} onProductClick={setSelectedProduct} />
-      <Hero />
+      <Hero featured={heroFeatured} />
       <Marquee />
 
       {/* ===== MOBILE CATEGORY PILLS ===== */}

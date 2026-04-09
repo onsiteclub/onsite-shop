@@ -1,46 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-
 interface FeaturedProduct {
   name: string;
   image: string;
   label: string;
 }
 
-export function Hero() {
-  const [featured, setFeatured] = useState<FeaturedProduct[]>([]);
+interface HeroProps {
+  featured?: FeaturedProduct[];
+}
 
-  useEffect(() => {
-    async function loadFeatured() {
-      try {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('app_shop_products')
-          .select('name, primary_image, images')
-          .eq('is_active', true)
-          .eq('is_featured', true)
-          .order('sort_order')
-          .limit(2);
-
-        if (data && data.length > 0) {
-          setFeatured(
-            data.map((p: any) => ({
-              name: p.name,
-              image: p.primary_image || p.images?.[0] || '',
-              label: p.name.split('—')[1]?.trim() || p.name.split('-')[1]?.trim() || p.name,
-            }))
-          );
-        }
-      } catch {
-        // fallback handled by default images
-      }
-    }
-    loadFeatured();
-  }, []);
-
-  // Fallback images if no featured products in DB
+export function Hero({ featured = [] }: HeroProps) {
+  // Fallback images if no featured products passed
   const heroImages = featured.length >= 2
     ? featured
     : [
