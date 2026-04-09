@@ -62,7 +62,7 @@ This follows the industry-standard **Centralized Identity, Decentralized Payment
 |--------|-----|---------------|------------------|--------|
 | `onsiteclub.ca` | Website | No | No | Live |
 | `auth.onsiteclub.ca` | Auth Hub | N/A (is the auth) | Subscription gateway | Reactivating |
-| `dashboard.onsiteclub.ca` | Dashboard | Yes | No | Live |
+| `member.onsiteclub.ca` | Member Area (formerly dashboard) | Yes | No | Live |
 | `shop.onsiteclub.ca` | Shop | Optional* | Yes (Stripe) | Live |
 | `learn.onsiteclub.ca` | Learn | Wallet only | No (future) | Live |
 | `tech.onsiteclub.ca` | Tech | No | No | Live |
@@ -248,7 +248,7 @@ const ALLOWED_HOSTS = new Set([
   'onsiteclub.ca',
   'www.onsiteclub.ca',
   'auth.onsiteclub.ca',
-  'dashboard.onsiteclub.ca',
+  'member.onsiteclub.ca',
   'shop.onsiteclub.ca',
   'learn.onsiteclub.ca',
   'tech.onsiteclub.ca',
@@ -274,7 +274,7 @@ export function isValidReturnTo(returnTo: string): boolean {
 }
 
 export function getSafeReturnTo(returnTo: string | null): string {
-  const DEFAULT = 'https://dashboard.onsiteclub.ca';
+  const DEFAULT = 'https://member.onsiteclub.ca';
   if (!returnTo) return DEFAULT;
   return isValidReturnTo(returnTo) ? returnTo : DEFAULT;
 }
@@ -288,9 +288,9 @@ Each app decides WHERE to redirect. Auth Hub only validates it.
 |----------|-----------|--------|
 | Shop: user clicks "My Orders" | `shop.onsiteclub.ca/account/orders` | Shop middleware |
 | Learn: user clicks "My Wallet" | `learn.onsiteclub.ca/wallet` | Learn middleware |
-| Dashboard: user opens dashboard | `dashboard.onsiteclub.ca/account` | Dashboard middleware |
-| Website: user clicks "Members" | `dashboard.onsiteclub.ca` | Website link |
-| Direct login (no return_to) | `dashboard.onsiteclub.ca` | Auth Hub default |
+| Member Area: user opens member hub | `member.onsiteclub.ca/account` | Member middleware |
+| Website: user clicks "Members" | `member.onsiteclub.ca` | Website link |
+| Direct login (no return_to) | `member.onsiteclub.ca` | Auth Hub default |
 
 ---
 
@@ -638,9 +638,9 @@ if (pathname.startsWith('/account') && !user) {
 - }
 ```
 
-### 11.4 Dashboard (dashboard.onsiteclub.ca)
+### 11.4 Member Area (member.onsiteclub.ca)
 
-**Dashboard has the most work** because it uses a different Supabase project.
+**Member Area has the most work** because it uses a different Supabase project.
 
 | Task | Details | Priority |
 |------|---------|----------|
@@ -669,7 +669,7 @@ payment_history
 
 Only change: the "Members" / "My Area" link should point to:
 ```
-https://auth.onsiteclub.ca/login?return_to=https://dashboard.onsiteclub.ca
+https://auth.onsiteclub.ca/login?return_to=https://member.onsiteclub.ca
 ```
 
 ---
@@ -741,10 +741,10 @@ CHECKOUT_JWT_SECRET=<jwt_secret>
 NEXT_PUBLIC_AUTH_URL=https://auth.onsiteclub.ca
 
 # Redirect security
-ALLOWED_REDIRECT_DOMAINS=onsiteclub.ca,dashboard.onsiteclub.ca,shop.onsiteclub.ca,learn.onsiteclub.ca,tech.onsiteclub.ca
+ALLOWED_REDIRECT_DOMAINS=onsiteclub.ca,member.onsiteclub.ca,shop.onsiteclub.ca,learn.onsiteclub.ca,tech.onsiteclub.ca
 
 # URLs (for return redirects after payment)
-NEXT_PUBLIC_DASHBOARD_URL=https://dashboard.onsiteclub.ca
+NEXT_PUBLIC_MEMBER_URL=https://member.onsiteclub.ca
 NEXT_PUBLIC_CALCULATOR_URL=https://calc.onsiteclub.ca
 NEXT_PUBLIC_TIMEKEEPER_SCHEME=onsiteclub://timekeeper
 ```

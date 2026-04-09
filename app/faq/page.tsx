@@ -35,7 +35,7 @@ const FAQS = [
   },
   {
     q: 'What is OnSite Club membership?',
-    a: 'OnSite Club members get access to exclusive gear, member-only pricing, and early access to new drops. Visit dashboard.onsiteclub.ca to learn more and sign up.',
+    a: 'OnSite Club members get access to exclusive gear, member-only pricing, and early access to new drops. Visit member.onsiteclub.ca to learn more and sign up.',
   },
   {
     q: 'What sizes do you carry?',

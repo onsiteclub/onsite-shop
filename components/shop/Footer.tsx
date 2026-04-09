@@ -82,7 +82,7 @@ export function Footer() {
               <li><a href="https://www.onsiteclub.ca" target="_blank" rel="noopener noreferrer" className="text-sm text-white/50 hover:text-white transition-colors">OnSite Club</a></li>
               <li><a href="https://calculator.onsiteclub.ca" target="_blank" rel="noopener noreferrer" className="text-sm text-white/50 hover:text-white transition-colors">Calculator</a></li>
               <li><a href="https://timekeeperweb.onsiteclub.ca" target="_blank" rel="noopener noreferrer" className="text-sm text-white/50 hover:text-white transition-colors">Timekeeper</a></li>
-              <li><a href="https://dashboard.onsiteclub.ca" target="_blank" rel="noopener noreferrer" className="text-sm text-white/50 hover:text-white transition-colors">Member Hub</a></li>
+              <li><a href="https://auth.onsiteclub.ca/login?return_to=https://member.onsiteclub.ca" target="_blank" rel="noopener noreferrer" className="text-sm text-white/50 hover:text-white transition-colors">Member Hub</a></li>
             </ul>
           </div>
         </div>

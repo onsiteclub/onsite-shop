@@ -45,24 +45,22 @@ export async function POST(req: NextRequest) {
         ? JSON.parse(session.metadata.items_detail)
         : [];
 
-      // Address: prefer metadata (new flow), fallback to Stripe-collected (old orders)
+      // Address: prefer Stripe-collected (new flow), fallback to metadata (old orders)
       let shippingAddress = null;
-      if (session.metadata?.shipping_address) {
+      const stripeShipping = (session as any).collected_information?.shipping_details
+        || (session as any).shipping_details;
+      if (stripeShipping?.address) {
+        shippingAddress = {
+          name: stripeShipping.name,
+          street: stripeShipping.address.line1,
+          apartment: stripeShipping.address.line2 || null,
+          city: stripeShipping.address.city,
+          province: stripeShipping.address.state,
+          postal_code: stripeShipping.address.postal_code,
+          country: stripeShipping.address.country,
+        };
+      } else if (session.metadata?.shipping_address) {
         shippingAddress = JSON.parse(session.metadata.shipping_address);
-      } else {
-        const shippingDetails = (session as any).collected_information?.shipping_details
-          || (session as any).shipping_details;
-        if (shippingDetails?.address) {
-          shippingAddress = {
-            name: shippingDetails.name,
-            street: shippingDetails.address.line1,
-            apartment: shippingDetails.address.line2 || null,
-            city: shippingDetails.address.city,
-            province: shippingDetails.address.state,
-            postal_code: shippingDetails.address.postal_code,
-            country: shippingDetails.address.country,
-          };
-        }
       }
 
       const customerEmail = session.customer_details?.email || null;

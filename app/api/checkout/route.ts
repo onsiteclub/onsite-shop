@@ -48,14 +48,20 @@ export async function POST(req: NextRequest) {
       apiVersion: '2025-12-15.clover',
     });
 
-    const { items, shipping_address, customer_notes, promo_code, promo_active, promo_discount_type, shipping_service, shipping_cost_override, shipping_source } = await req.json();
+    const body = await req.json();
+    const { items, customer_notes, promo_code, promo_active, promo_discount_type, shipping_service, shipping_cost_override, shipping_source } = body;
+
+    // New flow sends postal_code + province; old flow sends full shipping_address
+    const postal_code = body.postal_code || body.shipping_address?.postal_code;
+    const province = body.province || body.shipping_address?.province;
+    const shipping_address = body.shipping_address || null; // null in new flow (Stripe collects)
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
     }
 
-    if (!shipping_address?.province || !shipping_address?.name || !shipping_address?.street || !shipping_address?.city || !shipping_address?.postal_code) {
-      return NextResponse.json({ error: 'Shipping address is required' }, { status: 400 });
+    if (!province || !postal_code) {
+      return NextResponse.json({ error: 'Postal code and province are required' }, { status: 400 });
     }
 
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
@@ -145,18 +151,18 @@ export async function POST(req: NextRequest) {
       shippingLabel = shipping_service ? `Canada Post — ${shipping_service}` : 'Canada Post Shipping';
     } else {
       // Fallback to province-based rates
-      const provinceData = PROVINCE_SHIPPING[shipping_address.province];
+      const provinceData = PROVINCE_SHIPPING[province];
       shippingAmount = provinceData?.cost ?? 1499;
       shippingLabel = `Shipping — ${provinceData?.region ?? 'Canada'}`;
     }
 
     const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || 'http://localhost:3001';
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+    // Build session params — new flow lets Stripe collect address, old flow uses metadata
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      // No payment_method_types → enables Apple Pay, Google Pay, Link automatically
       mode: 'payment',
       line_items,
-      // Single pre-calculated shipping option (no user choice)
       shipping_options: [{
         shipping_rate_data: {
           type: 'fixed_amount',
@@ -166,13 +172,20 @@ export async function POST(req: NextRequest) {
       }],
       metadata: {
         items_detail: JSON.stringify(items_detail),
-        shipping_address: JSON.stringify(shipping_address),
+        address_source: shipping_address ? 'metadata' : 'stripe_collected',
+        ...(shipping_address ? { shipping_address: JSON.stringify(shipping_address) } : {}),
         ...(customer_notes ? { customer_notes } : {}),
         ...(promo_code ? { promo_code } : {}),
         ...(shipping_service ? { shipping_service } : {}),
         ...(shipping_source ? { shipping_source } : {}),
       },
-      payment_intent_data: {
+      success_url: `${shopUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${shopUrl}/cart`,
+    };
+
+    if (shipping_address) {
+      // Old flow: address already collected, attach to payment intent
+      sessionParams.payment_intent_data = {
         shipping: {
           name: shipping_address.name,
           address: {
@@ -184,10 +197,15 @@ export async function POST(req: NextRequest) {
             country: shipping_address.country || 'CA',
           },
         },
-      },
-      success_url: `${shopUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${shopUrl}/cart`,
-    });
+      };
+    } else {
+      // New flow: let Stripe Checkout collect the full shipping address
+      sessionParams.shipping_address_collection = {
+        allowed_countries: ['CA'],
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return NextResponse.json({ url: session.url });
   } catch (error: any) {

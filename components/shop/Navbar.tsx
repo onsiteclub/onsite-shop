@@ -186,7 +186,7 @@ export function Navbar({ products = [], onProductClick }: { products?: Product[]
                   {/* Links */}
                   <div className="py-1.5">
                     <a
-                      href="https://dashboard.onsiteclub.ca"
+                      href="https://auth.onsiteclub.ca/login?return_to=https://member.onsiteclub.ca"
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => setUserMenuOpen(false)}
